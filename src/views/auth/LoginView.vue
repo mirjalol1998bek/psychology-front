@@ -4,16 +4,27 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore, DEMO_CREDENTIALS } from '@/stores/auth'
 import { setLocale } from '@/i18n'
+import type { UserRole } from '@/types/domain'
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const auth = useAuthStore()
 
+// Ikkala usul ham — Hemis va login/parol — talaba, psixolog va adminning
+// hammasi uchun ochiq (TZ §2.1). Real tizimda rolni Hemis profilining o'zi
+// belgilaydi; backend hali yo'qligi sababli demo uchun shu yerda tanlanadi.
 type Mode = 'hemis' | 'password'
 const mode = ref<Mode>('hemis')
 
+const hemisRole = ref<UserRole>('student')
+const hemisRoleOptions: { value: UserRole; label: string; icon: string }[] = [
+  { value: 'student', label: 'Talaba', icon: 'mdi-school-outline' },
+  { value: 'psychologist', label: 'Psixolog', icon: 'mdi-account-tie-outline' },
+  { value: 'admin', label: 'Admin', icon: 'mdi-shield-crown-outline' },
+]
+
 async function handleHemisLogin() {
-  await auth.signInWithHemis('student')
+  await auth.signInWithHemis(hemisRole.value)
   router.push('/')
 }
 
@@ -43,7 +54,7 @@ function fillDemo(cred: (typeof DEMO_CREDENTIALS)[number]) {
   loginError.value = ''
 }
 
-const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixolog', student: 'Talaba (test)' }
+const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixolog', student: 'Talaba' }
 </script>
 
 <template>
@@ -82,15 +93,24 @@ const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixo
 
       <v-btn-toggle v-model="mode" mandatory color="primary" density="comfortable" rounded="lg" class="d-flex mb-5" divided>
         <v-btn value="hemis" class="flex-grow-1 text-none" size="small">
-          <v-icon icon="mdi-school-outline" start size="16" />Talaba (Hemis)
+          <v-icon icon="mdi-shield-account-outline" start size="16" />Hemis orqali
         </v-btn>
         <v-btn value="password" class="flex-grow-1 text-none" size="small">
-          <v-icon icon="mdi-account-key-outline" start size="16" />Xodim (login/parol)
+          <v-icon icon="mdi-account-key-outline" start size="16" />Login va parol
         </v-btn>
       </v-btn-toggle>
 
-      <!-- HEMIS: real production flow for students -->
+      <!-- HEMIS: talaba, psixolog va admin — barchasi shu orqali kira oladi -->
       <div v-if="mode === 'hemis'">
+        <span class="text-caption font-weight-700 text-medium-emphasis text-uppercase d-block mb-2">
+          <v-icon icon="mdi-account-outline" size="14" class="mr-1" />Kim sifatida kirasiz?
+        </span>
+        <v-btn-toggle v-model="hemisRole" mandatory color="primary" density="comfortable" rounded="lg" class="d-flex mb-5" divided>
+          <v-btn v-for="opt in hemisRoleOptions" :key="opt.value" :value="opt.value" class="flex-grow-1 text-none" size="small">
+            <v-icon :icon="opt.icon" start size="16" />{{ opt.label }}
+          </v-btn>
+        </v-btn-toggle>
+
         <v-btn
           block
           size="x-large"
@@ -108,7 +128,7 @@ const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixo
         </p>
       </div>
 
-      <!-- Login/parol: admin, psixolog, va sinov uchun test-talaba hisobi -->
+      <!-- Login/parol: talaba, psixolog va admin — barchasi uchun -->
       <form v-else @submit.prevent="handlePasswordLogin">
         <v-text-field
           v-model="username"
