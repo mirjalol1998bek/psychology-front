@@ -34,14 +34,14 @@ const statusMeta = {
   <div>
     <div class="d-flex align-center justify-space-between mb-1 flex-wrap" style="gap: 12px">
       <div>
-        <h1 class="text-display text-h4 font-weight-600 mb-1">Qabul kalendari</h1>
+        <h1 class="text-display text-h4 font-weight-800 mb-1">Qabul kalendari</h1>
         <p class="text-body-2 text-medium-emphasis mb-0">Psixolog Nilufar Egamova — haftalik jadval</p>
       </div>
       <v-btn color="primary" class="text-none" prepend-icon="mdi-calendar-plus">Yozilish</v-btn>
     </div>
 
     <div class="week-grid mt-4">
-      <v-card v-for="day in days" :key="day.date" elevation="1" class="pa-3 h-100">
+      <v-card v-for="day in days" :key="day.date" class="pa-3 h-100 surface-glass" rounded="xl">
         <div class="text-caption font-weight-700 text-medium-emphasis text-uppercase mb-3">{{ day.label }}</div>
         <div class="d-flex flex-column" style="gap: 8px">
           <v-sheet

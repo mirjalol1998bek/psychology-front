@@ -3,62 +3,66 @@ import '@mdi/font/css/materialdesignicons.css'
 
 import { createVuetify, type ThemeDefinition } from 'vuetify'
 
-// Palette carried over from the project's TZ document for brand continuity:
-// a calm, academic teal/sage as the primary (psychology, trust) with a warm
-// clay accent for secondary actions — deliberately not the default Material
-// indigo/purple.
-const lightTheme: ThemeDefinition = {
-  dark: false,
-  colors: {
-    background: '#F6F3EC',
-    surface: '#FFFFFF',
-    'surface-variant': '#EFEAE0',
-    primary: '#2E5C55',
-    'primary-darken-1': '#1F433D',
-    secondary: '#AD5F39',
-    'secondary-darken-1': '#8A4A2C',
-    error: '#AE3A3A',
-    success: '#3F7D52',
-    warning: '#A9781F',
-    info: '#3E6FA6',
-    'on-background': '#211E1A',
-    'on-surface': '#211E1A',
-  },
-  variables: {
-    'border-color': '#211E1A',
-    'border-opacity': 0.08,
-  },
-}
-
+/**
+ * Vision UI–inspired palette: deep navy/indigo ground, glass-morphic cards,
+ * a blue→cyan gradient accent for primary actions, and saturated icon-badge
+ * colors (green/cyan/pink) for status and stat tiles. Dark is the primary,
+ * showcase experience; light is a tasteful secondary for accessibility.
+ */
 const darkTheme: ThemeDefinition = {
   dark: true,
   colors: {
-    background: '#17181A',
-    surface: '#1F2123',
-    'surface-variant': '#2A2C2F',
-    primary: '#79B5AA',
-    'primary-darken-1': '#5C9389',
-    secondary: '#E0916A',
-    'secondary-darken-1': '#C77850',
-    error: '#E28D8D',
-    success: '#7FC393',
-    warning: '#E3BE6E',
-    info: '#8FB6E0',
-    'on-background': '#ECE7DC',
-    'on-surface': '#ECE7DC',
+    background: '#0B1437',
+    surface: '#131C42',
+    'surface-variant': '#1B2550',
+    primary: '#0075FF',
+    'primary-darken-1': '#0058C4',
+    secondary: '#2CD9FF',
+    'secondary-darken-1': '#17B7DA',
+    error: '#E31A1A',
+    success: '#01B574',
+    warning: '#FFB547',
+    info: '#2CD9FF',
+    'on-background': '#FFFFFF',
+    'on-surface': '#FFFFFF',
   },
   variables: {
-    'border-color': '#ECE7DC',
-    'border-opacity': 0.1,
+    'border-color': '#FFFFFF',
+    'border-opacity': 0.09,
+    'high-emphasis-opacity': 1,
+    'medium-emphasis-opacity': 0.64,
+  },
+}
+
+const lightTheme: ThemeDefinition = {
+  dark: false,
+  colors: {
+    background: '#F3F5FB',
+    surface: '#FFFFFF',
+    'surface-variant': '#EAEEFA',
+    primary: '#0075FF',
+    'primary-darken-1': '#0058C4',
+    secondary: '#0FA9D6',
+    'secondary-darken-1': '#0C86AB',
+    error: '#E31A1A',
+    success: '#01B574',
+    warning: '#B4790C',
+    info: '#0FA9D6',
+    'on-background': '#1B2143',
+    'on-surface': '#1B2143',
+  },
+  variables: {
+    'border-color': '#1B2143',
+    'border-opacity': 0.08,
   },
 }
 
 export default createVuetify({
   theme: {
-    defaultTheme: 'light',
+    defaultTheme: 'dark',
     themes: {
-      light: lightTheme,
       dark: darkTheme,
+      light: lightTheme,
     },
   },
   defaults: {
@@ -67,7 +71,8 @@ export default createVuetify({
       rounded: 'lg',
     },
     VCard: {
-      rounded: 'lg',
+      rounded: 'xl',
+      elevation: 0,
     },
     VTextField: {
       variant: 'outlined',
@@ -81,6 +86,10 @@ export default createVuetify({
     },
     VChip: {
       rounded: 'lg',
+    },
+    VProgressLinear: {
+      rounded: true,
+      height: 8,
     },
   },
 })

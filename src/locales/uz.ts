@@ -5,7 +5,7 @@ export default {
   nav: {
     dashboard: 'Bosh sahifa',
     tests: 'Testlar',
-    assignments: 'Tayinlashlar',
+    assignments: 'Biriktirilgan guruhlar',
     results: 'Natijalar',
     statistics: 'Statistika',
     calendar: 'Qabul kalendari',

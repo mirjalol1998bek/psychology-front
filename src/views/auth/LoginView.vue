@@ -51,12 +51,12 @@ async function handleHemisLogin() {
       </v-btn-toggle>
     </div>
 
-    <v-card class="login-card" elevation="8">
+    <v-card class="login-card surface-glass" rounded="xl">
       <div class="mb-6">
-        <v-avatar color="primary" size="52" rounded="lg" class="mb-4">
-          <v-icon icon="mdi-brain" color="white" size="28" />
-        </v-avatar>
-        <h1 class="text-display text-h4 font-weight-600 mb-2">{{ t('auth.title') }}</h1>
+        <div class="gradient-accent icon-badge mb-4" style="width: 52px; height: 52px; border-radius: 16px">
+          <v-icon icon="mdi-brain" color="white" size="26" />
+        </div>
+        <h1 class="text-display text-h4 font-weight-800 mb-2">{{ t('auth.title') }}</h1>
         <p class="text-body-2 text-medium-emphasis">{{ t('auth.subtitle') }}</p>
       </div>
 

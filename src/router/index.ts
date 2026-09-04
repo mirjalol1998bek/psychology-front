@@ -25,22 +25,29 @@ const router = createRouter({
       component: () => import('@/layouts/DefaultLayout.vue'),
       children: [
         { path: '', name: 'dashboard', component: () => import('@/views/DashboardView.vue') },
+
+        // Testlar: staff = management list/builder, student = take-test cards.
         { path: 'tests', name: 'tests', component: () => import('@/views/tests/TestsListView.vue') },
-        { path: 'tests/:id', name: 'take-test', component: () => import('@/views/tests/TakeTestView.vue') },
+        { path: 'tests/create', name: 'test-create', component: () => import('@/views/tests/CreateTestView.vue'), meta: { roles: STAFF } },
+        { path: 'tests/:id', name: 'test-edit', component: () => import('@/views/tests/CreateTestView.vue'), meta: { roles: STAFF } },
+        { path: 'tests/:id/take', name: 'take-test', component: () => import('@/views/tests/TakeTestView.vue') },
+
+        // Tekshirish: fakultet/guruh bo'yicha temperament+psixogeometrik ko'rinishi (staff).
+        { path: 'tekshirish', name: 'tekshirish', component: () => import('@/views/tekshirish/TekshirishView.vue'), meta: { roles: STAFF } },
+        { path: 'tekshirish/:facultyId/:groupId', name: 'tekshirish-group', component: () => import('@/views/tekshirish/GroupOverviewView.vue'), meta: { roles: STAFF } },
+
+        // Natijalar: staff = kategoriya hub -> instrument picker -> guruh jadvali; student = o'z natijalari.
         { path: 'results', name: 'results', component: () => import('@/views/results/ResultsView.vue') },
+        { path: 'results/:instrument', name: 'results-instrument', component: () => import('@/views/results/InstrumentPickerView.vue'), meta: { roles: STAFF } },
+        { path: 'results/:instrument/:facultyId/:groupId', name: 'results-instrument-group', component: () => import('@/views/results/InstrumentGroupResultsView.vue'), meta: { roles: STAFF } },
+
         { path: 'calendar', name: 'calendar', component: () => import('@/views/calendar/CalendarView.vue') },
-        {
-          path: 'assignments',
-          name: 'assignments',
-          component: () => import('@/views/assignments/AssignmentsView.vue'),
-          meta: { roles: STAFF },
-        },
-        {
-          path: 'statistics',
-          name: 'statistics',
-          component: () => import('@/views/statistics/StatisticsView.vue'),
-          meta: { roles: STAFF },
-        },
+
+        // Tayinlash: staff.
+        { path: 'assignments', name: 'assignments', component: () => import('@/views/assignments/AssignmentsView.vue'), meta: { roles: STAFF } },
+        { path: 'assignments/create', name: 'assignments-create', component: () => import('@/views/assignments/CreateAssignmentView.vue'), meta: { roles: STAFF } },
+
+        { path: 'statistics', name: 'statistics', component: () => import('@/views/statistics/StatisticsView.vue'), meta: { roles: STAFF } },
       ],
     },
     {

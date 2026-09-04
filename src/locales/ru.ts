@@ -5,7 +5,7 @@ export default {
   nav: {
     dashboard: 'Главная',
     tests: 'Тесты',
-    assignments: 'Назначения',
+    assignments: 'Прикреплённые группы',
     results: 'Результаты',
     statistics: 'Статистика',
     calendar: 'Календарь приёма',

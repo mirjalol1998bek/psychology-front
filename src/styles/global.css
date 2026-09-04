@@ -1,17 +1,23 @@
 /*
- * Deliberately minimal: layout, spacing and color all come from Vuetify's
- * component system and theme tokens (src/plugins/vuetify.ts). This file only
- * sets the typeface pairing and a couple of cross-cutting utilities that
- * Vuetify itself has no opinion on.
+ * Vision UI–inspired dark dashboard aesthetic. Layout, spacing and per-role
+ * color still come from Vuetify's component system and theme tokens
+ * (src/plugins/vuetify.ts) — this file adds the handful of cross-cutting
+ * effects Vuetify has no opinion on: the typeface pairing, the glass-card
+ * surface, and the ambient background glow.
  */
 
 :root {
   --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Lora', ui-serif, Georgia, serif;
+  --font-display: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --gradient-accent: linear-gradient(135deg, #0075ff 0%, #2cd9ff 100%);
 }
 
 * {
   font-family: var(--font-body);
+}
+
+.v-application {
+  font-family: var(--font-body) !important;
 }
 
 .text-display {
@@ -19,8 +25,66 @@
   letter-spacing: -0.01em;
 }
 
-.v-application {
-  font-family: var(--font-body) !important;
+/* Ambient app-wide backdrop: soft blurred glow blobs over the deep navy
+   ground, matching the reference dashboard's atmosphere. Fixed so it never
+   scrolls with content; only shown in the dark theme. */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: rgb(var(--v-theme-background));
+  pointer-events: none;
+}
+
+.app-backdrop::before,
+.app-backdrop::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.35;
+}
+
+.app-backdrop::before {
+  width: 700px;
+  height: 700px;
+  top: -280px;
+  left: -200px;
+  background: radial-gradient(circle, #0075ff 0%, transparent 70%);
+}
+
+.app-backdrop::after {
+  width: 640px;
+  height: 640px;
+  bottom: -260px;
+  right: -180px;
+  background: radial-gradient(circle, #2cd9ff 0%, transparent 70%);
+}
+
+/* Glass-morphic card surface: translucent fill + blur + hairline border.
+   Applied as a utility class on top of v-card rather than baked into the
+   Vuetify surface token, since the light theme keeps solid white cards. */
+.surface-glass {
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.gradient-accent {
+  background: var(--gradient-accent) !important;
+  color: #fff !important;
+}
+
+.icon-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 ::-webkit-scrollbar {
