@@ -1,0 +1,43 @@
+/*
+ * Deliberately minimal: layout, spacing and color all come from Vuetify's
+ * component system and theme tokens (src/plugins/vuetify.ts). This file only
+ * sets the typeface pairing and a couple of cross-cutting utilities that
+ * Vuetify itself has no opinion on.
+ */
+
+:root {
+  --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Lora', ui-serif, Georgia, serif;
+}
+
+* {
+  font-family: var(--font-body);
+}
+
+.text-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.v-application {
+  font-family: var(--font-body) !important;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.35);
+  border-radius: 99px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
