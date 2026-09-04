@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import RotatingGlobe from '@/components/common/RotatingGlobe.vue'
 import MiniCalendar from '@/components/dashboard/MiniCalendar.vue'
+import { CAL_EVENTS, CAL_STATUS_META, TODAY, type CalEvent } from '@/mocks/calendar'
+import { MONTH_NAMES } from '@/composables/useMonthGrid'
 import type { ResultSummaryDto } from '@/types/domain'
 
 const { t } = useI18n()
@@ -87,10 +89,14 @@ const quickStats = computed(() =>
       ],
 )
 
-const upcomingAppointment = {
-  date: '9-sentabr, seshanba',
-  time: '10:00 – 10:30',
-  psychologist: 'Nilufar Egamova',
+const upcomingAppointments = computed(() =>
+  CAL_EVENTS.filter((e) => new Date(e.date) >= TODAY && e.status !== 'cancelled')
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 4),
+)
+function formatUpcoming(e: CalEvent) {
+  const d = new Date(e.date)
+  return `${d.getDate()}-${MONTH_NAMES[d.getMonth()].toLowerCase()}, ${e.time}`
 }
 
 const recentResults: (ResultSummaryDto & { title: string })[] = [
@@ -153,35 +159,59 @@ const tooltipLeftPct = computed(() => (hoverIndex.value === null ? 0 : (xFor(hov
     <h1 class="text-display text-h4 font-weight-800 mb-1">{{ t('dashboard.greeting') }}, {{ firstName }} 👋</h1>
     <p class="text-body-2 text-medium-emphasis mb-6">{{ auth.user?.hemis.faculty }} · {{ auth.user?.hemis.group }}</p>
 
-    <!-- Stat tiles -->
+    <!-- Stat tiles (chap) + ochiq holda aylanuvchi globus (o'ng, karta/matnsiz) -->
     <v-row>
-      <v-col v-for="s in statTiles" :key="s.label" cols="12" sm="6" md="3">
-        <v-card class="pa-4 surface-glass wave-card h-100" rounded="xl">
-          <div class="d-flex align-center justify-space-between mb-3">
-            <span class="text-caption text-medium-emphasis">{{ s.label }}</span>
-            <div class="icon-badge" :style="{ background: s.color }">
-              <v-icon :icon="s.icon" color="white" size="20" />
-            </div>
-          </div>
-          <div class="d-flex align-baseline" style="gap: 8px">
-            <span class="text-h4 font-weight-800">{{ s.value }}</span>
-            <span v-if="s.delta" class="text-caption font-weight-700" :class="s.up ? 'text-success' : 'text-error'">
-              {{ s.delta }}
-            </span>
-          </div>
-        </v-card>
+      <v-col cols="12" lg="7">
+        <v-row>
+          <v-col v-for="s in statTiles" :key="s.label" cols="12" sm="6">
+            <v-card class="pa-4 surface-glass wave-card h-100" rounded="xl">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <span class="text-caption text-medium-emphasis">{{ s.label }}</span>
+                <div class="icon-badge" :style="{ background: s.color }">
+                  <v-icon :icon="s.icon" color="white" size="20" />
+                </div>
+              </div>
+              <div class="d-flex align-baseline" style="gap: 8px">
+                <span class="text-h4 font-weight-800">{{ s.value }}</span>
+                <span v-if="s.delta" class="text-caption font-weight-700" :class="s.up ? 'text-success' : 'text-error'">
+                  {{ s.delta }}
+                </span>
+              </div>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-col>
+
+      <v-col cols="12" lg="5">
+        <div class="globe-bare">
+          <RotatingGlobe />
+        </div>
       </v-col>
     </v-row>
 
-    <!-- Mini kalendar + ochiq holda aylanuvchi globus (karta yo'q, matn yo'q) -->
+    <!-- Mini kalendar + Yaqinlashib kelayotgan qabullar -->
     <v-row class="mt-1">
       <v-col cols="12" md="6">
         <MiniCalendar />
       </v-col>
       <v-col cols="12" md="6">
-        <div class="globe-bare">
-          <RotatingGlobe />
-        </div>
+        <v-card class="surface-glass h-100 pa-4 pa-md-5" rounded="xl">
+          <div class="d-flex align-center justify-space-between mb-3">
+            <span class="text-subtitle-1 font-weight-800">Yaqinlashib kelayotgan qabullar</span>
+            <v-icon icon="mdi-calendar-heart" color="secondary" />
+          </div>
+          <div v-for="(e, i) in upcomingAppointments" :key="i" class="d-flex align-center py-2 upcoming-row" style="gap: 12px">
+            <div class="icon-badge" style="width: 38px; height: 38px; border-radius: 11px" :style="{ background: `${CAL_STATUS_META[e.status].color}26` }">
+              <v-icon :icon="CAL_STATUS_META[e.status].icon" :color="e.status === 'free' ? 'success' : 'primary'" size="18" />
+            </div>
+            <div class="flex-grow-1">
+              <div class="text-body-2 font-weight-700">{{ e.title }}</div>
+              <div class="text-caption text-medium-emphasis">{{ formatUpcoming(e) }}</div>
+            </div>
+          </div>
+          <v-empty-state v-if="!upcomingAppointments.length" icon="mdi-calendar-check-outline" title="Rejalashtirilgan qabul yo‘q" density="compact" />
+          <v-btn variant="tonal" color="secondary" size="small" to="/calendar" class="text-none mt-2">{{ t('dashboard.bookAppointment') }}</v-btn>
+        </v-card>
       </v-col>
     </v-row>
 
@@ -367,16 +397,6 @@ const tooltipLeftPct = computed(() => (hoverIndex.value === null ? 0 : (xFor(hov
       </v-col>
 
       <v-col cols="12" md="5">
-        <v-card class="surface-glass mb-4 pa-4" rounded="xl">
-          <div class="d-flex align-center justify-space-between mb-2">
-            <span class="text-caption text-medium-emphasis text-uppercase">{{ t('dashboard.upcomingAppointment') }}</span>
-            <v-icon icon="mdi-calendar-heart" color="secondary" />
-          </div>
-          <div class="text-subtitle-1 font-weight-700">{{ upcomingAppointment.date }}</div>
-          <div class="text-body-2 text-medium-emphasis mb-3">{{ upcomingAppointment.time }} · {{ upcomingAppointment.psychologist }}</div>
-          <v-btn variant="tonal" color="secondary" size="small" to="/calendar" class="text-none">{{ t('dashboard.bookAppointment') }}</v-btn>
-        </v-card>
-
         <v-card class="surface-glass" rounded="xl">
           <v-card-item>
             <v-card-title class="text-subtitle-1 font-weight-700">{{ t('dashboard.recentResults') }}</v-card-title>
