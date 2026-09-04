@@ -86,9 +86,6 @@ function onTypeChange(q: QuestionDraft) {
   }
 }
 
-const saving = ref(false)
-const toastOpen = ref(false)
-
 function createCategory() {
   if (!newCategoryName.value.trim()) return
   CATEGORIES.push({ id: nextId(), name: newCategoryName.value.trim() })
@@ -97,11 +94,58 @@ function createCategory() {
   newCategoryDialog.value = false
 }
 
-async function saveTest() {
-  if (!title.value.trim() || !categoryId.value) {
-    window.alert('Test nomi va kategoriyani to‘ldiring.')
-    return
+const categoryName = computed(() => CATEGORIES.find((c) => c.id === categoryId.value)?.name ?? '—')
+function typeLabel(t: QuestionType) {
+  return QUESTION_TYPES.find((q) => q.value === t)?.label ?? t
+}
+
+// ---------------------------------------------------------------------------
+// Stepper
+// ---------------------------------------------------------------------------
+const STEPS = [
+  { n: 1, title: 'Test ma’lumotlari', icon: 'mdi-information-outline' },
+  { n: 2, title: 'Savollar', icon: 'mdi-help-circle-outline' },
+  { n: 3, title: 'Ko‘rinish', icon: 'mdi-eye-outline' },
+  { n: 4, title: 'Nashr', icon: 'mdi-cloud-upload-outline' },
+]
+const step = ref(1)
+const stepError = ref('')
+
+function goStep(n: number) {
+  if (n > step.value && !validateStep(step.value)) return
+  if (n < step.value || n <= step.value + 1) step.value = n
+}
+function validateStep(n: number): boolean {
+  stepError.value = ''
+  if (n === 1) {
+    if (!title.value.trim() || !categoryId.value) {
+      stepError.value = 'Test nomi va kategoriyani to‘ldiring.'
+      return false
+    }
   }
+  if (n === 2) {
+    const bad = questions.value.some((q) => !q.text.trim() || (q.type !== 'WRITING' && q.options.some((o) => !o.text.trim() && !o.imageUrl)))
+    if (bad) {
+      stepError.value = 'Barcha savol va javob maydonlarini to‘ldiring.'
+      return false
+    }
+  }
+  return true
+}
+function next() {
+  if (!validateStep(step.value)) return
+  step.value = Math.min(4, step.value + 1)
+}
+function back() {
+  stepError.value = ''
+  if (step.value === 1) router.push('/tests')
+  else step.value -= 1
+}
+
+const saving = ref(false)
+const toastOpen = ref(false)
+
+async function publish() {
   saving.value = true
   // TODO(backend): createQuiz → createQuestion (per question) →
   // createOption / createOptionWithImage (per option), matching the
@@ -118,7 +162,24 @@ async function saveTest() {
     <v-btn variant="text" prepend-icon="mdi-arrow-left" class="text-none mb-2" @click="router.push('/tests')">Orqaga</v-btn>
     <h1 class="text-display text-h4 font-weight-800 mb-6">{{ isEditing ? 'Testni tahrirlash' : 'Yangi test yaratish' }}</h1>
 
-    <v-card class="surface-glass pa-5 mb-5" rounded="xl">
+    <!-- Stepper header -->
+    <div class="stepper-head mb-8">
+      <template v-for="(s, i) in STEPS" :key="s.n">
+        <button class="stepper-node" :class="{ 'stepper-node--done': step > s.n, 'stepper-node--active': step === s.n }" @click="goStep(s.n)">
+          <span class="stepper-circle">
+            <v-icon v-if="step > s.n" icon="mdi-check" size="16" />
+            <span v-else>{{ s.n }}</span>
+          </span>
+          <span class="stepper-label d-none d-sm-inline">{{ s.title }}</span>
+        </button>
+        <div v-if="i < STEPS.length - 1" class="stepper-line" :class="{ 'stepper-line--done': step > s.n }" />
+      </template>
+    </div>
+
+    <v-alert v-if="stepError" type="error" variant="tonal" density="compact" class="mb-4">{{ stepError }}</v-alert>
+
+    <!-- Step 1: Test ma'lumotlari -->
+    <v-card v-if="step === 1" class="surface-glass pa-5" rounded="xl">
       <div class="text-subtitle-1 font-weight-700 mb-4">Test ma’lumotlari</div>
       <v-row>
         <v-col cols="12" md="7">
@@ -142,7 +203,8 @@ async function saveTest() {
       </v-row>
     </v-card>
 
-    <v-card class="surface-glass pa-5" rounded="xl">
+    <!-- Step 2: Savollar -->
+    <v-card v-else-if="step === 2" class="surface-glass pa-5" rounded="xl">
       <div class="d-flex align-center justify-space-between mb-4">
         <span class="text-subtitle-1 font-weight-700">Savollar ({{ questions.length }})</span>
         <v-btn variant="tonal" color="primary" prepend-icon="mdi-plus" class="text-none" @click="addQuestion">Savol qo‘shish</v-btn>
@@ -211,9 +273,79 @@ async function saveTest() {
       <v-btn variant="tonal" color="primary" prepend-icon="mdi-plus" class="text-none" block @click="addQuestion">Savol qo‘shish</v-btn>
     </v-card>
 
-    <div class="d-flex justify-end mt-5" style="gap: 10px">
-      <v-btn variant="text" class="text-none" @click="router.push('/tests')">Bekor qilish</v-btn>
-      <v-btn color="primary" variant="flat" class="text-none" :loading="saving" @click="saveTest">Saqlash</v-btn>
+    <!-- Step 3: Ko'rinish (talaba tomonidan qanday ko'rinishi) -->
+    <v-card v-else-if="step === 3" class="surface-glass pa-5" rounded="xl">
+      <div class="text-subtitle-1 font-weight-700 mb-1">Ko‘rinish</div>
+      <p class="text-caption text-medium-emphasis mb-4">Test talabaga qanday ko‘rinishini oldindan tekshiring.</p>
+
+      <v-card class="pa-5 mb-5 preview-hero" rounded="lg">
+        <v-chip size="small" variant="tonal" color="secondary" class="mb-2">{{ categoryName }}</v-chip>
+        <div class="text-h6 font-weight-800">{{ title || 'Test nomi kiritilmagan' }}</div>
+        <p class="text-body-2 text-medium-emphasis mb-2">{{ description || 'Tavsif kiritilmagan.' }}</p>
+        <span class="text-caption text-medium-emphasis">
+          <v-icon icon="mdi-clock-outline" size="14" class="mr-1" />{{ timeLimit || 'cheklanmagan' }}
+          {{ timeLimit ? 'daqiqa' : '' }} · {{ questions.length }} savol
+        </span>
+      </v-card>
+
+      <div v-for="(q, qi) in questions" :key="q.id" class="mb-5">
+        <div class="d-flex align-start mb-2" style="gap: 10px">
+          <span class="preview-qnum">{{ qi + 1 }}</span>
+          <div>
+            <span class="text-body-1 font-weight-700 d-block">{{ q.text || '(savol matni kiritilmagan)' }}</span>
+            <span class="text-caption text-medium-emphasis">{{ typeLabel(q.type) }}</span>
+          </div>
+        </div>
+
+        <div v-if="q.type === 'SINGLE_CHOICE_IMAGE'" class="d-flex flex-wrap" style="gap: 10px; padding-left: 34px">
+          <div v-for="opt in q.options" :key="opt.id" class="preview-img-opt">
+            <img v-if="opt.imageUrl" :src="opt.imageUrl" alt="" />
+            <v-icon v-else icon="mdi-image-outline" size="22" class="text-medium-emphasis" />
+          </div>
+        </div>
+        <div v-else-if="q.type !== 'WRITING'" class="d-flex flex-column" style="gap: 6px; padding-left: 34px">
+          <div v-for="opt in q.options" :key="opt.id" class="preview-option">
+            <v-icon :icon="q.type === 'SINGLE_CHOICE' || q.type === 'YES_NO' ? 'mdi-circle-outline' : 'mdi-checkbox-blank-outline'" size="16" class="mr-2 text-medium-emphasis" />
+            {{ opt.text }}
+          </div>
+        </div>
+        <div v-else class="text-caption text-medium-emphasis" style="padding-left: 34px">Erkin matn javobi kutiladi...</div>
+      </div>
+    </v-card>
+
+    <!-- Step 4: Nashr -->
+    <v-card v-else class="surface-glass pa-6 text-center" rounded="xl">
+      <div class="gradient-accent icon-badge mx-auto mb-4" style="width: 56px; height: 56px; border-radius: 18px">
+        <v-icon icon="mdi-cloud-upload-outline" color="white" size="28" />
+      </div>
+      <div class="text-h5 font-weight-800 mb-1">Nashr qilishga tayyor</div>
+      <p class="text-body-2 text-medium-emphasis mb-6">Ma’lumotlarni tekshirib, testni faollashtiring.</p>
+
+      <div class="publish-summary mx-auto mb-6">
+        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Test nomi</span><span class="font-weight-700">{{ title }}</span></div>
+        <v-divider opacity="0.1" />
+        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Kategoriya</span><span class="font-weight-700">{{ categoryName }}</span></div>
+        <v-divider opacity="0.1" />
+        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Savollar soni</span><span class="font-weight-700">{{ questions.length }}</span></div>
+        <v-divider opacity="0.1" />
+        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Vaqt chegarasi</span><span class="font-weight-700">{{ timeLimit || 'cheklanmagan' }} daqiqa</span></div>
+        <v-divider opacity="0.1" />
+        <div class="d-flex justify-space-between py-2">
+          <span class="text-medium-emphasis">Holat</span>
+          <v-chip size="small" variant="tonal" :color="isActive ? 'success' : undefined">{{ isActive ? 'Faol' : 'Nofaol' }}</v-chip>
+        </div>
+      </div>
+
+      <v-btn color="primary" size="x-large" class="text-none font-weight-700" :loading="saving" @click="publish">
+        <v-icon icon="mdi-check" start />Nashr qilish
+      </v-btn>
+    </v-card>
+
+    <div class="d-flex justify-space-between mt-5">
+      <v-btn variant="text" class="text-none" prepend-icon="mdi-arrow-left" @click="back">
+        {{ step === 1 ? 'Bekor qilish' : 'Orqaga' }}
+      </v-btn>
+      <v-btn v-if="step < 4" color="primary" variant="flat" class="text-none" append-icon="mdi-arrow-right" @click="next">Keyingi</v-btn>
     </div>
 
     <v-dialog v-model="newCategoryDialog" max-width="360">
@@ -253,5 +385,107 @@ async function saveTest() {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Stepper */
+.stepper-head {
+  display: flex;
+  align-items: center;
+}
+.stepper-node {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  padding: 0;
+  flex-shrink: 0;
+}
+.stepper-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  background: rgba(128, 128, 128, 0.15);
+  border: 2px solid rgba(128, 128, 128, 0.25);
+  flex-shrink: 0;
+}
+.stepper-node--active .stepper-circle {
+  background: var(--gradient-accent);
+  border-color: transparent;
+  color: #fff;
+}
+.stepper-node--done .stepper-circle {
+  background: rgb(var(--v-theme-success));
+  border-color: transparent;
+  color: #fff;
+}
+.stepper-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.6;
+  white-space: nowrap;
+}
+.stepper-node--active .stepper-label {
+  opacity: 1;
+}
+.stepper-line {
+  flex: 1;
+  height: 2px;
+  background: rgba(128, 128, 128, 0.2);
+  margin: 0 12px;
+}
+.stepper-line--done {
+  background: rgb(var(--v-theme-success));
+}
+
+/* Preview */
+.preview-hero {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.preview-qnum {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0, 117, 255, 0.16);
+  color: rgb(var(--v-theme-primary));
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.preview-option {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+.preview-img-opt {
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.preview-img-opt img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.publish-summary {
+  max-width: 380px;
 }
 </style>

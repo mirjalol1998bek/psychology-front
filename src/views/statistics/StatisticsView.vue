@@ -84,7 +84,7 @@ function maxOf(list: { count: number }[]) {
 
     <v-row class="mt-4">
       <v-col v-for="s in statCards" :key="s.label" cols="12" sm="6" md="3">
-        <v-card class="pa-4 surface-glass h-100" rounded="xl">
+        <v-card class="pa-4 surface-glass wave-card h-100" rounded="xl">
           <div class="d-flex align-center justify-space-between mb-3">
             <span class="text-caption text-medium-emphasis">{{ s.label }}</span>
             <div class="icon-badge" :style="{ background: s.color }"><v-icon :icon="s.icon" color="white" size="20" /></div>

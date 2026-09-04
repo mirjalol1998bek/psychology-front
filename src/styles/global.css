@@ -77,6 +77,31 @@
   color: #fff !important;
 }
 
+/* Faint wave-line texture for stat tiles, matching the reference dashboard's
+   gradient stat cards. Pure CSS (no image asset) — a few overlapping radial
+   arcs at low opacity in the card's bottom-right corner. */
+.wave-card {
+  position: relative;
+  overflow: hidden;
+}
+.wave-card::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  right: -30px;
+  bottom: -60px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 0 0 28px rgba(255, 255, 255, 0.05), 0 0 0 56px rgba(255, 255, 255, 0.03);
+  pointer-events: none;
+}
+.wave-card > * {
+  position: relative;
+  z-index: 1;
+}
+
 .icon-badge {
   width: 42px;
   height: 42px;

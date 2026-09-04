@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import RotatingGlobe from '@/components/common/RotatingGlobe.vue'
 import type { ResultSummaryDto } from '@/types/domain'
 
 const { t } = useI18n()
@@ -120,7 +121,7 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
     <!-- Stat tiles -->
     <v-row>
       <v-col v-for="s in statTiles" :key="s.label" cols="12" sm="6" md="3">
-        <v-card class="pa-4 surface-glass h-100" rounded="xl">
+        <v-card class="pa-4 surface-glass wave-card h-100" rounded="xl">
           <div class="d-flex align-center justify-space-between mb-3">
             <span class="text-caption text-medium-emphasis">{{ s.label }}</span>
             <div class="icon-badge" :style="{ background: s.color }">
@@ -141,32 +142,17 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
     <v-row class="mt-1">
       <v-col cols="12" md="4">
         <v-card class="surface-glass h-100 pa-6 d-flex flex-column justify-space-between hero-card" rounded="xl">
-          <div>
+          <div class="hero-globe">
+            <RotatingGlobe />
+          </div>
+          <div class="hero-content">
             <span class="text-caption text-medium-emphasis text-uppercase">Xush kelibsiz</span>
             <h2 class="text-display text-h5 font-weight-800 mt-1 mb-2">{{ auth.user?.hemis.fullName }}</h2>
-            <p class="text-body-2 text-medium-emphasis" style="max-width: 30ch">
+            <p class="text-body-2 text-medium-emphasis" style="max-width: 26ch">
               Sizni yana ko‘rganimizdan xursandmiz. Bugun sizni nima qiziqtiryapti?
             </p>
           </div>
-          <svg class="hero-graphic" viewBox="0 0 200 120" aria-hidden="true">
-            <defs>
-              <linearGradient id="heroGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#0075FF" />
-                <stop offset="1" stop-color="#2CD9FF" />
-              </linearGradient>
-            </defs>
-            <circle cx="100" cy="60" r="46" fill="url(#heroGrad)" opacity="0.18" />
-            <g stroke="url(#heroGrad)" stroke-width="2.4" fill="none" stroke-linecap="round">
-              <path d="M100 30 C80 30 68 45 68 62 C68 76 78 84 78 92" />
-              <path d="M100 30 C120 30 132 45 132 62 C132 76 122 84 122 92" />
-              <circle cx="100" cy="30" r="6" fill="url(#heroGrad)" stroke="none" />
-              <circle cx="68" cy="62" r="4" fill="url(#heroGrad)" stroke="none" />
-              <circle cx="132" cy="62" r="4" fill="url(#heroGrad)" stroke="none" />
-              <circle cx="78" cy="92" r="4" fill="url(#heroGrad)" stroke="none" />
-              <circle cx="122" cy="92" r="4" fill="url(#heroGrad)" stroke="none" />
-            </g>
-          </svg>
-          <v-btn variant="tonal" color="secondary" class="text-none align-self-start" to="/tests">
+          <v-btn variant="tonal" color="secondary" class="text-none align-self-start hero-content" to="/tests">
             Testlarga o‘tish <v-icon icon="mdi-arrow-right" end size="16" />
           </v-btn>
         </v-card>
@@ -359,11 +345,24 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
 </template>
 
 <style scoped>
-.hero-graphic {
-  width: 100%;
-  max-width: 220px;
-  align-self: center;
-  margin: 8px 0;
+.hero-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-globe {
+  position: absolute;
+  top: -40px;
+  right: -60px;
+  width: 240px;
+  height: 240px;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
 }
 
 .gauge-svg {
