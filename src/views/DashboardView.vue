@@ -44,6 +44,15 @@ const scoreRing = computed(() =>
 const ringCircumference = 2 * Math.PI * 54
 const ringOffset = computed(() => ringCircumference * (1 - scoreRing.value.pct / 100))
 
+// "Sales by Country"-style ranked list from the Vision UI reference —
+// repurposed here as faculty coverage, the closest real equivalent to a
+// per-segment breakdown in this domain (staff only).
+const topFaculties = [
+  { name: 'Xorijiy filologiya fakulteti', icon: 'mdi-translate', groups: 3, students: 412, pct: 86 },
+  { name: 'Tarix fakulteti', icon: 'mdi-bank-outline', groups: 2, students: 268, pct: 71 },
+  { name: 'Jurnalistika fakulteti', icon: 'mdi-newspaper-variant-outline', groups: 2, students: 190, pct: 69 },
+]
+
 const weekly = [42, 58, 50, 68, 61, 74, 66]
 const weekDays = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']
 const chartW = 560
@@ -206,6 +215,33 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
       </v-col>
     </v-row>
 
+    <!-- Fakultetlar reytingi (staff) — "Sales by Country" patterni -->
+    <v-row v-if="auth.isStaff" class="mt-1">
+      <v-col cols="12">
+        <v-card class="surface-glass pa-5" rounded="xl">
+          <div class="text-subtitle-1 font-weight-700 mb-4">Fakultetlar bo‘yicha qamrov</div>
+          <div class="faculty-rank-row d-flex align-center py-2" v-for="f in topFaculties" :key="f.name">
+            <div class="icon-badge mr-3" style="width: 36px; height: 36px; border-radius: 10px; background: rgba(0,117,255,0.16)">
+              <v-icon :icon="f.icon" color="primary" size="17" />
+            </div>
+            <span class="font-weight-700 flex-grow-1">{{ f.name }}</span>
+            <div class="d-none d-sm-block text-center" style="width: 110px">
+              <div class="text-caption text-medium-emphasis">Guruhlar</div>
+              <div class="text-body-2 font-weight-700">{{ f.groups }}</div>
+            </div>
+            <div class="d-none d-sm-block text-center" style="width: 110px">
+              <div class="text-caption text-medium-emphasis">Talabalar</div>
+              <div class="text-body-2 font-weight-700">{{ f.students }}</div>
+            </div>
+            <div class="text-center" style="width: 130px">
+              <div class="text-caption text-medium-emphasis">Qamrov</div>
+              <div class="text-body-2 font-weight-700">{{ f.pct }}%</div>
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Weekly activity area chart + mini bars/quick stats -->
     <v-row class="mt-1">
       <v-col cols="12" md="7">
@@ -345,5 +381,12 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
   width: 100%;
   height: auto;
   overflow: visible;
+}
+
+.faculty-rank-row {
+  border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+}
+.faculty-rank-row:last-child {
+  border-bottom: none;
 }
 </style>
