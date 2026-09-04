@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import RotatingGlobe from '@/components/common/RotatingGlobe.vue'
+import MiniCalendar from '@/components/dashboard/MiniCalendar.vue'
 import type { ResultSummaryDto } from '@/types/domain'
 
 const { t } = useI18n()
@@ -111,6 +112,40 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
     SCORE_RANGE_BASED: 'mdi-gauge',
   }[type]
 }
+
+// ---------------------------------------------------------------------------
+// Chart effects: draw-in animation on mount + hover tooltip/guide-line.
+// Plain CSS transitions triggered by a class toggled after first paint —
+// no charting library needed for two small SVGs.
+// ---------------------------------------------------------------------------
+const chartsAnimated = ref(false)
+onMounted(async () => {
+  await nextTick()
+  requestAnimationFrame(() => {
+    chartsAnimated.value = true
+  })
+})
+
+const hoverIndex = ref<number | null>(null)
+function onAreaHover(e: MouseEvent) {
+  const svg = e.currentTarget as SVGSVGElement
+  const rect = svg.getBoundingClientRect()
+  const localX = ((e.clientX - rect.left) / rect.width) * chartW
+  let idx = 0
+  let minDist = Infinity
+  weekly.forEach((_, i) => {
+    const d = Math.abs(xFor(i) - localX)
+    if (d < minDist) {
+      minDist = d
+      idx = i
+    }
+  })
+  hoverIndex.value = idx
+}
+function onAreaLeave() {
+  hoverIndex.value = null
+}
+const tooltipLeftPct = computed(() => (hoverIndex.value === null ? 0 : (xFor(hoverIndex.value) / chartW) * 100))
 </script>
 
 <template>
@@ -118,88 +153,86 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
     <h1 class="text-display text-h4 font-weight-800 mb-1">{{ t('dashboard.greeting') }}, {{ firstName }} 👋</h1>
     <p class="text-body-2 text-medium-emphasis mb-6">{{ auth.user?.hemis.faculty }} · {{ auth.user?.hemis.group }}</p>
 
-    <!-- Stat tiles (left) + big globe hero (right) — Vision UI reference layout -->
+    <!-- Stat tiles -->
     <v-row>
-      <v-col cols="12" lg="7">
-        <v-row>
-          <v-col v-for="s in statTiles" :key="s.label" cols="6">
-            <v-card class="pa-4 surface-glass wave-card h-100" rounded="xl">
-              <div class="d-flex align-center justify-space-between mb-3">
-                <span class="text-caption text-medium-emphasis">{{ s.label }}</span>
-                <div class="icon-badge" :style="{ background: s.color }">
-                  <v-icon :icon="s.icon" color="white" size="20" />
-                </div>
-              </div>
-              <div class="d-flex align-baseline" style="gap: 8px">
-                <span class="text-h4 font-weight-800">{{ s.value }}</span>
-                <span v-if="s.delta" class="text-caption font-weight-700" :class="s.up ? 'text-success' : 'text-error'">
-                  {{ s.delta }}
-                </span>
-              </div>
-            </v-card>
-          </v-col>
-        </v-row>
+      <v-col v-for="s in statTiles" :key="s.label" cols="12" sm="6" md="3">
+        <v-card class="pa-4 surface-glass wave-card h-100" rounded="xl">
+          <div class="d-flex align-center justify-space-between mb-3">
+            <span class="text-caption text-medium-emphasis">{{ s.label }}</span>
+            <div class="icon-badge" :style="{ background: s.color }">
+              <v-icon :icon="s.icon" color="white" size="20" />
+            </div>
+          </div>
+          <div class="d-flex align-baseline" style="gap: 8px">
+            <span class="text-h4 font-weight-800">{{ s.value }}</span>
+            <span v-if="s.delta" class="text-caption font-weight-700" :class="s.up ? 'text-success' : 'text-error'">
+              {{ s.delta }}
+            </span>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
 
-        <v-row class="mt-1">
-          <v-col cols="6">
-            <v-card class="surface-glass h-100 pa-5 text-center" rounded="xl">
-              <div class="text-caption text-medium-emphasis mb-1">{{ gauge.label }}</div>
-              <svg viewBox="0 0 200 120" class="gauge-svg">
-                <path d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="rgba(128,128,128,0.2)" stroke-width="14" stroke-linecap="round" />
-                <path
-                  d="M20,100 A80,80 0 0 1 180,100"
-                  fill="none"
-                  stroke="url(#heroGrad)"
-                  stroke-width="14"
-                  stroke-linecap="round"
-                  :stroke-dasharray="gaugeCircumference"
-                  :stroke-dashoffset="gaugeOffset"
-                />
-              </svg>
-              <div class="gauge-center">
-                <v-icon icon="mdi-emoticon-happy-outline" color="secondary" size="26" />
-              </div>
-              <div class="d-flex justify-space-between text-caption text-medium-emphasis px-2">
-                <span>0%</span><span>100%</span>
-              </div>
-              <div class="text-h5 font-weight-800 mt-1">{{ gauge.pct }}%</div>
-              <div class="text-caption text-medium-emphasis">{{ gauge.hint }}</div>
-            </v-card>
-          </v-col>
+    <!-- Mini kalendar + ochiq holda aylanuvchi globus (karta yo'q, matn yo'q) -->
+    <v-row class="mt-1">
+      <v-col cols="12" md="6">
+        <MiniCalendar />
+      </v-col>
+      <v-col cols="12" md="6">
+        <div class="globe-bare">
+          <RotatingGlobe />
+        </div>
+      </v-col>
+    </v-row>
 
-          <v-col cols="6">
-            <v-card class="surface-glass h-100 pa-5 text-center d-flex flex-column align-center justify-center" rounded="xl">
-              <div class="text-caption text-medium-emphasis mb-3">{{ scoreRing.label }}</div>
-              <svg viewBox="0 0 120 120" width="120" height="120">
-                <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(128,128,128,0.2)" stroke-width="10" />
-                <circle
-                  cx="60" cy="60" r="54" fill="none" stroke="#01B574" stroke-width="10" stroke-linecap="round"
-                  :stroke-dasharray="ringCircumference" :stroke-dashoffset="ringOffset"
-                  transform="rotate(-90 60 60)"
-                />
-                <text x="60" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="currentColor">{{ scoreRing.value }}</text>
-              </svg>
-              <div class="text-caption text-medium-emphasis mt-2">Umumiy ko‘rsatkich</div>
-            </v-card>
-          </v-col>
-        </v-row>
+    <!-- Gauge + score ring -->
+    <v-row class="mt-1">
+      <v-col cols="12" sm="6">
+        <v-card class="surface-glass h-100 pa-5 text-center" rounded="xl">
+          <div class="text-caption text-medium-emphasis mb-1">{{ gauge.label }}</div>
+          <svg viewBox="0 0 200 120" class="gauge-svg">
+            <defs>
+              <linearGradient id="heroGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#0075FF" />
+                <stop offset="1" stop-color="#2CD9FF" />
+              </linearGradient>
+            </defs>
+            <path d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="rgba(128,128,128,0.2)" stroke-width="14" stroke-linecap="round" />
+            <path
+              d="M20,100 A80,80 0 0 1 180,100"
+              fill="none"
+              stroke="url(#heroGrad)"
+              stroke-width="14"
+              stroke-linecap="round"
+              :stroke-dasharray="gaugeCircumference"
+              :stroke-dashoffset="chartsAnimated ? gaugeOffset : gaugeCircumference"
+              class="gauge-arc"
+            />
+          </svg>
+          <div class="gauge-center">
+            <v-icon icon="mdi-emoticon-happy-outline" color="secondary" size="26" />
+          </div>
+          <div class="d-flex justify-space-between text-caption text-medium-emphasis px-2">
+            <span>0%</span><span>100%</span>
+          </div>
+          <div class="text-h5 font-weight-800 mt-1">{{ gauge.pct }}%</div>
+          <div class="text-caption text-medium-emphasis">{{ gauge.hint }}</div>
+        </v-card>
       </v-col>
 
-      <v-col cols="12" lg="5">
-        <v-card class="surface-glass h-100 globe-card" rounded="xl">
-          <div class="globe-content">
-            <span class="text-caption text-medium-emphasis text-uppercase">Xush kelibsiz</span>
-            <h2 class="text-display text-h5 font-weight-800 mt-1 mb-2">{{ auth.user?.hemis.fullName }}</h2>
-            <p class="text-body-2 text-medium-emphasis mb-4" style="max-width: 26ch">
-              Sizni yana ko‘rganimizdan xursandmiz. Bugun sizni nima qiziqtiryapti?
-            </p>
-            <v-btn variant="tonal" color="secondary" class="text-none" to="/tests">
-              Testlarga o‘tish <v-icon icon="mdi-arrow-right" end size="16" />
-            </v-btn>
-          </div>
-          <div class="globe-stage">
-            <RotatingGlobe />
-          </div>
+      <v-col cols="12" sm="6">
+        <v-card class="surface-glass h-100 pa-5 text-center d-flex flex-column align-center justify-center" rounded="xl">
+          <div class="text-caption text-medium-emphasis mb-3">{{ scoreRing.label }}</div>
+          <svg viewBox="0 0 120 120" width="120" height="120">
+            <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(128,128,128,0.2)" stroke-width="10" />
+            <circle
+              cx="60" cy="60" r="54" fill="none" stroke="#01B574" stroke-width="10" stroke-linecap="round"
+              :stroke-dasharray="ringCircumference" :stroke-dashoffset="chartsAnimated ? ringOffset : ringCircumference"
+              transform="rotate(-90 60 60)" class="ring-arc"
+            />
+            <text x="60" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="currentColor">{{ scoreRing.value }}</text>
+          </svg>
+          <div class="text-caption text-medium-emphasis mt-2">Umumiy ko‘rsatkich</div>
         </v-card>
       </v-col>
     </v-row>
@@ -231,7 +264,7 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
       </v-col>
     </v-row>
 
-    <!-- Weekly activity area chart + mini bars/quick stats -->
+    <!-- Weekly activity area chart (draw-in + hover tooltip) + animated bar chart -->
     <v-row class="mt-1">
       <v-col cols="12" md="7">
         <v-card class="surface-glass pa-5" rounded="xl">
@@ -242,19 +275,36 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
             </div>
             <v-icon icon="mdi-chart-line" color="secondary" />
           </div>
-          <svg :viewBox="`0 0 ${chartW} ${chartH + 24}`" class="area-chart">
-            <defs>
-              <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#2CD9FF" stop-opacity="0.45" />
-                <stop offset="1" stop-color="#2CD9FF" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-            <line v-for="g in 4" :key="g" x1="0" :x2="chartW" :y1="(chartH / 4) * g" :y2="(chartH / 4) * g" stroke="rgba(128,128,128,0.15)" stroke-dasharray="4 4" />
-            <polygon :points="areaPoints" fill="url(#areaFill)" />
-            <polyline :points="linePoints" fill="none" stroke="#0075FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-            <circle v-for="(v, i) in weekly" :key="i" :cx="xFor(i)" :cy="yFor(v)" r="3.5" fill="#0075FF" />
-            <text v-for="(d, i) in weekDays" :key="d" :x="xFor(i)" :y="chartH + 18" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.55">{{ d }}</text>
-          </svg>
+          <div class="chart-wrap" @mousemove="onAreaHover" @mouseleave="onAreaLeave">
+            <svg :viewBox="`0 0 ${chartW} ${chartH + 24}`" class="area-chart">
+              <defs>
+                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#2CD9FF" stop-opacity="0.45" />
+                  <stop offset="1" stop-color="#2CD9FF" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <line v-for="g in 4" :key="g" x1="0" :x2="chartW" :y1="(chartH / 4) * g" :y2="(chartH / 4) * g" stroke="rgba(128,128,128,0.15)" stroke-dasharray="4 4" />
+              <line
+                v-if="hoverIndex !== null" class="chart-guide"
+                :x1="xFor(hoverIndex)" :x2="xFor(hoverIndex)" y1="0" :y2="chartH"
+              />
+              <polygon :points="areaPoints" fill="url(#areaFill)" class="chart-area" :class="{ 'chart-area--in': chartsAnimated }" />
+              <polyline
+                :points="linePoints" fill="none" stroke="#0075FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                class="chart-line" :class="{ 'chart-line--in': chartsAnimated }"
+              />
+              <circle
+                v-for="(v, i) in weekly" :key="i" :cx="xFor(i)" :cy="yFor(v)"
+                :r="hoverIndex === i ? 5.5 : 3.5" fill="#0075FF" class="chart-dot"
+                :class="{ 'chart-dot--active': hoverIndex === i }"
+              />
+              <text v-for="(d, i) in weekDays" :key="d" :x="xFor(i)" :y="chartH + 18" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.55">{{ d }}</text>
+            </svg>
+            <div v-if="hoverIndex !== null" class="chart-tooltip" :style="{ left: tooltipLeftPct + '%' }">
+              <div class="text-caption font-weight-800">{{ weekDays[hoverIndex] }}</div>
+              <div class="text-caption text-secondary font-weight-700">{{ weekly[hoverIndex] }} faollik</div>
+            </div>
+          </div>
         </v-card>
       </v-col>
 
@@ -262,7 +312,12 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
         <v-card class="surface-glass pa-5 h-100" rounded="xl">
           <div class="text-subtitle-1 font-weight-700 mb-3">So‘nggi 8 kun</div>
           <svg viewBox="0 0 240 90" class="bar-chart mb-4">
-            <rect v-for="(b, i) in miniBars" :key="i" :x="i * 30 + 6" :y="90 - b * 0.8" width="16" :height="b * 0.8" rx="4" fill="#0075FF" :opacity="0.4 + (i / miniBars.length) * 0.6" />
+            <rect
+              v-for="(b, i) in miniBars" :key="i" :x="i * 30 + 6"
+              :y="chartsAnimated ? 90 - b * 0.8 : 90" width="16" :height="chartsAnimated ? b * 0.8 : 0" rx="4"
+              fill="#0075FF" :opacity="0.4 + (i / miniBars.length) * 0.6"
+              class="bar-rect" :style="{ transitionDelay: `${i * 45}ms` }"
+            />
           </svg>
           <div class="d-flex flex-column" style="gap: 14px">
             <div v-for="q in quickStats" :key="q.label">
@@ -272,7 +327,7 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
                 </span>
                 <span class="text-body-2 font-weight-700">{{ q.value }}</span>
               </div>
-              <v-progress-linear :model-value="q.pct" height="5" rounded color="secondary" bg-color="surface-variant" />
+              <v-progress-linear :model-value="chartsAnimated ? q.pct : 0" height="5" rounded color="secondary" bg-color="surface-variant" />
             </div>
           </div>
         </v-card>
@@ -348,41 +403,13 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
 </template>
 
 <style scoped>
-.globe-card {
-  position: relative;
-  overflow: hidden;
-  min-height: 380px;
+.globe-bare {
+  height: 100%;
+  min-height: 320px;
   display: flex;
-  flex-direction: column;
-}
-
-.globe-content {
+  align-items: center;
+  justify-content: center;
   position: relative;
-  z-index: 1;
-  padding: 28px 28px 0;
-}
-
-.globe-stage {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  /* Bleeds off the card's right/bottom edge, like the reference — only the
-     front hemisphere needs to be fully visible. */
-  width: 145%;
-  height: 145%;
-  right: -30%;
-  bottom: -28%;
-  left: auto;
-  top: auto;
-}
-
-@media (max-width: 600px) {
-  .globe-stage {
-    width: 120%;
-    height: 120%;
-    right: -10%;
-    bottom: -15%;
-  }
 }
 
 .gauge-svg {
@@ -395,11 +422,72 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
   margin-bottom: 34px;
 }
 
+.gauge-arc,
+.ring-arc {
+  transition: stroke-dashoffset 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .area-chart,
 .bar-chart {
   width: 100%;
   height: auto;
   overflow: visible;
+}
+
+.chart-wrap {
+  position: relative;
+}
+
+.chart-line {
+  stroke-dasharray: 1600;
+  stroke-dashoffset: 1600;
+  transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 0 6px rgba(0, 117, 255, 0.55));
+}
+.chart-line--in {
+  stroke-dashoffset: 0;
+}
+
+.chart-area {
+  opacity: 0;
+  transition: opacity 1.1s ease 0.35s;
+}
+.chart-area--in {
+  opacity: 1;
+}
+
+.chart-dot {
+  transition: r 0.15s ease;
+  filter: drop-shadow(0 0 4px rgba(0, 117, 255, 0.7));
+}
+.chart-dot--active {
+  fill: #2cd9ff;
+}
+
+.chart-guide {
+  stroke: rgba(44, 217, 255, 0.5);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+.chart-tooltip {
+  position: absolute;
+  top: -6px;
+  transform: translate(-50%, -100%);
+  background: rgba(15, 22, 55, 0.95);
+  border: 1px solid rgba(44, 217, 255, 0.35);
+  border-radius: 8px;
+  padding: 6px 10px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.6);
+}
+
+.bar-rect {
+  transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1), y 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease;
+}
+.bar-rect:hover {
+  opacity: 1;
 }
 
 .faculty-rank-row {

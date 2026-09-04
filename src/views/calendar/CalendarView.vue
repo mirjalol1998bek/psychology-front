@@ -1,90 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { AppointmentSlotStatus } from '@/types/domain'
+import { computed } from 'vue'
+import { useMonthGrid, WEEKDAYS, MONTH_NAMES } from '@/composables/useMonthGrid'
+import { CAL_EVENTS, CAL_STATUS_META, TODAY, type CalEvent } from '@/mocks/calendar'
 
-interface CalEvent {
-  date: string // YYYY-MM-DD
-  title: string
-  time: string
-  status: AppointmentSlotStatus
-}
-
-const WEEKDAYS = ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan', 'Yak']
-const MONTH_NAMES = [
-  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-  'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
-]
-
-const today = new Date(2026, 8, 4) // TODO(backend): replace with real `new Date()` once slots are live
-const cursor = ref(new Date(today.getFullYear(), today.getMonth(), 1))
-
-const monthLabel = computed(() => `${MONTH_NAMES[cursor.value.getMonth()]} ${cursor.value.getFullYear()}`)
-
-function toKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-}
-
-// Placeholder — wired to the psychologist's real slot list later (TZ §9).
-const events: CalEvent[] = [
-  { date: '2026-09-01', title: 'Kirish so‘rovnomasi', time: 'Kun bo‘yi', status: 'booked' },
-  { date: '2026-09-04', title: 'A. Karimov', time: '09:30', status: 'booked' },
-  { date: '2026-09-04', title: 'Bo‘sh slot', time: '11:00', status: 'free' },
-  { date: '2026-09-07', title: 'Guruh treningi', time: '14:00', status: 'booked' },
-  { date: '2026-09-09', title: 'Siz', time: '10:00', status: 'booked' },
-  { date: '2026-09-09', title: 'Bo‘sh slot', time: '10:30', status: 'free' },
-  { date: '2026-09-14', title: 'M. Yusupova', time: '15:00', status: 'booked' },
-  { date: '2026-09-18', title: 'Bekor qilingan', time: '13:00', status: 'cancelled' },
-  { date: '2026-09-22', title: 'Fakultet monitoring', time: 'Kun bo‘yi', status: 'booked' },
-]
-
-const statusMeta: Record<AppointmentSlotStatus, { color: string; icon: string }> = {
-  free: { color: '#01B574', icon: 'mdi-calendar-plus-outline' },
-  booked: { color: '#0075FF', icon: 'mdi-account-check-outline' },
-  cancelled: { color: '#E31A1A', icon: 'mdi-calendar-remove-outline' },
-}
-
-const weeks = computed(() => {
-  const year = cursor.value.getFullYear()
-  const month = cursor.value.getMonth()
-  const firstOfMonth = new Date(year, month, 1)
-  // Monday-start offset (0 = Monday ... 6 = Sunday)
-  const offset = (firstOfMonth.getDay() + 6) % 7
-  const gridStart = new Date(year, month, 1 - offset)
-
-  const cells = Array.from({ length: 42 }, (_, i) => {
-    const date = new Date(gridStart)
-    date.setDate(gridStart.getDate() + i)
-    const key = toKey(date)
-    return {
-      date,
-      key,
-      inMonth: date.getMonth() === month,
-      isToday: isSameDay(date, today),
-      events: events.filter((e) => e.date === key),
-    }
-  })
-
-  const result = []
-  for (let i = 0; i < 6; i++) result.push(cells.slice(i * 7, i * 7 + 7))
-  return result
-})
-
-function prevMonth() {
-  cursor.value = new Date(cursor.value.getFullYear(), cursor.value.getMonth() - 1, 1)
-}
-function nextMonth() {
-  cursor.value = new Date(cursor.value.getFullYear(), cursor.value.getMonth() + 1, 1)
-}
-function goToday() {
-  cursor.value = new Date(today.getFullYear(), today.getMonth(), 1)
-}
+const { monthLabel, weeks, prevMonth, nextMonth, goToday } = useMonthGrid(CAL_EVENTS, TODAY)
 
 const upcoming = computed(() =>
-  events
-    .filter((e) => new Date(e.date) >= today && e.status !== 'cancelled')
+  CAL_EVENTS.filter((e) => new Date(e.date) >= TODAY && e.status !== 'cancelled')
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 4),
 )
@@ -141,7 +63,7 @@ const areaPoints = `0,${chartH} ${linePoints} ${chartW},${chartH}`
                 <div class="d-flex flex-column" style="gap: 3px">
                   <div
                     v-for="(ev, ei) in cell.events.slice(0, 2)" :key="ei"
-                    class="event-pill" :style="{ background: statusMeta[ev.status].color }"
+                    class="event-pill" :style="{ background: CAL_STATUS_META[ev.status].color }"
                     :title="`${ev.title} — ${ev.time}`"
                   >
                     {{ ev.title }}
@@ -160,8 +82,8 @@ const areaPoints = `0,${chartH} ${linePoints} ${chartW},${chartH}`
         <v-card class="surface-glass pa-4 mb-4" rounded="xl">
           <div class="text-subtitle-1 font-weight-700 mb-3">Yaqin qabullar</div>
           <div v-for="(e, i) in upcoming" :key="i" class="d-flex align-center py-2" style="gap: 12px">
-            <div class="icon-badge" style="width: 36px; height: 36px; border-radius: 10px" :style="{ background: `${statusMeta[e.status].color}26` }">
-              <v-icon :icon="statusMeta[e.status].icon" :color="e.status === 'free' ? 'success' : 'primary'" size="17" />
+            <div class="icon-badge" style="width: 36px; height: 36px; border-radius: 10px" :style="{ background: `${CAL_STATUS_META[e.status].color}26` }">
+              <v-icon :icon="CAL_STATUS_META[e.status].icon" :color="e.status === 'free' ? 'success' : 'primary'" size="17" />
             </div>
             <div>
               <div class="text-body-2 font-weight-700">{{ e.title }}</div>
