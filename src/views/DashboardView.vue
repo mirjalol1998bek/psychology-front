@@ -118,85 +118,88 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
     <h1 class="text-display text-h4 font-weight-800 mb-1">{{ t('dashboard.greeting') }}, {{ firstName }} 👋</h1>
     <p class="text-body-2 text-medium-emphasis mb-6">{{ auth.user?.hemis.faculty }} · {{ auth.user?.hemis.group }}</p>
 
-    <!-- Stat tiles -->
+    <!-- Stat tiles (left) + big globe hero (right) — Vision UI reference layout -->
     <v-row>
-      <v-col v-for="s in statTiles" :key="s.label" cols="12" sm="6" md="3">
-        <v-card class="pa-4 surface-glass wave-card h-100" rounded="xl">
-          <div class="d-flex align-center justify-space-between mb-3">
-            <span class="text-caption text-medium-emphasis">{{ s.label }}</span>
-            <div class="icon-badge" :style="{ background: s.color }">
-              <v-icon :icon="s.icon" color="white" size="20" />
-            </div>
-          </div>
-          <div class="d-flex align-baseline" style="gap: 8px">
-            <span class="text-h4 font-weight-800">{{ s.value }}</span>
-            <span v-if="s.delta" class="text-caption font-weight-700" :class="s.up ? 'text-success' : 'text-error'">
-              {{ s.delta }}
-            </span>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
+      <v-col cols="12" lg="7">
+        <v-row>
+          <v-col v-for="s in statTiles" :key="s.label" cols="6">
+            <v-card class="pa-4 surface-glass wave-card h-100" rounded="xl">
+              <div class="d-flex align-center justify-space-between mb-3">
+                <span class="text-caption text-medium-emphasis">{{ s.label }}</span>
+                <div class="icon-badge" :style="{ background: s.color }">
+                  <v-icon :icon="s.icon" color="white" size="20" />
+                </div>
+              </div>
+              <div class="d-flex align-baseline" style="gap: 8px">
+                <span class="text-h4 font-weight-800">{{ s.value }}</span>
+                <span v-if="s.delta" class="text-caption font-weight-700" :class="s.up ? 'text-success' : 'text-error'">
+                  {{ s.delta }}
+                </span>
+              </div>
+            </v-card>
+          </v-col>
+        </v-row>
 
-    <!-- Hero + gauge + score ring -->
-    <v-row class="mt-1">
-      <v-col cols="12" md="4">
-        <v-card class="surface-glass h-100 pa-6 d-flex flex-column justify-space-between hero-card" rounded="xl">
-          <div class="hero-globe">
-            <RotatingGlobe />
-          </div>
-          <div class="hero-content">
+        <v-row class="mt-1">
+          <v-col cols="6">
+            <v-card class="surface-glass h-100 pa-5 text-center" rounded="xl">
+              <div class="text-caption text-medium-emphasis mb-1">{{ gauge.label }}</div>
+              <svg viewBox="0 0 200 120" class="gauge-svg">
+                <path d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="rgba(128,128,128,0.2)" stroke-width="14" stroke-linecap="round" />
+                <path
+                  d="M20,100 A80,80 0 0 1 180,100"
+                  fill="none"
+                  stroke="url(#heroGrad)"
+                  stroke-width="14"
+                  stroke-linecap="round"
+                  :stroke-dasharray="gaugeCircumference"
+                  :stroke-dashoffset="gaugeOffset"
+                />
+              </svg>
+              <div class="gauge-center">
+                <v-icon icon="mdi-emoticon-happy-outline" color="secondary" size="26" />
+              </div>
+              <div class="d-flex justify-space-between text-caption text-medium-emphasis px-2">
+                <span>0%</span><span>100%</span>
+              </div>
+              <div class="text-h5 font-weight-800 mt-1">{{ gauge.pct }}%</div>
+              <div class="text-caption text-medium-emphasis">{{ gauge.hint }}</div>
+            </v-card>
+          </v-col>
+
+          <v-col cols="6">
+            <v-card class="surface-glass h-100 pa-5 text-center d-flex flex-column align-center justify-center" rounded="xl">
+              <div class="text-caption text-medium-emphasis mb-3">{{ scoreRing.label }}</div>
+              <svg viewBox="0 0 120 120" width="120" height="120">
+                <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(128,128,128,0.2)" stroke-width="10" />
+                <circle
+                  cx="60" cy="60" r="54" fill="none" stroke="#01B574" stroke-width="10" stroke-linecap="round"
+                  :stroke-dasharray="ringCircumference" :stroke-dashoffset="ringOffset"
+                  transform="rotate(-90 60 60)"
+                />
+                <text x="60" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="currentColor">{{ scoreRing.value }}</text>
+              </svg>
+              <div class="text-caption text-medium-emphasis mt-2">Umumiy ko‘rsatkich</div>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-col>
+
+      <v-col cols="12" lg="5">
+        <v-card class="surface-glass h-100 globe-card" rounded="xl">
+          <div class="globe-content">
             <span class="text-caption text-medium-emphasis text-uppercase">Xush kelibsiz</span>
             <h2 class="text-display text-h5 font-weight-800 mt-1 mb-2">{{ auth.user?.hemis.fullName }}</h2>
-            <p class="text-body-2 text-medium-emphasis" style="max-width: 26ch">
+            <p class="text-body-2 text-medium-emphasis mb-4" style="max-width: 26ch">
               Sizni yana ko‘rganimizdan xursandmiz. Bugun sizni nima qiziqtiryapti?
             </p>
+            <v-btn variant="tonal" color="secondary" class="text-none" to="/tests">
+              Testlarga o‘tish <v-icon icon="mdi-arrow-right" end size="16" />
+            </v-btn>
           </div>
-          <v-btn variant="tonal" color="secondary" class="text-none align-self-start hero-content" to="/tests">
-            Testlarga o‘tish <v-icon icon="mdi-arrow-right" end size="16" />
-          </v-btn>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" sm="6" md="4">
-        <v-card class="surface-glass h-100 pa-5 text-center" rounded="xl">
-          <div class="text-caption text-medium-emphasis mb-1">{{ gauge.label }}</div>
-          <svg viewBox="0 0 200 120" class="gauge-svg">
-            <path d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="rgba(128,128,128,0.2)" stroke-width="14" stroke-linecap="round" />
-            <path
-              d="M20,100 A80,80 0 0 1 180,100"
-              fill="none"
-              stroke="url(#heroGrad)"
-              stroke-width="14"
-              stroke-linecap="round"
-              :stroke-dasharray="gaugeCircumference"
-              :stroke-dashoffset="gaugeOffset"
-            />
-          </svg>
-          <div class="gauge-center">
-            <v-icon icon="mdi-emoticon-happy-outline" color="secondary" size="26" />
+          <div class="globe-stage">
+            <RotatingGlobe />
           </div>
-          <div class="d-flex justify-space-between text-caption text-medium-emphasis px-2">
-            <span>0%</span><span>100%</span>
-          </div>
-          <div class="text-h5 font-weight-800 mt-1">{{ gauge.pct }}%</div>
-          <div class="text-caption text-medium-emphasis">{{ gauge.hint }}</div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" sm="6" md="4">
-        <v-card class="surface-glass h-100 pa-5 text-center d-flex flex-column align-center justify-center" rounded="xl">
-          <div class="text-caption text-medium-emphasis mb-3">{{ scoreRing.label }}</div>
-          <svg viewBox="0 0 120 120" width="120" height="120">
-            <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(128,128,128,0.2)" stroke-width="10" />
-            <circle
-              cx="60" cy="60" r="54" fill="none" stroke="#01B574" stroke-width="10" stroke-linecap="round"
-              :stroke-dasharray="ringCircumference" :stroke-dashoffset="ringOffset"
-              transform="rotate(-90 60 60)"
-            />
-            <text x="60" y="66" text-anchor="middle" font-size="22" font-weight="800" fill="currentColor">{{ scoreRing.value }}</text>
-          </svg>
-          <div class="text-caption text-medium-emphasis mt-2">Umumiy ko‘rsatkich</div>
         </v-card>
       </v-col>
     </v-row>
@@ -345,24 +348,41 @@ function instrumentIcon(type: ResultSummaryDto['instrumentType']) {
 </template>
 
 <style scoped>
-.hero-card {
+.globe-card {
   position: relative;
   overflow: hidden;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
 }
 
-.hero-globe {
-  position: absolute;
-  top: -40px;
-  right: -60px;
-  width: 240px;
-  height: 240px;
-  opacity: 0.9;
-  pointer-events: none;
-}
-
-.hero-content {
+.globe-content {
   position: relative;
   z-index: 1;
+  padding: 28px 28px 0;
+}
+
+.globe-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* Bleeds off the card's right/bottom edge, like the reference — only the
+     front hemisphere needs to be fully visible. */
+  width: 145%;
+  height: 145%;
+  right: -30%;
+  bottom: -28%;
+  left: auto;
+  top: auto;
+}
+
+@media (max-width: 600px) {
+  .globe-stage {
+    width: 120%;
+    height: 120%;
+    right: -10%;
+    bottom: -15%;
+  }
 }
 
 .gauge-svg {
