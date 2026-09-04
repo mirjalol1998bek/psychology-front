@@ -15,12 +15,23 @@ const auth = useAuthStore()
 const drawer = ref(true)
 const rail = ref(false)
 
-const navItems = computed(() => [
-  { title: t('nav.dashboard'), icon: 'mdi-view-dashboard-outline', to: '/' },
-  { title: t('nav.tests'), icon: 'mdi-clipboard-text-outline', to: '/tests' },
-  { title: t('nav.results'), icon: 'mdi-chart-donut', to: '/results' },
-  { title: t('nav.calendar'), icon: 'mdi-calendar-heart', to: '/calendar' },
-])
+const roleLabel = computed(() => ({ student: 'Talaba', psychologist: 'Psixolog', admin: 'Admin' })[auth.user?.role ?? 'student'])
+
+const navItems = computed(() => {
+  const items = [
+    { title: t('nav.dashboard'), icon: 'mdi-view-dashboard-outline', to: '/' },
+    { title: t('nav.tests'), icon: 'mdi-clipboard-text-outline', to: '/tests' },
+    { title: t('nav.results'), icon: 'mdi-chart-donut', to: '/results' },
+    { title: t('nav.calendar'), icon: 'mdi-calendar-heart', to: '/calendar' },
+  ]
+  if (auth.isStaff) {
+    items.push(
+      { title: t('nav.assignments'), icon: 'mdi-clipboard-check-outline', to: '/assignments' },
+      { title: t('nav.statistics'), icon: 'mdi-chart-box-outline', to: '/statistics' },
+    )
+  }
+  return items
+})
 
 function toggleTheme() {
   theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
@@ -54,6 +65,12 @@ const initials = computed(() => {
           <v-icon icon="mdi-brain" color="white" size="20" />
         </v-avatar>
         <span v-if="!rail" class="text-display text-subtitle-1 font-weight-600">{{ t('app.name') }}</span>
+      </div>
+
+      <div v-if="!rail" class="px-4 pb-3">
+        <v-chip size="small" variant="tonal" :color="auth.isStaff ? 'secondary' : 'primary'" prepend-icon="mdi-badge-account-outline">
+          {{ roleLabel }}
+        </v-chip>
       </div>
 
       <v-divider />

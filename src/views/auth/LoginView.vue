@@ -1,15 +1,27 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { setLocale } from '@/i18n'
+import type { UserRole } from '@/types/domain'
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const auth = useAuthStore()
 
+// Dev-only: HEMIS assigns the role automatically once real OAuth login
+// exists (TZ §2.1) — this picker just lets every role's screens be tested
+// in the meantime.
+const devRole = ref<UserRole>('student')
+const roleOptions: { value: UserRole; label: string; icon: string }[] = [
+  { value: 'student', label: 'Talaba', icon: 'mdi-school-outline' },
+  { value: 'psychologist', label: 'Psixolog', icon: 'mdi-account-tie-outline' },
+  { value: 'admin', label: 'Admin', icon: 'mdi-shield-crown-outline' },
+]
+
 async function handleHemisLogin() {
-  await auth.signInWithHemis()
+  await auth.signInWithHemis(devRole.value)
   router.push('/')
 }
 </script>
@@ -46,6 +58,18 @@ async function handleHemisLogin() {
         </v-avatar>
         <h1 class="text-display text-h4 font-weight-600 mb-2">{{ t('auth.title') }}</h1>
         <p class="text-body-2 text-medium-emphasis">{{ t('auth.subtitle') }}</p>
+      </div>
+
+      <div class="dev-role-picker mb-5">
+        <span class="text-caption font-weight-700 text-medium-emphasis text-uppercase d-block mb-2">
+          <v-icon icon="mdi-flask-outline" size="14" class="mr-1" />Demo rejim — rol tanlang
+        </span>
+        <v-btn-toggle v-model="devRole" mandatory color="primary" density="comfortable" rounded="lg" class="d-flex" divided>
+          <v-btn v-for="opt in roleOptions" :key="opt.value" :value="opt.value" class="flex-grow-1 text-none" size="small">
+            <v-icon :icon="opt.icon" start size="16" />
+            {{ opt.label }}
+          </v-btn>
+        </v-btn-toggle>
       </div>
 
       <v-btn

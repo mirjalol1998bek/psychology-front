@@ -1,5 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import type { UserRole } from '@/types/domain'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    public?: boolean
+    roles?: UserRole[]
+  }
+}
+
+const STAFF: UserRole[] = ['psychologist', 'admin']
 
 const router = createRouter({
   history: createWebHistory(),
@@ -19,6 +29,18 @@ const router = createRouter({
         { path: 'tests/:id', name: 'take-test', component: () => import('@/views/tests/TakeTestView.vue') },
         { path: 'results', name: 'results', component: () => import('@/views/results/ResultsView.vue') },
         { path: 'calendar', name: 'calendar', component: () => import('@/views/calendar/CalendarView.vue') },
+        {
+          path: 'assignments',
+          name: 'assignments',
+          component: () => import('@/views/assignments/AssignmentsView.vue'),
+          meta: { roles: STAFF },
+        },
+        {
+          path: 'statistics',
+          name: 'statistics',
+          component: () => import('@/views/statistics/StatisticsView.vue'),
+          meta: { roles: STAFF },
+        },
       ],
     },
     {
@@ -31,10 +53,14 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
+
   if (!to.meta.public && !auth.isAuthenticated) {
     return { name: 'login' }
   }
   if (to.name === 'login' && auth.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+  if (to.meta.roles && auth.user && !to.meta.roles.includes(auth.user.role)) {
     return { name: 'dashboard' }
   }
 })
