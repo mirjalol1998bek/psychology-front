@@ -1,79 +1,120 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { INSTRUMENT_META } from '@/utils/instruments'
+import { INSTRUMENT_META, colorFor } from '@/utils/instruments'
+import { getAttempts } from '@/services/attemptService'
+import { MONTH_NAMES } from '@/composables/useMonthGrid'
 import type { InstrumentType } from '@/types/domain'
+import type { StoredAttempt } from '@/types/assessment'
 
 const auth = useAuthStore()
 const router = useRouter()
 
-// Staff: category hub — mirrors the real results-view.vue's gradient card
-// picker, minus its dead-end for categories with no matching instrument.
-const categoryCards: { instrument: InstrumentType; quizCount: number; gradient: string; description: string }[] = [
-  { instrument: 'FREQUENCY_BASED', quizCount: 1, gradient: 'linear-gradient(135deg,#0075FF,#2CD9FF)', description: 'Ustuvor javoblar bo‘yicha temperament turini aniqlaydi' },
-  { instrument: 'RANKING_BASED', quizCount: 1, gradient: 'linear-gradient(135deg,#7B2FF7,#F107A3)', description: 'Figuralarni afzallik tartibida saralash asosida' },
-  { instrument: 'SCORE_RANGE_BASED', quizCount: 1, gradient: 'linear-gradient(135deg,#FF7A00,#FFC371)', description: 'Ball yig‘indisiga qarab erkin xulosa beradi' },
+const myAttempts = ref<StoredAttempt[]>([])
+if (!auth.isStaff) {
+  getAttempts(auth.user?.hemis.hemisId ?? 'anon').then((a) => {
+    myAttempts.value = a
+      .filter((x) => x.status === 'submitted')
+      .sort((x, y) => (y.submittedAt ?? '').localeCompare(x.submittedAt ?? ''))
+  })
+}
+function formatDate(iso?: string) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${d.getDate()}-${MONTH_NAMES[d.getMonth()].toLowerCase()} ${d.getFullYear()}`
+}
+
+const categoryCards: { instrument: InstrumentType; quizCount: number; description: string; tint: string }[] = [
+  { instrument: 'FREQUENCY_BASED', quizCount: 1, description: 'Ustuvor javoblar bo‘yicha temperament turini aniqlaydi', tint: colorFor('FREQUENCY_BASED', 'Sangvinik') },
+  { instrument: 'RANKING_BASED', quizCount: 1, description: 'Figuralarni afzallik tartibida saralash asosida', tint: colorFor('RANKING_BASED', 'Doira') },
+  { instrument: 'SCORE_RANGE_BASED', quizCount: 1, description: 'Ball yig‘indisiga qarab erkin xulosa beradi', tint: 'rgb(var(--v-theme-secondary))' },
 ]
 
 function openInstrument(instrument: InstrumentType) {
   router.push(`/results/${INSTRUMENT_META[instrument].routeSegment}`)
 }
-
-// Student: own results list (mock — wired to GET /student/result later).
-const myResults = [
-  { title: 'Temperament testi', label: 'Sangvinik', instrument: 'FREQUENCY_BASED' as InstrumentType, date: '02.09.2026' },
-  { title: 'Psixogeometrik test', label: 'Doira', instrument: 'RANKING_BASED' as InstrumentType, date: '28.08.2026' },
-  { title: 'Nevrasteniya so‘rovnomasi', label: '18 ball — past daraja', instrument: 'SCORE_RANGE_BASED' as InstrumentType, date: '20.08.2026' },
-]
 </script>
 
 <template>
   <div v-if="auth.isStaff">
-    <h1 class="text-display text-h4 font-weight-800 mb-1">Natijalar</h1>
-    <p class="text-body-2 text-medium-emphasis mb-6">Metodikani tanlang — fakultet/guruh kesimida natijalarni ko‘ring.</p>
+    <header class="page-head">
+      <h1 class="text-h4">Natijalar</h1>
+      <p class="text-body-2 text-medium-emphasis mb-0">
+        Metodikani tanlang — fakultet va guruh kesimida natijalarni ko‘ring.
+      </p>
+    </header>
 
     <v-row>
       <v-col v-for="c in categoryCards" :key="c.instrument" cols="12" sm="6" lg="4">
-        <button class="category-card w-100 text-left" :style="{ background: c.gradient }" @click="openInstrument(c.instrument)">
-          <v-icon :icon="INSTRUMENT_META[c.instrument].icon" color="white" size="30" class="mb-4" />
-          <div class="text-h6 font-weight-800 text-white">{{ INSTRUMENT_META[c.instrument].label }}</div>
-          <p class="text-body-2 mb-4" style="color: rgba(255,255,255,0.85)">{{ c.description }}</p>
-          <span class="d-inline-flex align-center text-white font-weight-700 text-body-2">
+        <v-card
+          class="surface-card pa-5 h-100 picker-card"
+          rounded="lg"
+          @click="openInstrument(c.instrument)"
+        >
+          <div class="icon-tile mb-4" :style="{ '--tint': c.tint, width: '46px', height: '46px' }">
+            <v-icon :icon="INSTRUMENT_META[c.instrument].icon" size="24" />
+          </div>
+          <div class="text-h6 text-display font-weight-bold mb-1">{{ INSTRUMENT_META[c.instrument].label }}</div>
+          <p class="text-body-2 text-medium-emphasis mb-4">{{ c.description }}</p>
+          <span class="d-inline-flex align-center text-primary font-weight-bold text-body-2">
             Natijalarni ko‘rish <v-icon icon="mdi-arrow-right" size="16" class="ml-1" />
           </span>
-        </button>
+        </v-card>
       </v-col>
     </v-row>
   </div>
 
   <div v-else>
-    <h1 class="text-display text-h4 font-weight-800 mb-1">Natijalar</h1>
-    <p class="text-body-2 text-medium-emphasis mb-6">Topshirilgan testlaringiz bo‘yicha xulosalar.</p>
+    <header class="page-head">
+      <h1 class="text-h4">Natijalar</h1>
+      <p class="text-body-2 text-medium-emphasis mb-0">Topshirilgan testlaringiz bo‘yicha xulosalar.</p>
+    </header>
 
-    <v-card v-for="r in myResults" :key="r.title" class="surface-glass pa-4 mb-3 d-flex align-center" rounded="xl" style="gap: 16px">
-      <div class="icon-badge" style="background: rgba(0,117,255,0.16)">
-        <v-icon icon="mdi-file-chart-outline" color="primary" />
+    <v-card
+      v-for="r in myAttempts"
+      :key="r.instrumentType"
+      class="surface-card pa-4 mb-3 d-flex align-center result-link"
+      rounded="lg"
+      style="gap: 16px"
+      @click="router.push(`/tests/${INSTRUMENT_META[r.instrumentType].routeSegment}/result`)"
+    >
+      <div class="icon-tile" :style="{ '--tint': colorFor(r.instrumentType, r.result?.label) }">
+        <v-icon :icon="INSTRUMENT_META[r.instrumentType].icon" />
       </div>
       <div class="flex-grow-1">
-        <div class="text-subtitle-1 font-weight-700">{{ r.title }}</div>
-        <div class="text-caption text-medium-emphasis">{{ r.date }}</div>
+        <div class="text-subtitle-1 font-weight-bold">{{ INSTRUMENT_META[r.instrumentType].label }}</div>
+        <div class="text-caption text-medium-emphasis">{{ formatDate(r.submittedAt) }}</div>
       </div>
-      <v-chip color="secondary" variant="tonal">{{ r.label }}</v-chip>
-      <v-btn icon="mdi-download-outline" variant="text" color="primary" />
+      <v-chip color="secondary" variant="tonal">{{ r.result?.label }}</v-chip>
+      <v-icon icon="mdi-chevron-right" class="text-medium-emphasis" />
     </v-card>
+
+    <v-empty-state
+      v-if="!myAttempts.length"
+      icon="mdi-chart-box-outline"
+      title="Hali natija yo‘q"
+      text="Test topshirganingizdan so‘ng xulosa shu yerda ko‘rinadi."
+      class="mt-4"
+    />
   </div>
 </template>
 
 <style scoped>
-.category-card {
-  border: none;
-  border-radius: 20px;
-  padding: 26px;
+.picker-card {
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.15s var(--ease), transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
-.category-card:hover {
-  transform: translateY(-3px);
+.picker-card:hover {
+  transform: translateY(-2px);
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow: var(--shadow-md);
+}
+.result-link {
+  cursor: pointer;
+  transition: border-color 0.12s var(--ease);
+}
+.result-link:hover {
+  border-color: rgb(var(--v-theme-primary));
 }
 </style>

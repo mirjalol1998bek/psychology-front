@@ -24,9 +24,9 @@ export const CAL_EVENTS: CalEvent[] = [
 ]
 
 export const CAL_STATUS_META: Record<AppointmentSlotStatus, { color: string; icon: string }> = {
-  free: { color: '#01B574', icon: 'mdi-calendar-plus-outline' },
-  booked: { color: '#0075FF', icon: 'mdi-account-check-outline' },
-  cancelled: { color: '#E31A1A', icon: 'mdi-calendar-remove-outline' },
+  free: { color: '#2F8F5B', icon: 'mdi-calendar-plus-outline' },
+  booked: { color: '#0E7C6B', icon: 'mdi-account-check-outline' },
+  cancelled: { color: '#B4472E', icon: 'mdi-calendar-remove-outline' },
 }
 
 export const TODAY = new Date(2026, 8, 4) // TODO(backend): replace with real `new Date()` once slots are live

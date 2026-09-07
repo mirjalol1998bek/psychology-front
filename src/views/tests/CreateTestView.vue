@@ -160,7 +160,7 @@ async function publish() {
 <template>
   <div>
     <v-btn variant="text" prepend-icon="mdi-arrow-left" class="text-none mb-2" @click="router.push('/tests')">Orqaga</v-btn>
-    <h1 class="text-display text-h4 font-weight-800 mb-6">{{ isEditing ? 'Testni tahrirlash' : 'Yangi test yaratish' }}</h1>
+    <h1 class="text-display text-h4 font-weight-bold mb-6">{{ isEditing ? 'Testni tahrirlash' : 'Yangi test yaratish' }}</h1>
 
     <!-- Stepper header -->
     <div class="stepper-head mb-8">
@@ -179,8 +179,8 @@ async function publish() {
     <v-alert v-if="stepError" type="error" variant="tonal" density="compact" class="mb-4">{{ stepError }}</v-alert>
 
     <!-- Step 1: Test ma'lumotlari -->
-    <v-card v-if="step === 1" class="surface-glass pa-5" rounded="xl">
-      <div class="text-subtitle-1 font-weight-700 mb-4">Test ma’lumotlari</div>
+    <v-card v-if="step === 1" class="surface-card pa-5" rounded="lg">
+      <div class="text-subtitle-1 font-weight-bold mb-4">Test ma’lumotlari</div>
       <v-row>
         <v-col cols="12" md="7">
           <v-text-field v-model="title" label="Test nomi" density="comfortable" />
@@ -204,15 +204,15 @@ async function publish() {
     </v-card>
 
     <!-- Step 2: Savollar -->
-    <v-card v-else-if="step === 2" class="surface-glass pa-5" rounded="xl">
+    <v-card v-else-if="step === 2" class="surface-card pa-5" rounded="lg">
       <div class="d-flex align-center justify-space-between mb-4">
-        <span class="text-subtitle-1 font-weight-700">Savollar ({{ questions.length }})</span>
+        <span class="text-subtitle-1 font-weight-bold">Savollar ({{ questions.length }})</span>
         <v-btn variant="tonal" color="primary" prepend-icon="mdi-plus" class="text-none" @click="addQuestion">Savol qo‘shish</v-btn>
       </div>
 
       <v-card v-for="(q, qi) in questions" :key="q.id" class="pa-4 mb-4 question-card" rounded="lg">
         <div class="d-flex align-center justify-space-between mb-3">
-          <span class="text-body-2 font-weight-700">Savol {{ qi + 1 }}</span>
+          <span class="text-body-2 font-weight-bold">Savol {{ qi + 1 }}</span>
           <v-btn icon="mdi-delete-outline" variant="text" size="small" color="error" :disabled="questions.length === 1" @click="removeQuestion(q.id)" />
         </div>
 
@@ -274,13 +274,13 @@ async function publish() {
     </v-card>
 
     <!-- Step 3: Ko'rinish (talaba tomonidan qanday ko'rinishi) -->
-    <v-card v-else-if="step === 3" class="surface-glass pa-5" rounded="xl">
-      <div class="text-subtitle-1 font-weight-700 mb-1">Ko‘rinish</div>
+    <v-card v-else-if="step === 3" class="surface-card pa-5" rounded="lg">
+      <div class="text-subtitle-1 font-weight-bold mb-1">Ko‘rinish</div>
       <p class="text-caption text-medium-emphasis mb-4">Test talabaga qanday ko‘rinishini oldindan tekshiring.</p>
 
       <v-card class="pa-5 mb-5 preview-hero" rounded="lg">
         <v-chip size="small" variant="tonal" color="secondary" class="mb-2">{{ categoryName }}</v-chip>
-        <div class="text-h6 font-weight-800">{{ title || 'Test nomi kiritilmagan' }}</div>
+        <div class="text-h6 font-weight-bold">{{ title || 'Test nomi kiritilmagan' }}</div>
         <p class="text-body-2 text-medium-emphasis mb-2">{{ description || 'Tavsif kiritilmagan.' }}</p>
         <span class="text-caption text-medium-emphasis">
           <v-icon icon="mdi-clock-outline" size="14" class="mr-1" />{{ timeLimit || 'cheklanmagan' }}
@@ -292,7 +292,7 @@ async function publish() {
         <div class="d-flex align-start mb-2" style="gap: 10px">
           <span class="preview-qnum">{{ qi + 1 }}</span>
           <div>
-            <span class="text-body-1 font-weight-700 d-block">{{ q.text || '(savol matni kiritilmagan)' }}</span>
+            <span class="text-body-1 font-weight-bold d-block">{{ q.text || '(savol matni kiritilmagan)' }}</span>
             <span class="text-caption text-medium-emphasis">{{ typeLabel(q.type) }}</span>
           </div>
         </div>
@@ -314,21 +314,21 @@ async function publish() {
     </v-card>
 
     <!-- Step 4: Nashr -->
-    <v-card v-else class="surface-glass pa-6 text-center" rounded="xl">
+    <v-card v-else class="surface-card pa-6 text-center" rounded="lg">
       <div class="gradient-accent icon-badge mx-auto mb-4" style="width: 56px; height: 56px; border-radius: 18px">
         <v-icon icon="mdi-cloud-upload-outline" color="white" size="28" />
       </div>
-      <div class="text-h5 font-weight-800 mb-1">Nashr qilishga tayyor</div>
+      <div class="text-h5 font-weight-bold mb-1">Nashr qilishga tayyor</div>
       <p class="text-body-2 text-medium-emphasis mb-6">Ma’lumotlarni tekshirib, testni faollashtiring.</p>
 
       <div class="publish-summary mx-auto mb-6">
-        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Test nomi</span><span class="font-weight-700">{{ title }}</span></div>
+        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Test nomi</span><span class="font-weight-bold">{{ title }}</span></div>
         <v-divider opacity="0.1" />
-        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Kategoriya</span><span class="font-weight-700">{{ categoryName }}</span></div>
+        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Kategoriya</span><span class="font-weight-bold">{{ categoryName }}</span></div>
         <v-divider opacity="0.1" />
-        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Savollar soni</span><span class="font-weight-700">{{ questions.length }}</span></div>
+        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Savollar soni</span><span class="font-weight-bold">{{ questions.length }}</span></div>
         <v-divider opacity="0.1" />
-        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Vaqt chegarasi</span><span class="font-weight-700">{{ timeLimit || 'cheklanmagan' }} daqiqa</span></div>
+        <div class="d-flex justify-space-between py-2"><span class="text-medium-emphasis">Vaqt chegarasi</span><span class="font-weight-bold">{{ timeLimit || 'cheklanmagan' }} daqiqa</span></div>
         <v-divider opacity="0.1" />
         <div class="d-flex justify-space-between py-2">
           <span class="text-medium-emphasis">Holat</span>
@@ -336,7 +336,7 @@ async function publish() {
         </div>
       </div>
 
-      <v-btn color="primary" size="x-large" class="text-none font-weight-700" :loading="saving" @click="publish">
+      <v-btn color="primary" size="x-large" class="text-none font-weight-bold" :loading="saving" @click="publish">
         <v-icon icon="mdi-check" start />Nashr qilish
       </v-btn>
     </v-card>
@@ -349,8 +349,8 @@ async function publish() {
     </div>
 
     <v-dialog v-model="newCategoryDialog" max-width="360">
-      <v-card class="surface-glass pa-5" rounded="xl">
-        <div class="text-subtitle-1 font-weight-700 mb-3">Yangi kategoriya</div>
+      <v-card class="surface-card pa-5" rounded="lg">
+        <div class="text-subtitle-1 font-weight-bold mb-3">Yangi kategoriya</div>
         <v-text-field v-model="newCategoryName" label="Kategoriya nomi" density="comfortable" />
         <div class="d-flex justify-end mt-2" style="gap: 8px">
           <v-btn variant="text" class="text-none" @click="newCategoryDialog = false">Bekor qilish</v-btn>
@@ -365,17 +365,19 @@ async function publish() {
 
 <style scoped>
 .question-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgb(var(--v-theme-surface-variant)) !important;
+  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+  box-shadow: none;
 }
 .image-option {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgb(var(--v-theme-surface-variant)) !important;
+  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+  box-shadow: none;
 }
 .image-drop {
   height: 70px;
   border-radius: 10px;
-  border: 1px dashed rgba(128, 128, 128, 0.4);
+  border: 1px dashed rgba(var(--v-border-color), 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -412,14 +414,14 @@ async function publish() {
   justify-content: center;
   font-weight: 700;
   font-size: 13px;
-  background: rgba(128, 128, 128, 0.15);
-  border: 2px solid rgba(128, 128, 128, 0.25);
+  background: rgb(var(--v-theme-surface-variant));
+  border: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
   flex-shrink: 0;
 }
 .stepper-node--active .stepper-circle {
-  background: var(--gradient-accent);
+  background: rgb(var(--v-theme-primary));
   border-color: transparent;
-  color: #fff;
+  color: rgb(var(--v-theme-on-primary));
 }
 .stepper-node--done .stepper-circle {
   background: rgb(var(--v-theme-success));
@@ -428,9 +430,9 @@ async function publish() {
 }
 .stepper-label {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
-  opacity: 0.6;
+  opacity: 0.55;
   white-space: nowrap;
 }
 .stepper-node--active .stepper-label {
@@ -439,7 +441,7 @@ async function publish() {
 .stepper-line {
   flex: 1;
   height: 2px;
-  background: rgba(128, 128, 128, 0.2);
+  background: rgba(var(--v-border-color), var(--v-border-opacity));
   margin: 0 12px;
 }
 .stepper-line--done {
@@ -448,14 +450,15 @@ async function publish() {
 
 /* Preview */
 .preview-hero {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgb(var(--v-theme-surface-variant)) !important;
+  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+  box-shadow: none;
 }
 .preview-qnum {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: rgba(0, 117, 255, 0.16);
+  background: rgba(var(--v-theme-primary), 0.14);
   color: rgb(var(--v-theme-primary));
   font-size: 12px;
   font-weight: 700;
@@ -473,7 +476,7 @@ async function publish() {
   width: 76px;
   height: 76px;
   border-radius: 10px;
-  border: 1px solid rgba(128, 128, 128, 0.25);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   display: flex;
   align-items: center;
   justify-content: center;

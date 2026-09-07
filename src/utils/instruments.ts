@@ -26,20 +26,22 @@ export function instrumentByRoute(segment: string): InstrumentType {
   return found?.[0] ?? 'FREQUENCY_BASED'
 }
 
+// Muted, calm-palette tints — distinguishable but never alarming, and
+// readable as both a chip wash and a progress-bar fill in light or dark.
 export const TEMPERAMENT_COLORS: Record<string, string> = {
-  Xolerik: '#E31A1A',
-  Sangvinik: '#01B574',
-  Flegmatik: '#FFB547',
-  Melanxolik: '#2CD9FF',
+  Xolerik: '#C0563D',
+  Sangvinik: '#2F8F5B',
+  Flegmatik: '#B58A3C',
+  Melanxolik: '#4B7CA6',
 }
 export const TEMPERAMENT_OPTIONS = Object.keys(TEMPERAMENT_COLORS)
 
 export const SHAPE_COLORS: Record<string, string> = {
-  Kvadrat: '#0075FF',
-  Uchburchak: '#E31A1A',
-  "To'g'ri to'rtburchak": '#01B574',
-  Doira: '#2CD9FF',
-  Zigzag: '#FFB547',
+  Kvadrat: '#3E6E8E',
+  Uchburchak: '#C0563D',
+  "To'g'ri to'rtburchak": '#2F8F5B',
+  Doira: '#5B8A9B',
+  Zigzag: '#B58A3C',
 }
 export const SHAPE_ICONS: Record<string, string> = {
   Kvadrat: 'mdi-square-outline',

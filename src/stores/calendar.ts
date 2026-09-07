@@ -18,5 +18,15 @@ export const useCalendarStore = defineStore('calendar', {
     addEvent(event: Omit<CalEvent, 'id'> & { id?: string }) {
       this.events.push({ ...event, id: event.id ?? `local-${++uid}` } as CalEvent)
     },
+    updateEvent(id: string, patch: Partial<Omit<CalEvent, 'id'>>) {
+      const idx = this.events.findIndex((e) => e.id === id)
+      if (idx !== -1) this.events[idx] = { ...this.events[idx], ...patch }
+    },
+    removeEvent(id: string) {
+      // Mutate in place — some consumers (useMonthGrid) captured the array
+      // reference, so reassigning this.events would leave them stale.
+      const idx = this.events.findIndex((e) => e.id === id)
+      if (idx !== -1) this.events.splice(idx, 1)
+    },
   },
 })

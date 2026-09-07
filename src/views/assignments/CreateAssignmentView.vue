@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { INSTRUMENT_META } from '@/utils/instruments'
-import { FACULTIES, GROUPS_BY_FACULTY } from '@/mocks/organization'
+import { useOrganizationStore } from '@/stores/organization'
 import type { InstrumentType } from '@/types/domain'
 
-const categoryCards: { instrument: InstrumentType; quizCount: number; gradient: string }[] = [
-  { instrument: 'FREQUENCY_BASED', quizCount: 1, gradient: 'linear-gradient(135deg,#0075FF,#2CD9FF)' },
-  { instrument: 'RANKING_BASED', quizCount: 1, gradient: 'linear-gradient(135deg,#7B2FF7,#F107A3)' },
-  { instrument: 'SCORE_RANGE_BASED', quizCount: 1, gradient: 'linear-gradient(135deg,#FF7A00,#FFC371)' },
+const org = useOrganizationStore()
+
+const categoryCards: { instrument: InstrumentType; quizCount: number }[] = [
+  { instrument: 'FREQUENCY_BASED', quizCount: 1 },
+  { instrument: 'RANKING_BASED', quizCount: 1 },
+  { instrument: 'SCORE_RANGE_BASED', quizCount: 1 },
 ]
 
 const modalOpen = ref(false)
@@ -28,10 +30,12 @@ function openFor(instrument: InstrumentType) {
 }
 
 const filteredFaculties = computed(() =>
-  FACULTIES.filter((f) => f.name.toLowerCase().includes(facultySearch.value.toLowerCase())),
+  org.faculties.filter((f) => f.name.toLowerCase().includes(facultySearch.value.toLowerCase())),
 )
 const availableGroups = computed(() =>
-  selectedFaculties.value.flatMap((fid) => GROUPS_BY_FACULTY[fid] ?? []).filter((g) => g.name.toLowerCase().includes(groupSearch.value.toLowerCase())),
+  selectedFaculties.value
+    .flatMap((fid) => org.groupsByFaculty[fid] ?? [])
+    .filter((g) => g.name.toLowerCase().includes(groupSearch.value.toLowerCase())),
 )
 
 function toggleFaculty(id: string) {
@@ -65,39 +69,45 @@ async function submit() {
 
 <template>
   <div>
-    <h1 class="text-display text-h4 font-weight-800 mb-1">Test biriktirish</h1>
-    <p class="text-body-2 text-medium-emphasis mb-6">Metodikani tanlang, so‘ng fakultet va guruhlarni belgilab biriktiring.</p>
+    <header class="page-head">
+      <h1 class="text-h4">Test biriktirish</h1>
+      <p class="text-body-2 text-medium-emphasis mb-0">
+        Metodikani tanlang, so‘ng fakultet va guruhlarni belgilab biriktiring.
+      </p>
+    </header>
 
     <v-row>
       <v-col v-for="c in categoryCards" :key="c.instrument" cols="12" sm="6" lg="4">
-        <button class="category-card w-100 text-left" :style="{ background: c.gradient }" @click="openFor(c.instrument)">
-          <v-icon :icon="INSTRUMENT_META[c.instrument].icon" color="white" size="30" class="mb-4" />
-          <div class="text-h6 font-weight-800 text-white mb-1">{{ INSTRUMENT_META[c.instrument].label }}</div>
-          <v-chip size="small" variant="flat" color="white" class="mb-4" style="color: #111">{{ c.quizCount }} ta test</v-chip>
+        <v-card class="surface-card pa-5 h-100 picker-card" rounded="lg" @click="openFor(c.instrument)">
+          <div class="icon-tile mb-4" style="--tint: rgb(var(--v-theme-primary)); width: 46px; height: 46px">
+            <v-icon :icon="INSTRUMENT_META[c.instrument].icon" size="24" />
+          </div>
+          <div class="text-h6 text-display font-weight-bold mb-2">{{ INSTRUMENT_META[c.instrument].label }}</div>
+          <v-chip size="small" variant="tonal" color="primary" class="mb-4">{{ c.quizCount }} ta test</v-chip>
           <div>
-            <span class="d-inline-flex align-center text-white font-weight-700 text-body-2">
+            <span class="d-inline-flex align-center text-primary font-weight-bold text-body-2">
               Biriktirish <v-icon icon="mdi-arrow-right" size="16" class="ml-1" />
             </span>
           </div>
-        </button>
+        </v-card>
       </v-col>
     </v-row>
 
     <v-dialog v-model="modalOpen" max-width="820">
-      <v-card class="surface-glass pa-6" rounded="xl">
+      <v-card class="surface-card pa-6" rounded="lg">
         <div class="d-flex align-center justify-space-between mb-4">
-          <span class="text-h6 font-weight-800">{{ activeInstrument ? INSTRUMENT_META[activeInstrument].label : '' }} — biriktirish</span>
+          <span class="text-h6 font-weight-bold">{{ activeInstrument ? INSTRUMENT_META[activeInstrument].label : '' }} — biriktirish</span>
           <v-btn icon="mdi-close" variant="text" size="small" @click="modalOpen = false" />
         </div>
 
         <v-row>
           <v-col cols="12" sm="6">
             <div class="d-flex align-center justify-space-between mb-2">
-              <span class="text-caption font-weight-700 text-medium-emphasis text-uppercase">Fakultetlar</span>
+              <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase">Fakultetlar</span>
               <v-chip size="x-small" variant="tonal">{{ selectedFaculties.length }}</v-chip>
             </div>
-            <v-text-field v-model="facultySearch" density="compact" variant="solo" rounded="pill" hide-details flat prepend-inner-icon="mdi-magnify" placeholder="Qidirish..." class="mb-2 topbar-search" />
-            <v-card class="surface-glass pa-1" rounded="lg" style="max-height: 260px; overflow-y: auto">
+            <v-text-field v-model="facultySearch" density="compact" variant="solo-filled" rounded="lg" hide-details flat bg-color="surface-variant" prepend-inner-icon="mdi-magnify" placeholder="Qidirish..." class="mb-2 app-search" />
+            <v-card class="surface-sunken pa-1" rounded="lg" style="max-height: 260px; overflow-y: auto">
               <v-checkbox
                 v-for="f in filteredFaculties" :key="f.id" :model-value="selectedFaculties.includes(f.id)"
                 :label="f.name" density="compact" hide-details class="px-2" @update:model-value="toggleFaculty(f.id)"
@@ -107,11 +117,11 @@ async function submit() {
 
           <v-col cols="12" sm="6">
             <div class="d-flex align-center justify-space-between mb-2">
-              <span class="text-caption font-weight-700 text-medium-emphasis text-uppercase">Guruhlar</span>
+              <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase">Guruhlar</span>
               <v-chip size="x-small" variant="tonal">{{ selectedGroups.length }}</v-chip>
             </div>
-            <v-text-field v-model="groupSearch" density="compact" variant="solo" rounded="pill" hide-details flat prepend-inner-icon="mdi-magnify" placeholder="Qidirish..." class="mb-2 topbar-search" :disabled="!selectedFaculties.length" />
-            <v-card class="surface-glass pa-1" rounded="lg" style="max-height: 260px; overflow-y: auto">
+            <v-text-field v-model="groupSearch" density="compact" variant="solo-filled" rounded="lg" hide-details flat bg-color="surface-variant" prepend-inner-icon="mdi-magnify" placeholder="Qidirish..." class="mb-2 app-search" :disabled="!selectedFaculties.length" />
+            <v-card class="surface-sunken pa-1" rounded="lg" style="max-height: 260px; overflow-y: auto">
               <template v-if="selectedFaculties.length">
                 <v-checkbox
                   v-for="g in availableGroups" :key="g.id" :model-value="selectedGroups.includes(g.id)"
@@ -139,15 +149,13 @@ async function submit() {
 </template>
 
 <style scoped>
-.category-card {
-  border: none;
-  border-radius: 20px;
-  padding: 26px;
+.picker-card {
   cursor: pointer;
-  transition: transform 0.15s ease;
-  box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.15s var(--ease), transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
-.category-card:hover {
-  transform: translateY(-3px);
+.picker-card:hover {
+  transform: translateY(-2px);
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow: var(--shadow-md);
 }
 </style>

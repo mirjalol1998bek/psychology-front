@@ -55,10 +55,10 @@ function toggle(id: string) {
 }
 
 const statCards = computed(() => [
-  { label: 'Jami talabalar', value: totals.value.totalStudents, icon: 'mdi-account-group-outline', color: '#0075FF' },
-  { label: 'Test topshirgan', value: totals.value.withTests, icon: 'mdi-check-decagram-outline', color: '#01B574' },
-  { label: 'Test topshirmagan', value: totals.value.withoutTests, icon: 'mdi-account-alert-outline', color: '#FFB547' },
-  { label: 'Yakunlanish foizi', value: `${totals.value.pct}%`, icon: 'mdi-chart-arc', color: '#2CD9FF' },
+  { label: 'Jami talabalar', value: totals.value.totalStudents, icon: 'mdi-account-group-outline', tint: 'rgb(var(--v-theme-primary))' },
+  { label: 'Test topshirgan', value: totals.value.withTests, icon: 'mdi-check-circle-outline', tint: 'rgb(var(--v-theme-success))' },
+  { label: 'Test topshirmagan', value: totals.value.withoutTests, icon: 'mdi-account-alert-outline', tint: 'rgb(var(--v-theme-warning))' },
+  { label: 'Yakunlanish foizi', value: `${totals.value.pct}%`, icon: 'mdi-chart-arc', tint: 'rgb(var(--v-theme-secondary))' },
 ])
 
 function figureColor(name: string) {
@@ -76,7 +76,7 @@ function maxOf(list: { count: number }[]) {
   <div>
     <div class="d-flex align-center justify-space-between flex-wrap mb-1" style="gap: 12px">
       <div>
-        <h1 class="text-display text-h4 font-weight-800 mb-1">Statistika</h1>
+        <h1 class="text-display text-h4 font-weight-bold mb-1">Statistika</h1>
         <p class="text-body-2 text-medium-emphasis mb-0">Universitet va fakultetlar kesimida test qamrovi.</p>
       </div>
       <v-btn variant="tonal" color="secondary" prepend-icon="mdi-refresh" class="text-none">Yangilash</v-btn>
@@ -84,20 +84,20 @@ function maxOf(list: { count: number }[]) {
 
     <v-row class="mt-4">
       <v-col v-for="s in statCards" :key="s.label" cols="12" sm="6" md="3">
-        <v-card class="pa-4 surface-glass wave-card h-100" rounded="xl">
+        <v-card class="pa-4 surface-card h-100" rounded="lg">
           <div class="d-flex align-center justify-space-between mb-3">
             <span class="text-caption text-medium-emphasis">{{ s.label }}</span>
-            <div class="icon-badge" :style="{ background: s.color }"><v-icon :icon="s.icon" color="white" size="20" /></div>
+            <div class="icon-tile" :style="{ '--tint': s.tint }"><v-icon :icon="s.icon" size="20" /></div>
           </div>
-          <div class="text-h4 font-weight-800">{{ s.value }}</div>
+          <div class="text-h4 text-display font-weight-bold">{{ s.value }}</div>
         </v-card>
       </v-col>
     </v-row>
 
     <v-row class="mt-1">
       <v-col cols="12" md="4">
-        <v-card class="surface-glass pa-5 h-100" rounded="xl">
-          <div class="text-subtitle-1 font-weight-700 mb-4">Psixogeometrik (universitet bo‘yicha)</div>
+        <v-card class="surface-card pa-5 h-100" rounded="lg">
+          <div class="text-subtitle-1 font-weight-bold mb-4">Psixogeometrik (universitet bo‘yicha)</div>
           <div v-for="f in totals.figures" :key="f.name" class="mb-3">
             <div class="d-flex align-center justify-space-between mb-1">
               <span class="d-flex align-center text-body-2 font-weight-600" style="gap: 6px">
@@ -111,8 +111,8 @@ function maxOf(list: { count: number }[]) {
       </v-col>
 
       <v-col cols="12" md="4">
-        <v-card class="surface-glass pa-5 h-100" rounded="xl">
-          <div class="text-subtitle-1 font-weight-700 mb-4">Temperament (universitet bo‘yicha)</div>
+        <v-card class="surface-card pa-5 h-100" rounded="lg">
+          <div class="text-subtitle-1 font-weight-bold mb-4">Temperament (universitet bo‘yicha)</div>
           <div v-for="t in totals.temperaments" :key="t.name" class="mb-3">
             <div class="d-flex align-center justify-space-between mb-1">
               <span class="text-body-2 font-weight-600">{{ t.name }}</span>
@@ -124,8 +124,8 @@ function maxOf(list: { count: number }[]) {
       </v-col>
 
       <v-col cols="12" md="4">
-        <v-card class="surface-glass pa-5 h-100" rounded="xl">
-          <div class="text-subtitle-1 font-weight-700 mb-4">Nevrasteniya (universitet bo‘yicha)</div>
+        <v-card class="surface-card pa-5 h-100" rounded="lg">
+          <div class="text-subtitle-1 font-weight-bold mb-4">Nevrasteniya (universitet bo‘yicha)</div>
           <div class="d-flex align-center justify-space-between mb-3">
             <v-chip color="success" variant="tonal" prepend-icon="mdi-check">{{ totals.withNevrasthenia }} ta xulosa bor</v-chip>
           </div>
@@ -136,10 +136,10 @@ function maxOf(list: { count: number }[]) {
       </v-col>
     </v-row>
 
-    <div class="text-subtitle-1 font-weight-700 mt-6 mb-3">Fakultetlar kesimida</div>
-    <v-card v-for="f in faculties" :key="f.departmentId" class="surface-glass mb-3" rounded="xl">
+    <div class="text-subtitle-1 font-weight-bold mt-6 mb-3">Fakultetlar kesimida</div>
+    <v-card v-for="f in faculties" :key="f.departmentId" class="surface-card mb-3" rounded="lg">
       <button class="faculty-header w-100 d-flex align-center justify-space-between pa-4" @click="toggle(f.departmentId)">
-        <span class="text-body-1 font-weight-700">{{ f.departmentName }}</span>
+        <span class="text-body-1 font-weight-bold">{{ f.departmentName }}</span>
         <div class="d-flex align-center" style="gap: 10px">
           <v-chip size="small" variant="tonal" color="primary">{{ f.totalStudents }} jami</v-chip>
           <v-chip size="small" variant="tonal" color="success">{{ f.studentsWithTests }} topshirgan</v-chip>

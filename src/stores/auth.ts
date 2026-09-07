@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import type { AuthUser, UserRole } from '@/types/domain'
+import type { AuthUser, HemisProfile, UserRole } from '@/types/domain'
 
 const STORAGE_KEY = 'psy.auth.user'
+const IMPERSONATOR_KEY = 'psy.auth.impersonator'
 
 /**
  * TODO(backend): replace with real HEMIS OAuth2 flow (TZ §2.1) —
@@ -66,13 +67,39 @@ export const DEMO_CREDENTIALS: Credential[] = [
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as AuthUser | null,
+    // When an admin is "viewing as a student" to test a flow, the admin's
+    // own account is parked here so they can switch straight back.
+    impersonator: JSON.parse(sessionStorage.getItem(IMPERSONATOR_KEY) ?? 'null') as AuthUser | null,
     isSigningIn: false,
   }),
   getters: {
     isAuthenticated: (state) => state.user !== null,
     isStaff: (state) => state.user?.role === 'psychologist' || state.user?.role === 'admin',
+    isAdmin: (state) => state.user?.role === 'admin',
+    isImpersonating: (state) => state.impersonator !== null,
   },
   actions: {
+    /** Admin-only: switch into a student view (built from a created student). */
+    viewAsStudent(profile: Pick<HemisProfile, 'fullName' | 'hemisId' | 'faculty' | 'group' | 'studyLanguage'>) {
+      if (this.user && this.user.role === 'admin' && !this.impersonator) {
+        this.impersonator = this.user
+        sessionStorage.setItem(IMPERSONATOR_KEY, JSON.stringify(this.user))
+      }
+      this.user = {
+        id: `view-${profile.hemisId}`,
+        role: 'student',
+        hemis: { ...profile },
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.user))
+    },
+    /** Return from a student view to the parked admin account. */
+    stopImpersonating() {
+      if (!this.impersonator) return
+      this.user = this.impersonator
+      this.impersonator = null
+      sessionStorage.removeItem(IMPERSONATOR_KEY)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.user))
+    },
     async signInWithHemis(role: UserRole = 'student') {
       this.isSigningIn = true
       try {
@@ -102,7 +129,9 @@ export const useAuthStore = defineStore('auth', {
     },
     signOut() {
       this.user = null
+      this.impersonator = null
       localStorage.removeItem(STORAGE_KEY)
+      sessionStorage.removeItem(IMPERSONATOR_KEY)
     },
   },
 })

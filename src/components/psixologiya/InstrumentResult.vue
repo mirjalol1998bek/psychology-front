@@ -26,7 +26,7 @@ const showDetail = ref(false)
     <v-chip
       v-if="value"
       :style="{ background: `${color}26`, color }"
-      class="font-weight-700 cursor-pointer"
+      class="font-weight-bold cursor-pointer"
       size="small"
       @click="showDetail = true"
     >
@@ -36,11 +36,11 @@ const showDetail = ref(false)
     <span v-else class="text-caption text-medium-emphasis">Aniqlanmagan</span>
 
     <v-dialog v-model="showDetail" max-width="380">
-      <v-card class="surface-glass pa-6 text-center" rounded="xl">
+      <v-card class="surface-card pa-6 text-center" rounded="lg">
         <div class="detail-icon mx-auto mb-4" :style="{ background: `linear-gradient(135deg, ${color}, ${color}99)` }">
           <v-icon :icon="mode === 'icon-badge' ? shapeIcon : 'mdi-account-heart'" color="white" size="34" />
         </div>
-        <div class="text-h6 font-weight-800 mb-2">{{ value }}</div>
+        <div class="text-h6 font-weight-bold mb-2">{{ value }}</div>
         <p class="text-body-2 text-medium-emphasis mb-4">
           {{ description || 'Ushbu natija bo‘yicha batafsil tavsif hali kiritilmagan.' }}
         </p>

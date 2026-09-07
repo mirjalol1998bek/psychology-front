@@ -9,6 +9,16 @@ Universitet talabalari uchun psixologik test, kuzatuv va konsultatsiya platforma
 - **Vue Router**, **Pinia**, **vue-i18n** (uz/ru), **axios**
 - **Vite**
 
+## Dizayn tizimi — "Calm care"
+
+Universitet psixologik xizmati uchun tinch, ishonchli va insoniy ko'rinish:
+
+- **Ranglar** — `src/plugins/vuetify.ts` da ikkita to'liq tema. Asosiy rang: to'q feruza (`#0E7C6B`), iliq krem fon, bosiq yordamchi ranglar. Neon/yaltiroq effektlardan voz kechilgan.
+- **Rejim** — yorug' / qorong'i / tizim bo'yicha. `src/composables/useThemeMode.ts` tanlovni saqlaydi va OS `prefers-color-scheme` o'zgarishini kuzatadi. App bar'dagi menyudan almashtiriladi.
+- **Shriftlar** — sarlavhalar uchun *Source Serif 4* (uz + ru), matn uchun *Inter*.
+- **Yuzalar** — `global.css` dagi `.surface-card` (qattiq fon + yumshoq soya), `.surface-sunken`, `.icon-tile` (`--tint` bilan). Shisha-morfizm va aylanuvchi globus olib tashlangan.
+- **Metodika ranglari** — temperament / psixogeometrik shakl tuslari `src/utils/instruments.ts` da, ikkala temada o'qiladigan bosiq tonlar.
+
 ## Loyiha tuzilmasi
 
 ```

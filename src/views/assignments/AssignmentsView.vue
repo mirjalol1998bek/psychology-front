@@ -24,30 +24,30 @@ const filtered = computed(() =>
 
 <template>
   <div>
-    <div class="d-flex align-center justify-space-between mb-1 flex-wrap" style="gap: 12px">
+    <div class="d-flex align-center justify-space-between page-head flex-wrap" style="gap: 12px">
       <div>
-        <h1 class="text-display text-h4 font-weight-800 mb-1">Biriktirilgan guruhlar</h1>
-        <p class="text-body-2 text-medium-emphasis mb-0">{{ assignments.length }} ta tayinlash</p>
+        <h1 class="text-h4">Biriktirilgan guruhlar</h1>
+        <p class="text-body-2 text-medium-emphasis mb-0">{{ assignments.length }} ta faol va o‘tgan tayinlash</p>
       </div>
-      <v-btn color="primary" class="text-none" prepend-icon="mdi-plus" to="/assignments/create">Yangi biriktirish</v-btn>
+      <v-btn color="primary" prepend-icon="mdi-plus" to="/assignments/create">Yangi biriktirish</v-btn>
     </div>
 
-    <div class="d-flex flex-wrap mt-4 mb-4" style="gap: 8px">
-      <v-chip :variant="categoryFilter === 'all' ? 'flat' : 'tonal'" :color="categoryFilter === 'all' ? 'primary' : undefined" class="text-none" @click="categoryFilter = 'all'">
+    <div class="d-flex flex-wrap align-center mb-4" style="gap: 8px">
+      <v-chip :variant="categoryFilter === 'all' ? 'flat' : 'tonal'" :color="categoryFilter === 'all' ? 'primary' : undefined" @click="categoryFilter = 'all'">
         Barchasi
       </v-chip>
       <v-chip
         v-for="[key, meta] in Object.entries(INSTRUMENT_META)" :key="key"
         :variant="categoryFilter === key ? 'flat' : 'tonal'" :color="categoryFilter === key ? 'primary' : undefined"
-        class="text-none" @click="categoryFilter = key as InstrumentType"
+        @click="categoryFilter = key as InstrumentType"
       >
         {{ meta.label }}
       </v-chip>
       <v-spacer />
-      <v-text-field v-model="search" density="compact" variant="solo" rounded="pill" hide-details flat prepend-inner-icon="mdi-magnify" placeholder="Guruh qidirish..." style="max-width: 220px" class="topbar-search" />
+      <v-text-field v-model="search" density="compact" variant="solo-filled" rounded="lg" hide-details flat bg-color="surface-variant" prepend-inner-icon="mdi-magnify" placeholder="Guruh qidirish..." style="max-width: 220px" class="app-search" />
     </div>
 
-    <v-card class="surface-glass" rounded="xl">
+    <v-card class="surface-card" rounded="lg">
       <v-table>
         <thead>
           <tr>
@@ -62,10 +62,10 @@ const filtered = computed(() =>
         <tbody>
           <tr v-for="a in filtered" :key="a.id">
             <td class="d-flex align-center py-3" style="gap: 10px">
-              <div class="icon-badge" style="width: 34px; height: 34px; border-radius: 10px" :style="{ background: 'rgba(0,117,255,0.16)' }">
-                <v-icon :icon="INSTRUMENT_META[a.instrumentType].icon" color="primary" size="17" />
+              <div class="icon-tile" style="--tint: rgb(var(--v-theme-primary)); width: 34px; height: 34px">
+                <v-icon :icon="INSTRUMENT_META[a.instrumentType].icon" size="17" />
               </div>
-              <span class="font-weight-700">{{ a.categoryName }}</span>
+              <span class="font-weight-bold">{{ a.categoryName }}</span>
             </td>
             <td><v-chip size="small" variant="tonal" color="secondary">{{ a.groupName }}</v-chip></td>
             <td>{{ a.startAt }}</td>

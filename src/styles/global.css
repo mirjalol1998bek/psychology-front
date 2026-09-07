@@ -1,125 +1,156 @@
 /*
- * Vision UI–inspired dark dashboard aesthetic. Layout, spacing and per-role
- * color still come from Vuetify's component system and theme tokens
- * (src/plugins/vuetify.ts) — this file adds the handful of cross-cutting
- * effects Vuetify has no opinion on: the typeface pairing, the glass-card
- * surface, and the ambient background glow.
+ * Cross-cutting styles for the "calm care" aesthetic. Colour, spacing and
+ * per-role tints come from Vuetify's theme tokens (src/plugins/vuetify.ts);
+ * this file only adds what Vuetify has no opinion on: the typeface pairing,
+ * the solid card surface + shadow scale, and a few shared primitives
+ * (icon badge, sunken panel, focus ring).
  */
 
 :root {
-  --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-  --gradient-accent: linear-gradient(135deg, #0075ff 0%, #2cd9ff 100%);
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Source Serif 4', ui-serif, Georgia, 'Times New Roman', serif;
+
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+
+  --shadow-xs: 0 1px 2px rgba(24, 36, 32, 0.05);
+  --shadow-sm: 0 1px 2px rgba(24, 36, 32, 0.04), 0 6px 16px -10px rgba(24, 36, 32, 0.12);
+  --shadow-md: 0 2px 6px rgba(24, 36, 32, 0.05), 0 16px 40px -18px rgba(24, 36, 32, 0.22);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Legacy token — the old blue→cyan gradient is now just the primary. */
+  --gradient-accent: rgb(var(--v-theme-primary));
 }
 
 * {
   font-family: var(--font-body);
 }
 
+html,
+body {
+  margin: 0;
+  background: rgb(var(--v-theme-background));
+}
+
 .v-application {
   font-family: var(--font-body) !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/* Warm serif for headings — carries the "considered, human" tone and
+   supports both Latin (uz) and Cyrillic (ru). */
 .text-display {
   font-family: var(--font-display);
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: -0.011em;
+  font-optical-sizing: auto;
 }
 
-/* Ambient app-wide backdrop: soft blurred glow blobs over the deep navy
-   ground, matching the reference dashboard's atmosphere. Fixed so it never
-   scrolls with content; only shown in the dark theme. */
-.app-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  background: rgb(var(--v-theme-background));
-  pointer-events: none;
+/* Buttons: sentence case, no tracking — quieter than Material's default. */
+.v-btn {
+  text-transform: none;
+  letter-spacing: normal;
 }
 
-.app-backdrop::before,
-.app-backdrop::after {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.35;
+/* -------------------------------------------------------------------------
+ * Surfaces
+ * ---------------------------------------------------------------------- */
+
+/* The primary card surface: solid fill, hairline border, soft shadow.
+   Was a glass-morphic panel in the previous design — kept the class name
+   for compatibility, changed what it means. */
+.surface-card {
+  background: rgb(var(--v-theme-surface)) !important;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-sm);
 }
 
-.app-backdrop::before {
-  width: 700px;
-  height: 700px;
-  top: -280px;
-  left: -200px;
-  background: radial-gradient(circle, #0075ff 0%, transparent 70%);
+/* A quieter, recessed surface for nested panels (option lists, previews). */
+.surface-sunken {
+  background: rgb(var(--v-theme-surface-variant)) !important;
+  border: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
 }
 
-.app-backdrop::after {
-  width: 640px;
-  height: 640px;
-  bottom: -260px;
-  right: -180px;
-  background: radial-gradient(circle, #2cd9ff 0%, transparent 70%);
-}
-
-/* Glass-morphic card surface: translucent fill + blur + hairline border.
-   Applied as a utility class on top of v-card rather than baked into the
-   Vuetify surface token, since the light theme keeps solid white cards. */
-.surface-glass {
-  background: rgba(255, 255, 255, 0.04) !important;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-}
-
+/* Solid primary fill — replaces the old blue→cyan gradient. Kept the name
+   so existing badge / avatar / active-nav markup still resolves. */
 .gradient-accent {
-  background: var(--gradient-accent) !important;
-  color: #fff !important;
+  background: rgb(var(--v-theme-primary)) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
 }
 
-/* Faint wave-line texture for stat tiles, matching the reference dashboard's
-   gradient stat cards. Pure CSS (no image asset) — a few overlapping radial
-   arcs at low opacity in the card's bottom-right corner. */
-.wave-card {
-  position: relative;
-  overflow: hidden;
-}
+/* Legacy decorative class — neutralised (the old wave rings are gone). */
 .wave-card::after {
-  content: '';
-  position: absolute;
-  z-index: 0;
-  right: -30px;
-  bottom: -60px;
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 0 0 28px rgba(255, 255, 255, 0.05), 0 0 0 56px rgba(255, 255, 255, 0.03);
-  pointer-events: none;
-}
-.wave-card > * {
-  position: relative;
-  z-index: 1;
+  display: none !important;
 }
 
 .icon-badge {
   width: 42px;
   height: 42px;
-  border-radius: 14px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
+/* Soft tinted icon chip — set `--tint` to a colour, get a wash + matching
+   glyph. Used for stat tiles and list-row leading icons. */
+.icon-tile {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--tint, rgb(var(--v-theme-primary))) 14%, transparent);
+  color: var(--tint, rgb(var(--v-theme-primary)));
+}
+
+/* Compact filled search field used in page toolbars. */
+.app-search :deep(.v-field),
+.app-search .v-field {
+  font-size: 0.875rem;
+}
+
+/* Standard page header block: serif title + muted lead paragraph. */
+.page-head {
+  margin-bottom: 24px;
+}
+.page-head h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.011em;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+/* -------------------------------------------------------------------------
+ * Accessibility & chrome
+ * ---------------------------------------------------------------------- */
+
+*:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(128, 128, 128, 0.35);
+  background: rgba(var(--v-border-color), 0.22);
   border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--v-border-color), 0.32);
+  background-clip: content-box;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -128,5 +159,6 @@
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }

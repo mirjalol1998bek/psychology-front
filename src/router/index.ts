@@ -10,6 +10,7 @@ declare module 'vue-router' {
 }
 
 const STAFF: UserRole[] = ['psychologist', 'admin']
+const ADMIN: UserRole[] = ['admin']
 
 const router = createRouter({
   history: createWebHistory(),
@@ -31,6 +32,7 @@ const router = createRouter({
         { path: 'tests/create', name: 'test-create', component: () => import('@/views/tests/CreateTestView.vue'), meta: { roles: STAFF } },
         { path: 'tests/:id', name: 'test-edit', component: () => import('@/views/tests/CreateTestView.vue'), meta: { roles: STAFF } },
         { path: 'tests/:id/take', name: 'take-test', component: () => import('@/views/tests/TakeTestView.vue') },
+        { path: 'tests/:id/result', name: 'test-result', component: () => import('@/views/tests/TestResultView.vue') },
 
         // Tekshirish: fakultet/guruh bo'yicha temperament+psixogeometrik ko'rinishi (staff).
         { path: 'tekshirish', name: 'tekshirish', component: () => import('@/views/tekshirish/TekshirishView.vue'), meta: { roles: STAFF } },
@@ -44,11 +46,20 @@ const router = createRouter({
         // Qabul kalendari: faqat xodim (psixolog/admin) boshqaradi — talabaga kerak emas.
         { path: 'calendar', name: 'calendar', component: () => import('@/views/calendar/CalendarView.vue'), meta: { roles: STAFF } },
 
+        // Murojaatlar: talaba yozadi, psixolog/admin javob beradi — hamma uchun.
+        { path: 'appeals', name: 'appeals', component: () => import('@/views/appeals/AppealsView.vue') },
+
+        // Ijtimoiy-psixologik pasport: talaba to'ldiradi.
+        { path: 'passport', name: 'passport', component: () => import('@/views/passport/PassportView.vue'), meta: { roles: ['student'] } },
+
         // Tayinlash: staff.
         { path: 'assignments', name: 'assignments', component: () => import('@/views/assignments/AssignmentsView.vue'), meta: { roles: STAFF } },
         { path: 'assignments/create', name: 'assignments-create', component: () => import('@/views/assignments/CreateAssignmentView.vue'), meta: { roles: STAFF } },
 
         { path: 'statistics', name: 'statistics', component: () => import('@/views/statistics/StatisticsView.vue'), meta: { roles: STAFF } },
+
+        // Admin-only: create faculties / groups / students to test a flow.
+        { path: 'admin/organization', name: 'admin-organization', component: () => import('@/views/admin/OrganizationView.vue'), meta: { roles: ADMIN } },
       ],
     },
     {

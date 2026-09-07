@@ -11,9 +11,9 @@ const todayEvents = computed(() => weeks.value.flat().find((c) => c.isToday)?.ev
 </script>
 
 <template>
-  <v-card class="surface-glass h-100 pa-4 pa-md-5" rounded="xl">
+  <v-card class="surface-card h-100 pa-4 pa-md-5" rounded="lg">
     <div class="d-flex align-center justify-space-between mb-3">
-      <span class="text-subtitle-1 font-weight-800">{{ monthLabel }}</span>
+      <span class="text-subtitle-1 font-weight-bold">{{ monthLabel }}</span>
       <div class="d-flex align-center" style="gap: 2px">
         <v-btn icon="mdi-chevron-left" size="x-small" variant="text" @click="prevMonth" />
         <v-btn icon="mdi-chevron-right" size="x-small" variant="text" @click="nextMonth" />
@@ -41,7 +41,7 @@ const todayEvents = computed(() => weeks.value.flat().find((c) => c.isToday)?.ev
 
     <v-divider opacity="0.1" class="my-3" />
 
-    <div class="text-caption font-weight-700 text-medium-emphasis text-uppercase mb-2">Bugun</div>
+    <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase mb-2">Bugun</div>
     <div v-if="todayEvents.length" class="d-flex flex-column" style="gap: 6px">
       <div v-for="(e, i) in todayEvents.slice(0, 2)" :key="i" class="d-flex align-center" style="gap: 8px">
         <span class="mini-dot" :style="{ background: CAL_STATUS_META[e.status].color }" />
@@ -84,9 +84,9 @@ const todayEvents = computed(() => weeks.value.flat().find((c) => c.isToday)?.ev
 }
 
 .mini-day--today {
-  background: var(--gradient-accent);
-  color: #fff;
-  font-weight: 800;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
+  font-weight: 700;
 }
 
 .mini-dots {

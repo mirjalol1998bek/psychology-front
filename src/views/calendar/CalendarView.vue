@@ -26,26 +26,29 @@ function formatUpcoming(e: CalEvent) {
   return `${d.getDate()}-${MONTH_NAMES[d.getMonth()].toLowerCase()}, ${e.time}`
 }
 
-const activity = [4, 6, 5, 8, 7, 9, 6]
-const activityDays = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']
-const chartW = 260
-const chartH = 90
-function xFor(i: number) {
-  return (i / (activity.length - 1)) * chartW
-}
-function yFor(v: number) {
-  return chartH - (v / 10) * chartH
-}
-const linePoints = activity.map((v, i) => `${xFor(i)},${yFor(v)}`).join(' ')
-const areaPoints = `0,${chartH} ${linePoints} ${chartW},${chartH}`
+const legend: { status: AppointmentSlotStatus; label: string }[] = [
+  { status: 'booked', label: 'Band' },
+  { status: 'free', label: 'Bo‘sh' },
+  { status: 'cancelled', label: 'Bekor qilingan' },
+]
 
 // ---------------------------------------------------------------------------
-// Voqea qo'shish (psixolog uchun)
+// Voqea qo'shish / tahrirlash (psixolog uchun) — kun katakчasiga bosib
+// yangi voqea, voqea-panjarasiga bosib mavjudini tahrirlash.
 // ---------------------------------------------------------------------------
-const addDialog = ref(false)
+const dialog = ref(false)
+const editingId = ref<string | null>(null)
+const toast = ref('')
+const toastOpen = ref(false)
+
+const defaultDate = () => {
+  const d = TODAY
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 const form = ref<{ title: string; date: string; endDate: string; time: string; status: AppointmentSlotStatus }>({
   title: '',
-  date: '2026-09-04',
+  date: defaultDate(),
   endDate: '',
   time: '10:00',
   status: 'booked',
@@ -55,45 +58,83 @@ const statusOptions: { title: string; value: AppointmentSlotStatus }[] = [
   { title: 'Bo‘sh', value: 'free' },
   { title: 'Bekor qilingan', value: 'cancelled' },
 ]
-const toastOpen = ref(false)
+
+function openCreate(dateKey?: string) {
+  editingId.value = null
+  form.value = { title: '', date: dateKey ?? defaultDate(), endDate: '', time: '10:00', status: 'booked' }
+  dialog.value = true
+}
+
+function openEdit(ev: CalEvent) {
+  editingId.value = ev.id
+  form.value = {
+    title: ev.title,
+    date: ev.date,
+    endDate: ev.endDate ?? '',
+    time: ev.time === 'Kun bo‘yi' ? '' : ev.time,
+    status: ev.status,
+  }
+  dialog.value = true
+}
 
 function submitEvent() {
   if (!form.value.title.trim() || !form.value.date) return
-  calendarStore.addEvent({
+  const payload = {
     title: form.value.title.trim(),
     date: form.value.date,
     endDate: form.value.endDate || undefined,
     time: form.value.time || 'Kun bo‘yi',
     status: form.value.status,
-  })
-  addDialog.value = false
+  }
+  if (editingId.value) {
+    calendarStore.updateEvent(editingId.value, payload)
+    toast.value = 'Voqea yangilandi'
+  } else {
+    calendarStore.addEvent(payload)
+    toast.value = 'Voqea qo‘shildi'
+  }
+  dialog.value = false
   toastOpen.value = true
-  form.value = { title: '', date: form.value.date, endDate: '', time: '10:00', status: 'booked' }
+}
+
+function deleteEvent() {
+  if (!editingId.value) return
+  calendarStore.removeEvent(editingId.value)
+  dialog.value = false
+  toast.value = 'Voqea o‘chirildi'
+  toastOpen.value = true
 }
 </script>
 
 <template>
   <div>
-    <div class="d-flex align-center justify-space-between mb-4 flex-wrap" style="gap: 12px">
+    <div class="d-flex align-center justify-space-between page-head flex-wrap" style="gap: 12px">
       <div>
-        <h1 class="text-display text-h4 font-weight-800 mb-1">Qabul kalendari</h1>
+        <h1 class="text-h4">Qabul kalendari</h1>
         <p class="text-body-2 text-medium-emphasis mb-0">Psixolog Nilufar Egamova — oylik jadval</p>
       </div>
-      <v-btn color="primary" class="text-none" prepend-icon="mdi-plus" rounded="xl" @click="addDialog = true">
-        Voqea qo‘shish
-      </v-btn>
+      <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreate()">Voqea qo‘shish</v-btn>
     </div>
 
     <v-row>
       <v-col cols="12" lg="8">
-        <v-card class="surface-glass pa-4 pa-md-5" rounded="xl">
+        <v-card class="surface-card pa-4 pa-md-5" rounded="lg">
           <div class="d-flex align-center justify-space-between mb-4">
-            <span class="text-h6 font-weight-800">{{ monthLabel }}</span>
+            <span class="text-h6 text-display font-weight-bold">{{ monthLabel }}</span>
             <div class="d-flex align-center" style="gap: 6px">
-              <v-btn size="small" variant="tonal" class="text-none" @click="goToday">Bugun</v-btn>
+              <v-btn size="small" variant="tonal" @click="goToday">Bugun</v-btn>
               <v-btn icon="mdi-chevron-left" size="small" variant="text" @click="prevMonth" />
               <v-btn icon="mdi-chevron-right" size="small" variant="text" @click="nextMonth" />
             </div>
+          </div>
+
+          <div class="d-flex flex-wrap align-center mb-3" style="gap: 14px">
+            <span v-for="l in legend" :key="l.status" class="d-flex align-center text-caption text-medium-emphasis" style="gap: 6px">
+              <span class="legend-dot" :style="{ background: CAL_STATUS_META[l.status].color }" />{{ l.label }}
+            </span>
+            <span class="text-caption text-medium-emphasis d-none d-sm-flex align-center" style="gap: 4px">
+              <v-icon icon="mdi-gesture-tap" size="13" />Kun — qo‘shish · voqea — tahrirlash
+            </span>
           </div>
 
           <div class="weekday-row">
@@ -102,17 +143,21 @@ function submitEvent() {
 
           <div v-for="(week, wi) in weeks" :key="wi" class="week-row">
             <div class="week-bg">
-              <div
+              <button
                 v-for="cell in week" :key="cell.key"
+                type="button"
                 class="day-cell-bg" :class="{ 'day-cell-bg--out': !cell.inMonth, 'day-cell-bg--today': cell.isToday }"
                 :style="{ minHeight: `${34 + laneCounts[wi] * 26}px` }"
+                :aria-label="`${cell.date.getDate()} — voqea qo‘shish`"
+                @click="openCreate(cell.key)"
               >
                 <span class="day-num">{{ cell.date.getDate() }}</span>
-              </div>
+              </button>
             </div>
             <div class="week-bars" :style="{ gridTemplateRows: `repeat(${laneCounts[wi]}, 22px)` }">
               <button
                 v-for="seg in bars[wi]" :key="seg.event.id"
+                type="button"
                 class="event-bar"
                 :style="{
                   gridColumn: `${seg.startCol + 1} / span ${seg.span}`,
@@ -120,6 +165,7 @@ function submitEvent() {
                   background: CAL_STATUS_META[seg.event.status].color,
                 }"
                 :title="`${seg.event.title} — ${seg.event.time}`"
+                @click.stop="openEdit(seg.event)"
               >
                 {{ seg.event.title }}
               </button>
@@ -129,44 +175,38 @@ function submitEvent() {
       </v-col>
 
       <v-col cols="12" lg="4">
-        <v-card class="surface-glass pa-4 mb-4" rounded="xl">
-          <div class="text-subtitle-1 font-weight-700 mb-3">Yaqin qabullar</div>
-          <div v-for="(e, i) in upcoming" :key="i" class="d-flex align-center py-2" style="gap: 12px">
-            <div class="icon-badge" style="width: 36px; height: 36px; border-radius: 10px" :style="{ background: `${CAL_STATUS_META[e.status].color}26` }">
-              <v-icon :icon="CAL_STATUS_META[e.status].icon" :color="e.status === 'free' ? 'success' : 'primary'" size="17" />
+        <v-card class="surface-card pa-4" rounded="lg">
+          <div class="text-subtitle-1 font-weight-bold mb-3">Yaqin qabullar</div>
+          <button
+            v-for="(e, i) in upcoming"
+            :key="i"
+            type="button"
+            class="upcoming-row d-flex align-center w-100 py-2"
+            style="gap: 12px"
+            @click="openEdit(e)"
+          >
+            <div class="icon-tile" style="width: 36px; height: 36px" :style="{ '--tint': CAL_STATUS_META[e.status].color }">
+              <v-icon :icon="CAL_STATUS_META[e.status].icon" size="17" />
             </div>
-            <div>
-              <div class="text-body-2 font-weight-700">{{ e.title }}</div>
+            <div class="text-left">
+              <div class="text-body-2 font-weight-bold">{{ e.title }}</div>
               <div class="text-caption text-medium-emphasis">{{ formatUpcoming(e) }}</div>
             </div>
-          </div>
+          </button>
           <v-empty-state v-if="!upcoming.length" icon="mdi-calendar-check-outline" title="Rejalashtirilgan qabul yo‘q" density="compact" />
-        </v-card>
-
-        <v-card class="surface-glass pa-4" rounded="xl">
-          <div class="text-subtitle-1 font-weight-700 mb-1">Faollik</div>
-          <span class="text-caption text-success font-weight-700">+8% <span class="text-medium-emphasis font-weight-500">bu hafta</span></span>
-          <svg :viewBox="`0 0 ${chartW} ${chartH}`" class="mini-area mt-2">
-            <defs>
-              <linearGradient id="calAreaFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#0075FF" stop-opacity="0.5" />
-                <stop offset="1" stop-color="#0075FF" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-            <polygon :points="areaPoints" fill="url(#calAreaFill)" />
-            <polyline :points="linePoints" fill="none" stroke="#0075FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          <div class="d-flex justify-space-between text-caption text-medium-emphasis px-1">
-            <span v-for="d in activityDays" :key="d">{{ d }}</span>
-          </div>
         </v-card>
       </v-col>
     </v-row>
 
-    <v-dialog v-model="addDialog" max-width="420">
-      <v-card class="surface-glass pa-6" rounded="xl">
-        <div class="text-subtitle-1 font-weight-700 mb-4">Voqea qo‘shish</div>
-        <v-text-field v-model="form.title" label="Sarlavha" density="comfortable" class="mb-1" />
+    <v-dialog v-model="dialog" max-width="440">
+      <v-card class="surface-card pa-6" rounded="lg">
+        <div class="d-flex align-center justify-space-between mb-4">
+          <span class="text-subtitle-1 font-weight-bold">
+            {{ editingId ? 'Voqeani tahrirlash' : 'Voqea qo‘shish' }}
+          </span>
+          <v-btn icon="mdi-close" variant="text" size="small" @click="dialog = false" />
+        </div>
+        <v-text-field v-model="form.title" label="Sarlavha" density="comfortable" class="mb-1" autofocus />
         <v-row dense>
           <v-col cols="6">
             <v-text-field v-model="form.date" type="date" label="Sana" density="comfortable" />
@@ -175,16 +215,28 @@ function submitEvent() {
             <v-text-field v-model="form.endDate" type="date" label="Tugash (ixtiyoriy)" density="comfortable" />
           </v-col>
         </v-row>
-        <v-text-field v-model="form.time" label="Vaqt (masalan 10:00)" density="comfortable" />
+        <v-text-field v-model="form.time" label="Vaqt (masalan 10:00, bo‘sh = kun bo‘yi)" density="comfortable" />
         <v-select v-model="form.status" :items="statusOptions" item-title="title" item-value="value" label="Holat" density="comfortable" />
-        <div class="d-flex justify-end mt-3" style="gap: 8px">
-          <v-btn variant="text" class="text-none" @click="addDialog = false">Bekor qilish</v-btn>
-          <v-btn color="primary" variant="flat" class="text-none" @click="submitEvent">Qo‘shish</v-btn>
+        <div class="d-flex align-center mt-3" style="gap: 8px">
+          <v-btn
+            v-if="editingId"
+            variant="text"
+            color="error"
+            prepend-icon="mdi-delete-outline"
+            @click="deleteEvent"
+          >
+            O‘chirish
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="dialog = false">Bekor qilish</v-btn>
+          <v-btn color="primary" variant="flat" :disabled="!form.title.trim()" @click="submitEvent">
+            {{ editingId ? 'Saqlash' : 'Qo‘shish' }}
+          </v-btn>
         </div>
       </v-card>
     </v-dialog>
 
-    <v-snackbar v-model="toastOpen" location="top end" color="success" timeout="2500">Voqea qo‘shildi</v-snackbar>
+    <v-snackbar v-model="toastOpen" location="top end" color="success" timeout="2500">{{ toast }}</v-snackbar>
   </div>
 </template>
 
@@ -206,12 +258,19 @@ function submitEvent() {
   padding-bottom: 8px;
 }
 
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
 .week-row {
   position: relative;
-  border-top: 1px solid rgba(128, 128, 128, 0.1);
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 .week-row:last-child {
-  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
 .week-bg {
@@ -221,7 +280,17 @@ function submitEvent() {
 
 .day-cell-bg {
   padding: 8px;
-  border-right: 1px solid rgba(128, 128, 128, 0.07);
+  border: none;
+  border-right: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: background 0.12s var(--ease);
+}
+.day-cell-bg:hover {
+  background: rgba(var(--v-theme-primary), 0.06);
 }
 .day-cell-bg:last-child {
   border-right: none;
@@ -231,16 +300,28 @@ function submitEvent() {
   opacity: 0.3;
 }
 
+.upcoming-row {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s var(--ease);
+}
+.upcoming-row:hover {
+  background: rgba(var(--v-theme-primary), 0.06);
+}
+
 .day-cell-bg--today .day-num {
-  background: var(--gradient-accent);
-  color: #fff;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
   border-radius: 50%;
   width: 22px;
   height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .day-num {
@@ -266,25 +347,17 @@ function submitEvent() {
   border-radius: 6px;
   color: #fff;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   text-align: left;
   padding: 3px 8px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   cursor: pointer;
-  box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.35);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition: filter 0.12s var(--ease);
 }
 .event-bar:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px -1px rgba(0, 0, 0, 0.45);
-}
-
-.mini-area {
-  width: 100%;
-  height: auto;
-  overflow: visible;
+  filter: brightness(1.06);
 }
 
 @media (max-width: 700px) {
