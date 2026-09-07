@@ -25,7 +25,7 @@ function isSameDay(a: Date, b: Date) {
  * Shared month-grid math for the full Qabul kalendari page and the compact
  * dashboard widget — one date implementation, two renderings.
  */
-export function useMonthGrid<E extends { date: string }>(events: E[], today: Date) {
+export function useMonthGrid<E extends { date: string; endDate?: string }>(events: E[], today: Date) {
   const cursor: Ref<Date> = ref(new Date(today.getFullYear(), today.getMonth(), 1))
 
   const monthLabel = computed(() => `${MONTH_NAMES[cursor.value.getMonth()]} ${cursor.value.getFullYear()}`)
@@ -46,7 +46,7 @@ export function useMonthGrid<E extends { date: string }>(events: E[], today: Dat
         key,
         inMonth: date.getMonth() === month,
         isToday: isSameDay(date, today),
-        events: events.filter((e) => e.date === key),
+        events: events.filter((e) => key >= e.date && key <= (e.endDate ?? e.date)),
       }
     })
 

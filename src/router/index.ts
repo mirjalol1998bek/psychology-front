@@ -41,7 +41,8 @@ const router = createRouter({
         { path: 'results/:instrument', name: 'results-instrument', component: () => import('@/views/results/InstrumentPickerView.vue'), meta: { roles: STAFF } },
         { path: 'results/:instrument/:facultyId/:groupId', name: 'results-instrument-group', component: () => import('@/views/results/InstrumentGroupResultsView.vue'), meta: { roles: STAFF } },
 
-        { path: 'calendar', name: 'calendar', component: () => import('@/views/calendar/CalendarView.vue') },
+        // Qabul kalendari: faqat xodim (psixolog/admin) boshqaradi — talabaga kerak emas.
+        { path: 'calendar', name: 'calendar', component: () => import('@/views/calendar/CalendarView.vue'), meta: { roles: STAFF } },
 
         // Tayinlash: staff.
         { path: 'assignments', name: 'assignments', component: () => import('@/views/assignments/AssignmentsView.vue'), meta: { roles: STAFF } },

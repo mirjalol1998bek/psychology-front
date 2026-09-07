@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useMonthGrid, WEEKDAYS } from '@/composables/useMonthGrid'
-import { CAL_EVENTS, CAL_STATUS_META, TODAY } from '@/mocks/calendar'
+import { CAL_STATUS_META, TODAY } from '@/mocks/calendar'
+import { useCalendarStore } from '@/stores/calendar'
 
-const { monthLabel, weeks, prevMonth, nextMonth } = useMonthGrid(CAL_EVENTS, TODAY)
+const calendarStore = useCalendarStore()
+const { monthLabel, weeks, prevMonth, nextMonth } = useMonthGrid(calendarStore.events, TODAY)
 
-const todayEvents = computed(() => CAL_EVENTS.filter((e) => e.date === weeks.value.flat().find((c) => c.isToday)?.key))
+const todayEvents = computed(() => weeks.value.flat().find((c) => c.isToday)?.events ?? [])
 </script>
 
 <template>

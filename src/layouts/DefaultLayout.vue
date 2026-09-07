@@ -21,13 +21,16 @@ const mainNav = computed(() => [
   { title: t('nav.dashboard'), icon: 'mdi-view-grid-outline', to: '/' },
   { title: t('nav.tests'), icon: 'mdi-clipboard-text-outline', to: '/tests' },
   { title: t('nav.results'), icon: 'mdi-chart-donut', to: '/results' },
-  { title: t('nav.calendar'), icon: 'mdi-calendar-heart', to: '/calendar' },
 ])
 
+// Qabul kalendari shu yerda — faqat xodim (psixolog/admin) boshqaradi,
+// talabaga kerak emas (o'z navbatini "Yaqinlashib kelayotgan qabullar"
+// ro'yxatidan bosh sahifada ko'radi).
 const staffNav = computed(() =>
   auth.isStaff
     ? [
         { title: 'Tekshirish', icon: 'mdi-magnify-scan', to: '/tekshirish' },
+        { title: t('nav.calendar'), icon: 'mdi-calendar-heart', to: '/calendar' },
         { title: 'Test biriktirish', icon: 'mdi-clipboard-plus-outline', to: '/assignments/create' },
         { title: t('nav.assignments'), icon: 'mdi-clipboard-check-outline', to: '/assignments' },
         { title: t('nav.statistics'), icon: 'mdi-chart-box-outline', to: '/statistics' },

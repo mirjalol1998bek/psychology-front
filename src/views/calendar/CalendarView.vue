@@ -1,12 +1,22 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useMonthGrid, WEEKDAYS, MONTH_NAMES } from '@/composables/useMonthGrid'
-import { CAL_EVENTS, CAL_STATUS_META, TODAY, type CalEvent } from '@/mocks/calendar'
+import { useEventBars } from '@/composables/useEventBars'
+import { CAL_STATUS_META, TODAY, type CalEvent } from '@/mocks/calendar'
+import { useCalendarStore } from '@/stores/calendar'
+import type { AppointmentSlotStatus } from '@/types/domain'
 
-const { monthLabel, weeks, prevMonth, nextMonth, goToday } = useMonthGrid(CAL_EVENTS, TODAY)
+const calendarStore = useCalendarStore()
+
+const { monthLabel, weeks, prevMonth, nextMonth, goToday } = useMonthGrid(calendarStore.events, TODAY)
+const bars = useEventBars(weeks, computed(() => calendarStore.events))
+
+// Each week row needs enough height for however many lanes of bars it holds.
+const laneCounts = computed(() => bars.value.map((week) => Math.max(1, ...week.map((b) => b.lane + 1))))
 
 const upcoming = computed(() =>
-  CAL_EVENTS.filter((e) => new Date(e.date) >= TODAY && e.status !== 'cancelled')
+  calendarStore.events
+    .filter((e) => new Date(e.date) >= TODAY && e.status !== 'cancelled')
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 4),
 )
@@ -28,6 +38,38 @@ function yFor(v: number) {
 }
 const linePoints = activity.map((v, i) => `${xFor(i)},${yFor(v)}`).join(' ')
 const areaPoints = `0,${chartH} ${linePoints} ${chartW},${chartH}`
+
+// ---------------------------------------------------------------------------
+// Voqea qo'shish (psixolog uchun)
+// ---------------------------------------------------------------------------
+const addDialog = ref(false)
+const form = ref<{ title: string; date: string; endDate: string; time: string; status: AppointmentSlotStatus }>({
+  title: '',
+  date: '2026-09-04',
+  endDate: '',
+  time: '10:00',
+  status: 'booked',
+})
+const statusOptions: { title: string; value: AppointmentSlotStatus }[] = [
+  { title: 'Band', value: 'booked' },
+  { title: 'Bo‘sh', value: 'free' },
+  { title: 'Bekor qilingan', value: 'cancelled' },
+]
+const toastOpen = ref(false)
+
+function submitEvent() {
+  if (!form.value.title.trim() || !form.value.date) return
+  calendarStore.addEvent({
+    title: form.value.title.trim(),
+    date: form.value.date,
+    endDate: form.value.endDate || undefined,
+    time: form.value.time || 'Kun bo‘yi',
+    status: form.value.status,
+  })
+  addDialog.value = false
+  toastOpen.value = true
+  form.value = { title: '', date: form.value.date, endDate: '', time: '10:00', status: 'booked' }
+}
 </script>
 
 <template>
@@ -37,7 +79,9 @@ const areaPoints = `0,${chartH} ${linePoints} ${chartW},${chartH}`
         <h1 class="text-display text-h4 font-weight-800 mb-1">Qabul kalendari</h1>
         <p class="text-body-2 text-medium-emphasis mb-0">Psixolog Nilufar Egamova — oylik jadval</p>
       </div>
-      <v-btn color="primary" class="text-none" prepend-icon="mdi-calendar-plus" icon="mdi-plus" rounded="xl" />
+      <v-btn color="primary" class="text-none" prepend-icon="mdi-plus" rounded="xl" @click="addDialog = true">
+        Voqea qo‘shish
+      </v-btn>
     </div>
 
     <v-row>
@@ -52,28 +96,34 @@ const areaPoints = `0,${chartH} ${linePoints} ${chartW},${chartH}`
             </div>
           </div>
 
-          <div class="month-grid">
+          <div class="weekday-row">
             <div v-for="d in WEEKDAYS" :key="d" class="weekday-label">{{ d }}</div>
-            <template v-for="(week, wi) in weeks" :key="wi">
+          </div>
+
+          <div v-for="(week, wi) in weeks" :key="wi" class="week-row">
+            <div class="week-bg">
               <div
                 v-for="cell in week" :key="cell.key"
-                class="day-cell" :class="{ 'day-cell--out': !cell.inMonth, 'day-cell--today': cell.isToday }"
+                class="day-cell-bg" :class="{ 'day-cell-bg--out': !cell.inMonth, 'day-cell-bg--today': cell.isToday }"
+                :style="{ minHeight: `${34 + laneCounts[wi] * 26}px` }"
               >
                 <span class="day-num">{{ cell.date.getDate() }}</span>
-                <div class="d-flex flex-column" style="gap: 3px">
-                  <div
-                    v-for="(ev, ei) in cell.events.slice(0, 2)" :key="ei"
-                    class="event-pill" :style="{ background: CAL_STATUS_META[ev.status].color }"
-                    :title="`${ev.title} — ${ev.time}`"
-                  >
-                    {{ ev.title }}
-                  </div>
-                  <div v-if="cell.events.length > 2" class="text-caption text-medium-emphasis pl-1">
-                    +{{ cell.events.length - 2 }} ko‘proq
-                  </div>
-                </div>
               </div>
-            </template>
+            </div>
+            <div class="week-bars" :style="{ gridTemplateRows: `repeat(${laneCounts[wi]}, 22px)` }">
+              <button
+                v-for="seg in bars[wi]" :key="seg.event.id"
+                class="event-bar"
+                :style="{
+                  gridColumn: `${seg.startCol + 1} / span ${seg.span}`,
+                  gridRow: seg.lane + 1,
+                  background: CAL_STATUS_META[seg.event.status].color,
+                }"
+                :title="`${seg.event.title} — ${seg.event.time}`"
+              >
+                {{ seg.event.title }}
+              </button>
+            </div>
           </div>
         </v-card>
       </v-col>
@@ -112,14 +162,37 @@ const areaPoints = `0,${chartH} ${linePoints} ${chartW},${chartH}`
         </v-card>
       </v-col>
     </v-row>
+
+    <v-dialog v-model="addDialog" max-width="420">
+      <v-card class="surface-glass pa-6" rounded="xl">
+        <div class="text-subtitle-1 font-weight-700 mb-4">Voqea qo‘shish</div>
+        <v-text-field v-model="form.title" label="Sarlavha" density="comfortable" class="mb-1" />
+        <v-row dense>
+          <v-col cols="6">
+            <v-text-field v-model="form.date" type="date" label="Sana" density="comfortable" />
+          </v-col>
+          <v-col cols="6">
+            <v-text-field v-model="form.endDate" type="date" label="Tugash (ixtiyoriy)" density="comfortable" />
+          </v-col>
+        </v-row>
+        <v-text-field v-model="form.time" label="Vaqt (masalan 10:00)" density="comfortable" />
+        <v-select v-model="form.status" :items="statusOptions" item-title="title" item-value="value" label="Holat" density="comfortable" />
+        <div class="d-flex justify-end mt-3" style="gap: 8px">
+          <v-btn variant="text" class="text-none" @click="addDialog = false">Bekor qilish</v-btn>
+          <v-btn color="primary" variant="flat" class="text-none" @click="submitEvent">Qo‘shish</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar v-model="toastOpen" location="top end" color="success" timeout="2500">Voqea qo‘shildi</v-snackbar>
   </div>
 </template>
 
 <style scoped>
-.month-grid {
+.weekday-row {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
+  margin-bottom: 4px;
 }
 
 .weekday-label {
@@ -129,44 +202,83 @@ const areaPoints = `0,${chartH} ${linePoints} ${chartW},${chartH}`
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: rgb(var(--v-theme-on-surface));
-  opacity: 0.55;
-  padding-bottom: 6px;
+  opacity: 0.5;
+  padding-bottom: 8px;
 }
 
-.day-cell {
-  min-height: 84px;
-  border-radius: 12px;
-  background: rgba(128, 128, 128, 0.05);
-  border: 1px solid rgba(128, 128, 128, 0.1);
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.week-row {
+  position: relative;
+  border-top: 1px solid rgba(128, 128, 128, 0.1);
+}
+.week-row:last-child {
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
 }
 
-.day-cell--out {
-  opacity: 0.35;
+.week-bg {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
-.day-cell--today {
-  border-color: rgb(var(--v-theme-primary));
-  background: rgba(0, 117, 255, 0.1);
+.day-cell-bg {
+  padding: 8px;
+  border-right: 1px solid rgba(128, 128, 128, 0.07);
+}
+.day-cell-bg:last-child {
+  border-right: none;
+}
+
+.day-cell-bg--out .day-num {
+  opacity: 0.3;
+}
+
+.day-cell-bg--today .day-num {
+  background: var(--gradient-accent);
+  color: #fff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
 }
 
 .day-num {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
 }
 
-.event-pill {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: white;
-  padding: 2px 6px;
+.week-bars {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px 6px;
+  padding: 0 4px;
+  pointer-events: none;
+}
+
+.event-bar {
+  pointer-events: auto;
+  border: none;
   border-radius: 6px;
-  white-space: nowrap;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  padding: 3px 8px;
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
+  cursor: pointer;
+  box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.event-bar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px -1px rgba(0, 0, 0, 0.45);
 }
 
 .mini-area {
@@ -175,16 +287,13 @@ const areaPoints = `0,${chartH} ${linePoints} ${chartW},${chartH}`
   overflow: visible;
 }
 
-@media (max-width: 600px) {
-  .day-cell {
-    min-height: 56px;
+@media (max-width: 700px) {
+  .weekday-label {
+    font-size: 9px;
   }
-  .event-pill {
+  .event-bar {
     font-size: 0;
     padding: 3px;
-    border-radius: 50%;
-    width: 6px;
-    height: 6px;
   }
 }
 </style>

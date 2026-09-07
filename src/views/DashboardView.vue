@@ -4,9 +4,12 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import RotatingGlobe from '@/components/common/RotatingGlobe.vue'
 import MiniCalendar from '@/components/dashboard/MiniCalendar.vue'
-import { CAL_EVENTS, CAL_STATUS_META, TODAY, type CalEvent } from '@/mocks/calendar'
+import { CAL_STATUS_META, TODAY, type CalEvent } from '@/mocks/calendar'
+import { useCalendarStore } from '@/stores/calendar'
 import { MONTH_NAMES } from '@/composables/useMonthGrid'
 import type { ResultSummaryDto } from '@/types/domain'
+
+const calendarStore = useCalendarStore()
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -90,7 +93,7 @@ const quickStats = computed(() =>
 )
 
 const upcomingAppointments = computed(() =>
-  CAL_EVENTS.filter((e) => new Date(e.date) >= TODAY && e.status !== 'cancelled')
+  calendarStore.events.filter((e) => new Date(e.date) >= TODAY && e.status !== 'cancelled')
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 4),
 )
@@ -189,12 +192,12 @@ const tooltipLeftPct = computed(() => (hoverIndex.value === null ? 0 : (xFor(hov
       </v-col>
     </v-row>
 
-    <!-- Mini kalendar + Yaqinlashib kelayotgan qabullar -->
+    <!-- Mini kalendar (faqat xodim) + Yaqinlashib kelayotgan qabullar -->
     <v-row class="mt-1">
-      <v-col cols="12" md="6">
+      <v-col v-if="auth.isStaff" cols="12" md="6">
         <MiniCalendar />
       </v-col>
-      <v-col cols="12" md="6">
+      <v-col cols="12" :md="auth.isStaff ? 6 : 12">
         <v-card class="surface-glass h-100 pa-4 pa-md-5" rounded="xl">
           <div class="d-flex align-center justify-space-between mb-3">
             <span class="text-subtitle-1 font-weight-800">Yaqinlashib kelayotgan qabullar</span>
@@ -210,7 +213,9 @@ const tooltipLeftPct = computed(() => (hoverIndex.value === null ? 0 : (xFor(hov
             </div>
           </div>
           <v-empty-state v-if="!upcomingAppointments.length" icon="mdi-calendar-check-outline" title="Rejalashtirilgan qabul yo‘q" density="compact" />
-          <v-btn variant="tonal" color="secondary" size="small" to="/calendar" class="text-none mt-2">{{ t('dashboard.bookAppointment') }}</v-btn>
+          <v-btn v-if="auth.isStaff" variant="tonal" color="secondary" size="small" to="/calendar" class="text-none mt-2">
+            {{ t('dashboard.bookAppointment') }}
+          </v-btn>
         </v-card>
       </v-col>
     </v-row>
