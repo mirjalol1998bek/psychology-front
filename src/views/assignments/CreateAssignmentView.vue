@@ -5,6 +5,7 @@ import { useOrganizationStore } from '@/stores/organization'
 import type { InstrumentType } from '@/types/domain'
 
 const org = useOrganizationStore()
+org.load()
 
 const categoryCards: { instrument: InstrumentType; quizCount: number }[] = [
   { instrument: 'FREQUENCY_BASED', quizCount: 1 },

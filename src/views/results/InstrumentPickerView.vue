@@ -10,6 +10,7 @@ import type { FacultyDto, GroupDto } from '@/types/domain'
 const route = useRoute()
 const router = useRouter()
 const org = useOrganizationStore()
+org.load()
 const { faculties, groupsByFaculty } = storeToRefs(org)
 
 const instrument = computed(() => instrumentByRoute(route.params.instrument as string))

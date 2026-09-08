@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { FacultyDto, GroupDto } from '@/types/domain'
 
 const props = defineProps<{
@@ -10,6 +10,14 @@ const props = defineProps<{
 const emit = defineEmits<{ select: [faculty: FacultyDto, group: GroupDto] }>()
 
 const activeFacultyId = ref(props.faculties[0]?.id ?? '')
+// Faculties load asynchronously — select the first one once they arrive.
+watch(
+  () => props.faculties,
+  (list) => {
+    if (!activeFacultyId.value && list.length) activeFacultyId.value = list[0].id
+  },
+  { immediate: true },
+)
 const activeFaculty = computed(() => props.faculties.find((f) => f.id === activeFacultyId.value))
 const groups = computed(() => props.groupsByFaculty[activeFacultyId.value] ?? [])
 </script>

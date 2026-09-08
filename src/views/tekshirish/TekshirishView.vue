@@ -7,6 +7,7 @@ import type { FacultyDto, GroupDto } from '@/types/domain'
 
 const router = useRouter()
 const org = useOrganizationStore()
+org.load()
 const { faculties, groupsByFaculty } = storeToRefs(org)
 
 function handleSelect(faculty: FacultyDto, group: GroupDto) {

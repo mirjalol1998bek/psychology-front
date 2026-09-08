@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InstrumentResult from '@/components/psixologiya/InstrumentResult.vue'
 import { useOrganizationStore } from '@/stores/organization'
-import { usePassportStore, type PassportData } from '@/stores/passport'
-import { mockGroupResults } from '@/utils/mockResults'
+import type { PassportData } from '@/stores/passport'
+import { fetchGroupOverview, type GroupRow } from '@/services/groupReport'
 import { TEMPERAMENT_OPTIONS, SHAPE_OPTIONS } from '@/utils/instruments'
 import { downloadCsv, fileSlug } from '@/utils/exportTable'
 
 const route = useRoute()
 const router = useRouter()
 const org = useOrganizationStore()
-const passport = usePassportStore()
+org.load()
 
 const facultyId = route.params.facultyId as string
 const groupId = route.params.groupId as string
@@ -23,14 +23,30 @@ const search = ref('')
 const temperamentFilter = ref<string | null>(null)
 const shapeFilter = ref<string | null>(null)
 const showFilters = ref(false)
+const loading = ref(true)
+const allRows = ref<GroupRow[]>([])
 
-const allRows = computed(() => mockGroupResults(org.studentsForGroup(groupId)))
+async function load() {
+  loading.value = true
+  try {
+    await org.load()
+    allRows.value = await fetchGroupOverview(groupId, group.value?.studyLanguage ?? 'uz')
+  } catch {
+    allRows.value = []
+  } finally {
+    loading.value = false
+  }
+}
+load()
+watch(group, (g, prev) => {
+  if (g && !prev) load()
+})
 
 const rows = computed(() =>
   allRows.value.filter((r) => {
-    if (search.value && !r.student.fullName.toLowerCase().includes(search.value.toLowerCase())) return false
+    if (search.value && !r.fullName.toLowerCase().includes(search.value.toLowerCase())) return false
     if (temperamentFilter.value && r.temperament !== temperamentFilter.value) return false
-    if (shapeFilter.value && r.geometricFigure !== shapeFilter.value) return false
+    if (shapeFilter.value && r.figure !== shapeFilter.value) return false
     return true
   }),
 )
@@ -48,10 +64,10 @@ function exportCsv() {
   const headers = ['T/R', 'Talaba ID', 'F.I.O', 'Temperament', 'Psixogeometrik']
   const data = rows.value.map((r, i) => [
     i + 1,
-    r.student.hemisId,
-    r.student.fullName,
+    r.hemisId ?? '',
+    r.fullName,
     r.temperament ?? 'Aniqlanmagan',
-    r.geometricFigure ?? 'Aniqlanmagan',
+    r.figure ?? 'Aniqlanmagan',
   ])
   downloadCsv(fname('natijalar'), headers, data)
 }
@@ -77,16 +93,16 @@ function exportPassport() {
   ]
   const fg = `${faculty.value?.name ?? ''}, ${group.value?.name ?? ''}`
   const data = rows.value.map((r, i) => {
-    const p: PassportData | null = passport.get(r.student.hemisId)
+    const p: PassportData | null = r.passport
     return [
       i + 1,
-      `${r.student.fullName}${p?.birthDate ? ', ' + p.birthDate : ''}`,
+      `${r.fullName}${p?.birthDate ? ', ' + p.birthDate : ''}`,
       fg,
       [p?.currentAddress, p?.phone].filter(Boolean).join(', '),
       p?.familyStatus ? FAMILY[p.familyStatus] : '',
       p?.talents ?? '',
       r.temperament ?? '',
-      r.geometricFigure ?? '',
+      r.figure ?? '',
       p?.livingEnvironment ? ENV[p.livingEnvironment] : '',
       p?.parentsInfo ?? '',
       p?.tutorInfo ?? '',
@@ -160,23 +176,24 @@ function exportPassport() {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(r, i) in rows" :key="r.student.id">
+          <tr v-for="(r, i) in rows" :key="r.studentId">
             <td>{{ i + 1 }}</td>
-            <td class="text-medium-emphasis">{{ r.student.hemisId }}</td>
+            <td class="text-medium-emphasis">{{ r.hemisId }}</td>
             <td>
               <div class="d-flex align-center py-2" style="gap: 10px">
                 <v-avatar size="30" color="primary" variant="tonal">
-                  <span class="text-caption font-weight-bold">{{ r.student.fullName[0] }}</span>
+                  <span class="text-caption font-weight-bold">{{ r.fullName[0] }}</span>
                 </v-avatar>
-                {{ r.student.fullName }}
+                {{ r.fullName }}
               </div>
             </td>
             <td><InstrumentResult instrument="FREQUENCY_BASED" :value="r.temperament" /></td>
-            <td><InstrumentResult instrument="RANKING_BASED" :value="r.geometricFigure" /></td>
+            <td><InstrumentResult instrument="RANKING_BASED" :value="r.figure" /></td>
           </tr>
         </tbody>
       </v-table>
-      <v-empty-state v-if="!rows.length" icon="mdi-account-search-outline" title="Talaba topilmadi" density="compact" />
+      <div v-if="loading" class="d-flex justify-center py-10"><v-progress-circular indeterminate color="primary" /></div>
+      <v-empty-state v-else-if="!rows.length" icon="mdi-account-search-outline" title="Talaba topilmadi" density="compact" />
     </v-card>
   </div>
 </template>

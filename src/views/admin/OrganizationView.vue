@@ -9,17 +9,24 @@ const org = useOrganizationStore()
 const auth = useAuthStore()
 const router = useRouter()
 
-const selFacultyId = ref<string | null>(org.faculties[0]?.id ?? null)
+const selFacultyId = ref<string | null>(null)
 const selGroupId = ref<string | null>(null)
+const busy = ref(false)
 
-const selFaculty = computed(() => org.faculties.find((f) => f.id === selFacultyId.value) ?? null)
-const groups = computed(() => (selFacultyId.value ? org.groupsByFaculty[selFacultyId.value] ?? [] : []))
+org.load().then(() => {
+  selFacultyId.value = org.faculties[0]?.id ?? null
+})
+
+const groups = computed(() => (selFacultyId.value ? org.groupsFor(selFacultyId.value) : []))
 const selGroup = computed(() => groups.value.find((g) => g.id === selGroupId.value) ?? null)
 const students = computed(() => (selGroupId.value ? org.studentsForGroup(selGroupId.value) : []))
 
 // Reset the downstream selection whenever its parent changes.
 watch(selFacultyId, () => {
   selGroupId.value = null
+})
+watch(selGroupId, (id) => {
+  if (id) org.loadStudents(id)
 })
 
 // --- add forms -------------------------------------------------------------
@@ -30,15 +37,6 @@ const newStudent = ref('')
 const newStudentId = ref('')
 const toast = ref('')
 const toastOpen = ref(false)
-const confirmReset = ref(false)
-
-function doReset() {
-  org.reset()
-  selFacultyId.value = org.faculties[0]?.id ?? null
-  selGroupId.value = null
-  confirmReset.value = false
-  notify('Boshlang‘ich holat tiklandi')
-}
 
 const langOptions: { title: string; value: StudyLanguage }[] = [
   { title: 'O‘zbek', value: 'uz' },
@@ -50,42 +48,56 @@ function notify(msg: string) {
   toastOpen.value = true
 }
 
-function addFaculty() {
-  if (!newFaculty.value.trim()) return
-  const f = org.addFaculty(newFaculty.value)
-  newFaculty.value = ''
-  selFacultyId.value = f.id
-  notify('Fakultet qo‘shildi')
+async function addFaculty() {
+  if (!newFaculty.value.trim() || busy.value) return
+  busy.value = true
+  try {
+    const f = await org.addFaculty(newFaculty.value)
+    newFaculty.value = ''
+    selFacultyId.value = f.id
+    notify('Fakultet qo‘shildi')
+  } catch {
+    notify('Xatolik — saqlanmadi')
+  } finally {
+    busy.value = false
+  }
 }
 
-function addGroup() {
-  if (!selFacultyId.value || !newGroup.value.trim()) return
-  const g = org.addGroup(selFacultyId.value, newGroup.value, newGroupLang.value)
-  newGroup.value = ''
-  selGroupId.value = g.id
-  notify('Guruh qo‘shildi')
+async function addGroup() {
+  if (!selFacultyId.value || !newGroup.value.trim() || busy.value) return
+  busy.value = true
+  try {
+    const g = await org.addGroup(selFacultyId.value, newGroup.value, newGroupLang.value)
+    newGroup.value = ''
+    selGroupId.value = g.id
+    notify('Guruh qo‘shildi')
+  } catch {
+    notify('Xatolik — saqlanmadi')
+  } finally {
+    busy.value = false
+  }
 }
 
-function addStudent() {
-  if (!selGroupId.value || !newStudent.value.trim()) return
-  org.addStudent(selGroupId.value, newStudent.value, newStudentId.value)
-  newStudent.value = ''
-  newStudentId.value = ''
-  notify('Talaba qo‘shildi')
+async function addStudent() {
+  if (!selGroupId.value || !newStudent.value.trim() || busy.value) return
+  busy.value = true
+  try {
+    await org.addStudent(selGroupId.value, newStudent.value, newStudentId.value)
+    newStudent.value = ''
+    newStudentId.value = ''
+    notify('Talaba qo‘shildi')
+  } catch {
+    notify('Xatolik — HEMIS ID band bo‘lishi mumkin')
+  } finally {
+    busy.value = false
+  }
 }
 
-function viewAsStudent(fullName: string, hemisId: string) {
-  auth.viewAsStudent({
-    fullName,
-    hemisId,
-    faculty: selFaculty.value?.name ?? '—',
-    group: selGroup.value?.name ?? '—',
-    studyLanguage: selGroup.value?.studyLanguage ?? 'uz',
-  })
-  router.push('/tests')
+async function viewAsStudent(studentId: string) {
+  const ok = await auth.impersonateStudent(Number(studentId))
+  if (ok) router.push('/tests')
+  else notify('Talaba sifatida kirib bo‘lmadi')
 }
-
-const addedIds = computed(() => new Set(Object.values(org.addedStudents).flat().map((s) => s.id)))
 </script>
 
 <template>
@@ -98,9 +110,6 @@ const addedIds = computed(() => new Set(Object.values(org.addedStudents).flat().
           Qo‘shilgan talaba testni hali topshirmagan holatda bo‘ladi.
         </p>
       </div>
-      <v-btn variant="text" size="small" prepend-icon="mdi-restore" @click="confirmReset = true">
-        Boshlang‘ich holat
-      </v-btn>
     </div>
 
     <v-row>
@@ -135,7 +144,7 @@ const addedIds = computed(() => new Set(Object.values(org.addedStudents).flat().
               class="mb-2"
               @keydown.enter="addFaculty"
             />
-            <v-btn size="small" block color="primary" variant="tonal" prepend-icon="mdi-plus" :disabled="!newFaculty.trim()" @click="addFaculty">
+            <v-btn size="small" block color="primary" variant="tonal" prepend-icon="mdi-plus" :disabled="!newFaculty.trim() || busy" :loading="busy" @click="addFaculty">
               Fakultet qo‘shish
             </v-btn>
           </div>
@@ -188,7 +197,7 @@ const addedIds = computed(() => new Set(Object.values(org.addedStudents).flat().
                 label="Ta’lim tili"
                 class="mb-2"
               />
-              <v-btn size="small" block color="primary" variant="tonal" prepend-icon="mdi-plus" :disabled="!newGroup.trim()" @click="addGroup">
+              <v-btn size="small" block color="primary" variant="tonal" prepend-icon="mdi-plus" :disabled="!newGroup.trim() || busy" :loading="busy" @click="addGroup">
                 Guruh qo‘shish
               </v-btn>
             </div>
@@ -221,7 +230,6 @@ const addedIds = computed(() => new Set(Object.values(org.addedStudents).flat().
                   <div class="text-body-2 font-weight-medium text-truncate">{{ s.fullName }}</div>
                   <div class="text-caption text-medium-emphasis">{{ s.hemisId }}</div>
                 </div>
-                <v-chip v-if="addedIds.has(s.id)" size="x-small" variant="tonal" color="success">yangi</v-chip>
                 <v-tooltip text="Talaba sifatida ochish" location="top">
                   <template #activator="{ props }">
                     <v-btn
@@ -230,7 +238,7 @@ const addedIds = computed(() => new Set(Object.values(org.addedStudents).flat().
                       size="small"
                       variant="text"
                       color="primary"
-                      @click="viewAsStudent(s.fullName, s.hemisId)"
+                      @click="viewAsStudent(s.id)"
                     />
                   </template>
                 </v-tooltip>
@@ -253,7 +261,7 @@ const addedIds = computed(() => new Set(Object.values(org.addedStudents).flat().
                 class="mb-2"
                 @keydown.enter="addStudent"
               />
-              <v-btn size="small" block color="primary" variant="tonal" prepend-icon="mdi-plus" :disabled="!newStudent.trim()" @click="addStudent">
+              <v-btn size="small" block color="primary" variant="tonal" prepend-icon="mdi-plus" :disabled="!newStudent.trim() || busy" :loading="busy" @click="addStudent">
                 Talaba qo‘shish
               </v-btn>
             </div>
@@ -268,19 +276,6 @@ const addedIds = computed(() => new Set(Object.values(org.addedStudents).flat().
       tugmasi orqali o‘sha talaba sifatida tizimga kirib, unga tayinlangan testlarni tekshirishingiz mumkin.
       Keyin yuqoridagi banner orqali admin hisobiga qaytasiz.
     </v-alert>
-
-    <v-dialog v-model="confirmReset" max-width="400">
-      <v-card class="surface-card pa-6" rounded="lg">
-        <div class="text-subtitle-1 font-weight-bold mb-2">Boshlang‘ich holatga qaytarish</div>
-        <p class="text-body-2 text-medium-emphasis mb-5">
-          Siz qo‘shgan barcha fakultet, guruh va talabalar o‘chiriladi.
-        </p>
-        <div class="d-flex justify-end" style="gap: 8px">
-          <v-btn variant="text" @click="confirmReset = false">Bekor qilish</v-btn>
-          <v-btn color="error" variant="flat" @click="doReset">Qaytarish</v-btn>
-        </div>
-      </v-card>
-    </v-dialog>
 
     <v-snackbar v-model="toastOpen" location="top end" color="success" timeout="2200">{{ toast }}</v-snackbar>
   </div>
