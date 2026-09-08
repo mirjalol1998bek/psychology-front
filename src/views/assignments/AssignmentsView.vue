@@ -1,20 +1,73 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { INSTRUMENT_META } from '@/utils/instruments'
-import type { AssignmentDto, InstrumentType } from '@/types/domain'
+import { api } from '@/services/apiClient'
+import { members, instrumentForAlgo } from '@/services/quizService'
+import type { InstrumentType } from '@/types/domain'
 
-// Placeholder — wired to GET /admin/assignments once the backend exists.
-const assignments: AssignmentDto[] = [
-  { id: 'as1', categoryId: 'c1', categoryName: 'Temperament testi', instrumentType: 'FREQUENCY_BASED', facultyId: 'f1', groupId: 'g1', groupName: '21-FIL-14', quizTitles: ['Temperament tipini aniqlash'], startAt: '2026-09-01', endAt: '2026-09-12', isActive: true },
-  { id: 'as2', categoryId: 'c2', categoryName: 'Psixogeometrik test', instrumentType: 'RANKING_BASED', facultyId: 'f1', groupId: 'g2', groupName: '21-FIL-15', quizTitles: ['Psixogeometrik test'], startAt: '2026-09-03', endAt: '2026-09-14', isActive: true },
-  { id: 'as3', categoryId: 'c3', categoryName: 'Nevrasteniya so‘rovnomasi', instrumentType: 'SCORE_RANGE_BASED', facultyId: 'f2', groupId: 'g4', groupName: '22-TAR-03', quizTitles: ['Nevrasteniya so‘rovnomasi'], startAt: '2026-08-28', endAt: '2026-09-15', isActive: false },
-]
+interface Row {
+  id: number
+  categoryName: string
+  instrumentType: InstrumentType
+  groupId: number | null
+  facultyId: number | null
+  groupName: string
+  facultyName: string
+  startAt: string
+  endAt: string
+  isActive: boolean
+}
+
+const assignments = ref<Row[]>([])
+const loading = ref(true)
+
+interface BackendAssignment {
+  id: number
+  category?: { name?: string; instrumentType?: string } | null
+  groupId?: number | null
+  facultyId?: number | null
+  groupName?: string | null
+  facultyName?: string | null
+  startAt?: string | null
+  endAt?: string | null
+  isActive?: boolean
+}
+
+function fmtDate(iso?: string | null): string {
+  return iso ? iso.slice(0, 10) : '—'
+}
+
+async function load() {
+  loading.value = true
+  try {
+    assignments.value = members<BackendAssignment>((await api.get('/assignments')).data).map((a) => ({
+      id: a.id,
+      categoryName: a.category?.name ?? '—',
+      instrumentType: instrumentForAlgo(a.category?.instrumentType),
+      groupId: a.groupId ?? null,
+      facultyId: a.facultyId ?? null,
+      groupName: a.groupName ?? '—',
+      facultyName: a.facultyName ?? '',
+      startAt: fmtDate(a.startAt),
+      endAt: fmtDate(a.endAt),
+      isActive: !!a.isActive,
+    }))
+  } finally {
+    loading.value = false
+  }
+}
+load()
+
+async function remove(id: number) {
+  await api.delete(`/assignments/${id}`)
+  assignments.value = assignments.value.filter((a) => a.id !== id)
+}
 
 const categoryFilter = ref<InstrumentType | 'all'>('all')
 const search = ref('')
 
 const filtered = computed(() =>
-  assignments.filter((a) => {
+  assignments.value.filter((a) => {
     if (categoryFilter.value !== 'all' && a.instrumentType !== categoryFilter.value) return false
     if (search.value && !a.groupName.toLowerCase().includes(search.value.toLowerCase())) return false
     return true
@@ -77,7 +130,7 @@ const filtered = computed(() =>
             </td>
             <td class="text-right">
               <v-btn :to="`/results/${INSTRUMENT_META[a.instrumentType].routeSegment}/${a.facultyId}/${a.groupId}`" icon="mdi-chart-box-outline" variant="text" size="small" color="secondary" />
-              <v-btn icon="mdi-delete-outline" variant="text" size="small" color="error" />
+              <v-btn icon="mdi-delete-outline" variant="text" size="small" color="error" @click="remove(a.id)" />
             </td>
           </tr>
         </tbody>

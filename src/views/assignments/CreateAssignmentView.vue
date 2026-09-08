@@ -2,6 +2,8 @@
 import { ref, computed } from 'vue'
 import { INSTRUMENT_META } from '@/utils/instruments'
 import { useOrganizationStore } from '@/stores/organization'
+import { api } from '@/services/apiClient'
+import { loadCategoriesForInstrument } from '@/services/quizService'
 import type { InstrumentType } from '@/types/domain'
 
 const org = useOrganizationStore()
@@ -54,17 +56,31 @@ function toggleGroup(id: string) {
 }
 
 async function submit() {
-  if (!selectedGroups.value.length) return
+  if (!selectedGroups.value.length || !activeInstrument.value) return
   submitting.value = true
-  // TODO(backend): POST /admin/assignments once per selected group (TZ §14) —
-  // the old app spaces these ~120ms apart with retry-on-lock, since the
-  // API serializes writes per category.
-  await new Promise((r) => setTimeout(r, 700))
-  submitting.value = false
-  toast.value = { text: `${selectedGroups.value.length} ta guruhga muvaffaqiyatli biriktirildi`, color: 'success' }
-  toastOpen.value = true
-  selectedGroups.value = []
-  selectedFaculties.value = []
+  let done = 0
+  try {
+    for (const groupId of selectedGroups.value) {
+      const group = org.groupById(groupId)
+      const category = await loadCategoriesForInstrument(activeInstrument.value, group?.studyLanguage ?? 'uz')
+      if (!category) continue
+      await api.post('/assignments', {
+        category: `/api/categories/${category.id}`,
+        studyGroup: `/api/study_groups/${groupId}`,
+        startAt: new Date().toISOString(),
+      })
+      done++
+    }
+    toast.value = { text: `${done} ta guruhga biriktirildi`, color: 'success' }
+    modalOpen.value = false
+  } catch {
+    toast.value = { text: 'Xatolik — biriktirilmadi', color: 'error' }
+  } finally {
+    submitting.value = false
+    toastOpen.value = true
+    selectedGroups.value = []
+    selectedFaculties.value = []
+  }
 }
 </script>
 
