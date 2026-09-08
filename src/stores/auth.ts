@@ -30,63 +30,18 @@ function mapBackendUser(u: Record<string, unknown>): AuthUser {
 }
 
 /**
- * TODO(backend): replace with real HEMIS OAuth2 flow (TZ §2.1) —
- * redirect to /oauth/authorize, exchange the returned code for a token via
- * the Symfony API, then read the role HEMIS returns (lavozim/status). The
- * mock users below only exist so every role's screens can be built and
- * demoed before that API exists.
- */
-const MOCK_USERS: Record<UserRole, AuthUser> = {
-  student: {
-    id: 'demo-student-1',
-    role: 'student',
-    hemis: {
-      hemisId: '38210300123',
-      fullName: 'Madina Yusupova',
-      faculty: 'Xorijiy filologiya fakulteti',
-      group: '21-FIL-14',
-      studyLanguage: 'uz',
-    },
-  },
-  psychologist: {
-    id: 'demo-psych-1',
-    role: 'psychologist',
-    hemis: {
-      hemisId: 'employee-40021',
-      fullName: 'Nilufar Egamova',
-      faculty: 'Psixologiya xizmati',
-      group: '—',
-      studyLanguage: 'uz',
-    },
-  },
-  admin: {
-    id: 'demo-admin-1',
-    role: 'admin',
-    hemis: {
-      hemisId: 'employee-10004',
-      fullName: 'Sardor Aliyev',
-      faculty: 'Bosh administrator',
-      group: '—',
-      studyLanguage: 'uz',
-    },
-  },
-}
-
-/**
- * Login/parol orqali kirish — HEMISga ega bo'lmagan xodimlar (admin,
- * psixolog) va sinov uchun yaratilgan "test talaba" hisobi shu yo'l bilan
- * kiradi. TODO(backend): POST /auth/login (Symfony/LexikJWT) — bu yerda
- * faqat demo hisoblar bilan mock tekshiruv.
+ * Demo accounts created by `php bin/console ask:seed:demo` on the backend.
+ * They are real users — login authenticates against `POST /api/users/auth`.
  */
 interface Credential {
-  username: string
+  email: string
   password: string
   role: UserRole
 }
 export const DEMO_CREDENTIALS: Credential[] = [
-  { username: 'admin', password: 'admin123', role: 'admin' },
-  { username: 'psixolog', password: 'psixolog123', role: 'psychologist' },
-  { username: 'talaba.test', password: 'talaba123', role: 'student' },
+  { email: 'admin@demo.uz', password: 'demo1234', role: 'admin' },
+  { email: 'psixolog@demo.uz', password: 'demo1234', role: 'psychologist' },
+  { email: 'talaba@demo.uz', password: 'demo1234', role: 'student' },
 ]
 
 export const useAuthStore = defineStore('auth', {
@@ -104,22 +59,47 @@ export const useAuthStore = defineStore('auth', {
     isImpersonating: (state) => state.impersonator !== null,
   },
   actions: {
-    /** Admin-only: switch into a student view (built from a created student). */
+    /**
+     * Admin-only: view the app as a real student. `studentId` is the backend
+     * User id; the API mints a short student JWT (POST /students/{id}/impersonate).
+     */
+    async impersonateStudent(studentId: number): Promise<boolean> {
+      if (this.user?.role !== 'admin') return false
+      try {
+        const { data } = await api.post(`/students/${studentId}/impersonate`)
+        if (!this.impersonator) {
+          this.impersonator = this.user
+          sessionStorage.setItem(IMPERSONATOR_KEY, JSON.stringify(this.user))
+          sessionStorage.setItem('psy.auth.impersonator.tokens', JSON.stringify({
+            access: tokenStore.access(),
+            refresh: tokenStore.refresh(),
+          }))
+        }
+        tokenStore.set(data.accessToken, data.refreshToken)
+        return await this.fetchMe()
+      } catch {
+        return false
+      }
+    },
+    /** Mock "view as" for the still-mock admin org screen (no API access). */
     viewAsStudent(profile: Pick<HemisProfile, 'fullName' | 'hemisId' | 'faculty' | 'group' | 'studyLanguage'>) {
       if (this.user && this.user.role === 'admin' && !this.impersonator) {
         this.impersonator = this.user
         sessionStorage.setItem(IMPERSONATOR_KEY, JSON.stringify(this.user))
       }
-      this.user = {
-        id: `view-${profile.hemisId}`,
-        role: 'student',
-        hemis: { ...profile },
-      }
+      this.user = { id: `view-${profile.hemisId}`, role: 'student', hemis: { ...profile } }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.user))
     },
     /** Return from a student view to the parked admin account. */
     stopImpersonating() {
       if (!this.impersonator) return
+      try {
+        const t = JSON.parse(sessionStorage.getItem('psy.auth.impersonator.tokens') ?? 'null')
+        if (t?.access) tokenStore.set(t.access, t.refresh)
+      } catch {
+        /* mock impersonation had no tokens */
+      }
+      sessionStorage.removeItem('psy.auth.impersonator.tokens')
       this.user = this.impersonator
       this.impersonator = null
       sessionStorage.removeItem(IMPERSONATOR_KEY)
@@ -157,30 +137,21 @@ export const useAuthStore = defineStore('auth', {
         return false
       }
     },
-    /** Demo/mock HEMIS login — kept for offline development without the API. */
-    async signInWithHemis(role: UserRole = 'student') {
-      this.isSigningIn = true
-      try {
-        // Simulated network round-trip to the (not-yet-built) HEMIS OAuth callback.
-        await new Promise((resolve) => setTimeout(resolve, 700))
-        this.user = MOCK_USERS[role]
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.user))
-      } finally {
-        this.isSigningIn = false
-      }
+    /** Demo shortcut: sign in as the seeded account for a given role. */
+    async signInWithHemis(role: UserRole = 'student'): Promise<boolean> {
+      const cred = DEMO_CREDENTIALS.find((c) => c.role === role)
+      if (!cred) return false
+      return this.signInWithPassword(cred.email, cred.password)
     },
-    /** Returns true on success, false on invalid credentials. */
-    async signInWithPassword(username: string, password: string): Promise<boolean> {
+    /** Email + password against POST /api/users/auth. Returns true on success. */
+    async signInWithPassword(email: string, password: string): Promise<boolean> {
       this.isSigningIn = true
       try {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        const match = DEMO_CREDENTIALS.find(
-          (c) => c.username.toLowerCase() === username.trim().toLowerCase() && c.password === password,
-        )
-        if (!match) return false
-        this.user = MOCK_USERS[match.role]
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.user))
-        return true
+        const { data } = await api.post('/users/auth', { email: email.trim(), password })
+        tokenStore.set(data.accessToken, data.refreshToken)
+        return await this.fetchMe()
+      } catch {
+        return false
       } finally {
         this.isSigningIn = false
       }
@@ -191,6 +162,7 @@ export const useAuthStore = defineStore('auth', {
       tokenStore.clear()
       localStorage.removeItem(STORAGE_KEY)
       sessionStorage.removeItem(IMPERSONATOR_KEY)
+      sessionStorage.removeItem('psy.auth.impersonator.tokens')
     },
   },
 })

@@ -7,18 +7,26 @@ const router = useRouter()
 const auth = useAuthStore()
 const error = ref('')
 
-function readFragment(): { access?: string; refresh?: string } {
-  // Backend redirects to /auth/hemis#access=<jwt>&refresh=<jwt>
+function readFragment(): { access?: string; refresh?: string; err?: string } {
+  // Backend redirects to /auth/hemis#access=<jwt>&refresh=<jwt>  (or #error=<msg>)
   const hash = window.location.hash.replace(/^#/, '')
   const params = new URLSearchParams(hash)
-  return { access: params.get('access') ?? undefined, refresh: params.get('refresh') ?? undefined }
+  return {
+    access: params.get('access') ?? undefined,
+    refresh: params.get('refresh') ?? undefined,
+    err: params.get('error') ?? undefined,
+  }
 }
 
 onMounted(async () => {
-  const { access, refresh } = readFragment()
-  // Strip the tokens from the address bar immediately.
+  const { access, refresh, err } = readFragment()
+  // Strip the fragment from the address bar immediately.
   history.replaceState(null, '', window.location.pathname)
 
+  if (err) {
+    error.value = err
+    return
+  }
   if (!access || !refresh) {
     error.value = 'HEMIS javobida token topilmadi.'
     return

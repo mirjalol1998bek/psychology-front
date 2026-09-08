@@ -88,12 +88,20 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
+const AUTH_PATHS = ['/users/auth', '/users/auth/refreshToken', '/auth/']
+
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
     const original = error.config
-    if (error.response?.status === 401 && original && !original._retried) {
+    const url: string = original?.url ?? ''
+    const isAuthCall = AUTH_PATHS.some((p) => url.includes(p))
+
+    if (error.response?.status === 401 && original && !original._retried && !isAuthCall) {
       original._retried = true
+      // Nothing to refresh from → this wasn't a real session; don't bounce.
+      if (!tokenStore.refresh()) return Promise.reject(error)
+
       refreshing = refreshing ?? refreshAccessToken()
       const access = await refreshing
       refreshing = null

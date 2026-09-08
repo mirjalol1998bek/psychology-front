@@ -28,33 +28,36 @@ function handleHemisLogin() {
   auth.startHemisLogin()
 }
 
+const loginError = ref('')
+
 async function handleDemoLogin() {
-  await auth.signInWithHemis(hemisRole.value)
-  router.push('/')
+  loginError.value = ''
+  const ok = await auth.signInWithHemis(hemisRole.value)
+  if (ok) router.push('/')
+  else loginError.value = 'Demo hisob topilmadi. Backendda "php bin/console ask:seed:demo" ni ishga tushiring.'
 }
 
 const username = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const rememberMe = ref(true)
-const loginError = ref('')
 
 async function handlePasswordLogin() {
   loginError.value = ''
   if (!username.value.trim() || !password.value) {
-    loginError.value = 'Login va parolni kiriting.'
+    loginError.value = 'Email va parolni kiriting.'
     return
   }
   const ok = await auth.signInWithPassword(username.value, password.value)
   if (!ok) {
-    loginError.value = 'Login yoki parol noto‘g‘ri.'
+    loginError.value = 'Email yoki parol noto‘g‘ri.'
     return
   }
   router.push('/')
 }
 
 function fillDemo(cred: (typeof DEMO_CREDENTIALS)[number]) {
-  username.value = cred.username
+  username.value = cred.email
   password.value = cred.password
   loginError.value = ''
 }
@@ -164,8 +167,9 @@ const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixo
         <form v-else @submit.prevent="handlePasswordLogin">
           <v-text-field
             v-model="username"
-            label="Login"
-            prepend-inner-icon="mdi-account-outline"
+            label="Email"
+            type="email"
+            prepend-inner-icon="mdi-email-outline"
             class="mb-1"
             autocomplete="username"
           />
@@ -197,13 +201,13 @@ const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixo
             <div class="d-flex flex-column" style="gap: 6px">
               <button
                 v-for="c in DEMO_CREDENTIALS"
-                :key="c.username"
+                :key="c.email"
                 type="button"
                 class="demo-cred-row"
                 @click="fillDemo(c)"
               >
                 <v-chip size="x-small" variant="tonal" color="primary" class="mr-2">{{ roleLabel[c.role] }}</v-chip>
-                <span class="mono">{{ c.username }} / {{ c.password }}</span>
+                <span class="mono">{{ c.email }} / {{ c.password }}</span>
               </button>
             </div>
           </div>
