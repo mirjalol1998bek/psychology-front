@@ -1,26 +1,17 @@
-import { computed, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useAppealsStore } from '@/stores/appeals'
+import { api } from '@/services/apiClient'
+import { members } from '@/services/quizService'
 
 /**
- * Bell notifications, driven by the appeals channel:
- *  - student → an unread item for every reply received since they last looked
- *  - staff   → an unread item for every appeal opened since they last looked
- * "Last looked" is a per-user timestamp in localStorage; opening the bell
- * menu (or the appeals page) marks everything read.
+ * Bell notifications, backed by the API:
+ *   GET  /api/notifications             — the current user's notifications
+ *   POST /api/notifications/mark_read   — mark all as read
+ *
+ * The backend creates them on appeal-new (→ psychologists/admins) and
+ * appeal-reply (→ the student). State is module-level so every mount of this
+ * composable (app bar, pages) shares one badge count.
  */
-
-const KEY = (k: string) => `psy.notif.seen.${k}`
-
-// Reactive per-user "seen" timestamp so the badge updates without a reload.
-const seenAt = ref<Record<string, string>>({})
-
-function loadSeen(userKey: string): string {
-  if (seenAt.value[userKey] === undefined) {
-    seenAt.value[userKey] = localStorage.getItem(KEY(userKey)) ?? '1970-01-01T00:00:00.000Z'
-  }
-  return seenAt.value[userKey]
-}
 
 export interface NotifItem {
   id: string
@@ -28,55 +19,72 @@ export interface NotifItem {
   body: string
   at: string
   to: string
+  isRead: boolean
+}
+
+interface BackendNotification {
+  id: number
+  title: string
+  body: string
+  link?: string | null
+  isRead: boolean
+  createdAt: string
+}
+
+const items = ref<NotifItem[]>([])
+const unreadCount = ref(0)
+let polling = 0
+
+function mapNotification(n: BackendNotification): NotifItem {
+  return {
+    id: String(n.id),
+    title: n.title,
+    body: n.body,
+    at: n.createdAt,
+    to: n.link || '/appeals',
+    isRead: !!n.isRead,
+  }
+}
+
+async function refresh() {
+  try {
+    const raw = members<BackendNotification>((await api.get('/notifications')).data)
+    items.value = raw.slice(0, 15).map(mapNotification)
+    unreadCount.value = raw.filter((n) => !n.isRead).length
+  } catch {
+    /* not authenticated yet, or offline */
+  }
+}
+
+async function markRead() {
+  if (unreadCount.value === 0) return
+  try {
+    await api.post('/notifications/mark_read', null)
+    items.value = items.value.map((i) => ({ ...i, isRead: true }))
+    unreadCount.value = 0
+  } catch {
+    /* ignore */
+  }
 }
 
 export function useNotifications() {
   const auth = useAuthStore()
-  const appeals = useAppealsStore()
 
-  const userKey = computed(() => auth.user?.hemis.hemisId ?? 'anon')
-
-  const items = computed<NotifItem[]>(() => {
-    if (!auth.user) return []
-    if (auth.isStaff) {
-      return appeals.ordered
-        .filter((a) => a.status === 'open')
-        .slice(0, 8)
-        .map((a) => ({
-          id: a.id,
-          title: a.mode === 'anonymous' ? 'Anonim talaba' : a.studentName,
-          body: a.message,
-          at: a.createdAt,
-          to: '/appeals',
-        }))
+  onMounted(() => {
+    if (auth.isAuthenticated) refresh()
+    if (!polling) {
+      polling = window.setInterval(() => {
+        if (auth.isAuthenticated) refresh()
+      }, 45_000)
     }
-    return appeals
-      .forStudent(userKey.value)
-      .filter((a) => a.reply)
-      .slice(0, 8)
-      .map((a) => ({
-        id: a.id,
-        title: `${a.repliedBy} javob berdi`,
-        body: a.reply ?? '',
-        at: a.repliedAt ?? a.createdAt,
-        to: '/appeals',
-      }))
   })
 
-  const unreadCount = computed(() => {
-    const seen = loadSeen(userKey.value)
-    return items.value.filter((i) => i.at > seen).length
+  onUnmounted(() => {
+    if (polling) {
+      clearInterval(polling)
+      polling = 0
+    }
   })
 
-  function markRead() {
-    const now = new Date().toISOString()
-    seenAt.value = { ...seenAt.value, [userKey.value]: now }
-    try {
-      localStorage.setItem(KEY(userKey.value), now)
-    } catch {
-      /* ignore */
-    }
-  }
-
-  return { items, unreadCount, markRead }
+  return { items, unreadCount, markRead, refresh }
 }

@@ -16,9 +16,14 @@ const t = (uz: string, rut: string) => (ru.value ? rut : uz)
 
 const studentKey = computed(() => auth.user?.hemis.hemisId ?? 'anon')
 
-const form = reactive<PassportData>({ ...emptyPassport(), ...(store.get(studentKey.value) ?? {}) })
+const form = reactive<PassportData>({ ...emptyPassport() })
 const saved = ref(false)
+const saving = ref(false)
 const pct = computed(() => completeness(form))
+
+store.load().then(() => {
+  Object.assign(form, store.get(studentKey.value) ?? emptyPassport())
+})
 
 // Test-derived fields (read-only here — filled by the psychologist's export).
 const attempts = ref<StoredAttempt[]>([])
@@ -34,10 +39,16 @@ watch(
   { deep: true },
 )
 
-function submit() {
-  store.save(studentKey.value, { ...form })
-  saved.value = true
-  setTimeout(() => (saved.value = false), 2500)
+async function submit() {
+  if (saving.value) return
+  saving.value = true
+  try {
+    await store.save(studentKey.value, { ...form })
+    saved.value = true
+    setTimeout(() => (saved.value = false), 2500)
+  } finally {
+    saving.value = false
+  }
 }
 
 const familyStatusOpts = [
@@ -144,7 +155,7 @@ const envOpts = [
             auto-grow
           />
 
-          <v-btn color="primary" size="large" class="mt-2" @click="submit">{{ t('Saqlash', 'Сохранить') }}</v-btn>
+          <v-btn color="primary" size="large" class="mt-2" :loading="saving" @click="submit">{{ t('Saqlash', 'Сохранить') }}</v-btn>
           <v-expand-transition>
             <v-alert v-if="saved" type="success" variant="tonal" density="compact" class="mt-3">
               {{ t('Pasport saqlandi.', 'Паспорт сохранён.') }}

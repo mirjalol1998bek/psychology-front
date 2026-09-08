@@ -3,11 +3,16 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useAppealsStore, type AppealMode, type AppealTopic, type Appeal } from '@/stores/appeals'
+import { useNotifications } from '@/composables/useNotifications'
 import { MONTH_NAMES } from '@/composables/useMonthGrid'
 
 const { locale } = useI18n()
 const auth = useAuthStore()
 const store = useAppealsStore()
+const { refresh: refreshNotifications } = useNotifications()
+
+store.load()
+const sending = ref(false)
 
 const ru = computed(() => locale.value === 'ru')
 const t = (uz: string, rut: string) => (ru.value ? rut : uz)
@@ -40,21 +45,22 @@ const form = ref<{ topic: AppealTopic; message: string; mode: AppealMode; wantsA
 })
 const sent = ref(false)
 
-function submitAppeal() {
-  if (!form.value.message.trim()) return
-  store.submit({
-    studentKey: studentKey.value,
-    studentName: auth.user?.hemis.fullName ?? '',
-    faculty: auth.user?.hemis.faculty,
-    group: auth.user?.hemis.group,
-    mode: form.value.mode,
-    topic: form.value.topic,
-    message: form.value.message,
-    wantsAppointment: form.value.wantsAppointment || form.value.topic === 'appointment',
-  })
-  form.value = { topic: 'question', message: '', mode: 'named', wantsAppointment: false }
-  sent.value = true
-  setTimeout(() => (sent.value = false), 2500)
+async function submitAppeal() {
+  if (!form.value.message.trim() || sending.value) return
+  sending.value = true
+  try {
+    await store.submit({
+      mode: form.value.mode,
+      topic: form.value.topic,
+      message: form.value.message,
+      wantsAppointment: form.value.wantsAppointment || form.value.topic === 'appointment',
+    })
+    form.value = { topic: 'question', message: '', mode: 'named', wantsAppointment: false }
+    sent.value = true
+    setTimeout(() => (sent.value = false), 2500)
+  } finally {
+    sending.value = false
+  }
 }
 
 // ============================ STAFF ============================
@@ -63,11 +69,18 @@ const inbox = computed(() =>
   store.ordered.filter((a) => (filter.value === 'all' ? true : a.status === filter.value)),
 )
 const replyDrafts = ref<Record<string, string>>({})
-function sendReply(a: Appeal) {
+const replying = ref<string | null>(null)
+async function sendReply(a: Appeal) {
   const text = replyDrafts.value[a.id]
-  if (!text?.trim()) return
-  store.reply(a.id, text, auth.user?.hemis.fullName ?? 'Psixolog')
-  delete replyDrafts.value[a.id]
+  if (!text?.trim() || replying.value) return
+  replying.value = a.id
+  try {
+    await store.reply(a.id, text)
+    delete replyDrafts.value[a.id]
+    refreshNotifications()
+  } finally {
+    replying.value = null
+  }
 }
 </script>
 
@@ -140,7 +153,13 @@ function sendReply(a: Appeal) {
           <v-btn v-if="a.wantsAppointment" variant="tonal" color="secondary" size="small" to="/calendar" prepend-icon="mdi-calendar-plus">
             Qabul kalendari
           </v-btn>
-          <v-btn color="primary" size="small" :disabled="!replyDrafts[a.id]?.trim()" @click="sendReply(a)">
+          <v-btn
+            color="primary"
+            size="small"
+            :loading="replying === a.id"
+            :disabled="!replyDrafts[a.id]?.trim()"
+            @click="sendReply(a)"
+          >
             Javob berish
           </v-btn>
         </div>
@@ -232,7 +251,7 @@ function sendReply(a: Appeal) {
             </v-radio-group>
           </div>
 
-          <v-btn color="primary" block :disabled="!form.message.trim()" @click="submitAppeal">
+          <v-btn color="primary" block :loading="sending" :disabled="!form.message.trim()" @click="submitAppeal">
             {{ t('Yuborish', 'Отправить') }}
           </v-btn>
           <v-expand-transition>

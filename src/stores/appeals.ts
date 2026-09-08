@@ -1,14 +1,16 @@
 import { defineStore } from 'pinia'
+import { api } from '@/services/apiClient'
+import { members } from '@/services/quizService'
 
 /**
- * Student → psychologist appeals ("murojaat"). A lightweight one-thread
- * channel: the student writes, the psychologist replies once, the student
- * reads the reply. Stored in localStorage (`psy.appeals`).
+ * Student → psychologist appeals ("murojaat"), backed by the API.
+ *   GET  /api/appeals              — student: own; staff: all
+ *   POST /api/appeals              — {mode, topic, message, wantsAppointment}
+ *   POST /api/appeals/{id}/reply   — {reply}   (ROLE_PSYCHOLOGIST)
  *
- * `mode: 'anonymous'` hides the student's name and faculty/group from the
- * psychologist's inbox — but `studentKey` (HEMIS id) is still kept so the
- * reply can be routed back to that student's own list.
- * TODO(backend): POST /appeals, GET /appeals, POST /appeals/:id/reply (TZ §8.2).
+ * `mode: 'anonymous'` — the backend still stores the student link (to route the
+ * reply) but never exposes the name/group; `senderName`/`senderGroup` come back
+ * null.
  */
 
 export type AppealMode = 'named' | 'anonymous'
@@ -17,7 +19,6 @@ export type AppealStatus = 'open' | 'answered'
 
 export interface Appeal {
   id: string
-  studentKey: string
   studentName: string
   faculty?: string
   group?: string
@@ -32,108 +33,76 @@ export interface Appeal {
   status: AppealStatus
 }
 
-const STORAGE_KEY = 'psy.appeals'
-
-const SEED: Appeal[] = [
-  {
-    id: 'seed-1',
-    studentKey: '38210001525',
-    studentName: 'Aziz Karimov',
-    faculty: 'Xorijiy filologiya fakulteti',
-    group: '21-FIL-14',
-    mode: 'named',
-    topic: 'appointment',
-    message: 'Assalomu alaykum. Imtihonlar oldidan juda hayajonlanyapman, shaxsiy suhbatga yozilsam bo‘ladimi?',
-    wantsAppointment: true,
-    createdAt: '2026-09-05T09:12:00.000Z',
-    status: 'open',
-  },
-  {
-    id: 'seed-2',
-    studentKey: 'anon-x1',
-    studentName: '',
-    mode: 'anonymous',
-    topic: 'stress',
-    message: 'So‘nggi paytlarda uyqum buzilgan, hech narsaga qiziqmayapman. Nima qilsam bo‘ladi?',
-    wantsAppointment: false,
-    createdAt: '2026-09-06T18:40:00.000Z',
-    status: 'open',
-  },
-  {
-    id: 'seed-3',
-    studentKey: '38210001530',
-    studentName: 'Zilola Yusupova',
-    faculty: 'Xorijiy filologiya fakulteti',
-    group: '21-FIL-14',
-    mode: 'named',
-    topic: 'question',
-    message: 'Temperament testi natijamni qayerdan ko‘rsam bo‘ladi?',
-    wantsAppointment: false,
-    createdAt: '2026-09-04T11:00:00.000Z',
-    reply: 'Salom! Natijangiz “Natijalar” bo‘limida, test kartasidagi “Natijani ko‘rish” tugmasi orqali ochiladi.',
-    repliedBy: 'Nilufar Egamova',
-    repliedAt: '2026-09-04T14:20:00.000Z',
-    status: 'answered',
-  },
-]
-
-function load(): Appeal[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch {
-    /* ignore */
-  }
-  return SEED.map((a) => ({ ...a }))
+interface BackendAppeal {
+  id: number
+  mode: AppealMode
+  topic: AppealTopic
+  message: string
+  wantsAppointment: boolean
+  status: AppealStatus
+  reply?: string | null
+  repliedAt?: string | null
+  createdAt: string
+  senderName?: string | null
+  senderGroup?: string | null
+  repliedByName?: string | null
 }
 
-let uid = Date.now() % 100000
+function mapAppeal(b: BackendAppeal): Appeal {
+  return {
+    id: String(b.id),
+    studentName: b.senderName ?? '',
+    group: b.senderGroup ?? undefined,
+    mode: b.mode,
+    topic: b.topic,
+    message: b.message,
+    wantsAppointment: !!b.wantsAppointment,
+    createdAt: b.createdAt,
+    reply: b.reply ?? undefined,
+    repliedBy: b.repliedByName ?? (b.reply ? 'Psixolog' : undefined),
+    repliedAt: b.repliedAt ?? undefined,
+    status: b.status,
+  }
+}
+
+export interface AppealInput {
+  mode: AppealMode
+  topic: AppealTopic
+  message: string
+  wantsAppointment: boolean
+}
 
 export const useAppealsStore = defineStore('appeals', {
-  state: () => ({ appeals: load() as Appeal[] }),
+  state: () => ({ appeals: [] as Appeal[], loaded: false, loading: false }),
   getters: {
     ordered: (s) => [...s.appeals].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     openCount: (s) => s.appeals.filter((a) => a.status === 'open').length,
-    forStudent: (s) => (key: string) =>
-      [...s.appeals].filter((a) => a.studentKey === key).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    // The API already scopes the collection to the current student.
+    forStudent: (s) => (_key: string) =>
+      [...s.appeals].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   },
   actions: {
-    persist() {
+    async load(force = false) {
+      if (this.loaded && !force) return
+      this.loading = true
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.appeals))
-      } catch {
-        /* ignore */
+        this.appeals = members<BackendAppeal>((await api.get('/appeals')).data).map(mapAppeal)
+        this.loaded = true
+      } finally {
+        this.loading = false
       }
     },
-    submit(input: {
-      studentKey: string
-      studentName: string
-      faculty?: string
-      group?: string
-      mode: AppealMode
-      topic: AppealTopic
-      message: string
-      wantsAppointment: boolean
-    }): Appeal {
-      const appeal: Appeal = {
-        id: `a-${++uid}`,
-        ...input,
-        studentName: input.mode === 'anonymous' ? '' : input.studentName,
-        createdAt: new Date().toISOString(),
-        status: 'open',
-      }
+    async submit(input: AppealInput): Promise<Appeal> {
+      const created = (await api.post('/appeals', input)).data as BackendAppeal
+      const appeal = mapAppeal(created)
       this.appeals.push(appeal)
-      this.persist()
       return appeal
     },
-    reply(id: string, text: string, byName: string) {
-      const a = this.appeals.find((x) => x.id === id)
-      if (!a) return
-      a.reply = text.trim()
-      a.repliedBy = byName
-      a.repliedAt = new Date().toISOString()
-      a.status = 'answered'
-      this.persist()
+    async reply(id: string, text: string) {
+      const updated = (await api.post(`/appeals/${id}/reply`, { reply: text.trim() })).data as BackendAppeal
+      const idx = this.appeals.findIndex((x) => x.id === id)
+      if (idx >= 0) this.appeals[idx] = mapAppeal(updated)
+      else this.appeals.push(mapAppeal(updated))
     },
   },
 })

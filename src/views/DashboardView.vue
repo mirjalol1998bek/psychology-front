@@ -22,6 +22,9 @@ const calendarStore = useCalendarStore()
 const appealsStore = useAppealsStore()
 const passportStore = usePassportStore()
 
+appealsStore.load()
+if (!auth.isStaff) passportStore.load()
+
 const passportPct = computed(() => completeness(passportStore.get(auth.user?.hemis.hemisId ?? 'anon')))
 
 // Student's real quiz catalogue + attempts.
