@@ -71,6 +71,8 @@ export interface AttemptResult {
 }
 
 export interface StoredAttempt {
+  /** Backend Attempt id (present when loaded from the API). */
+  id?: number
   quizId: string
   instrumentType: InstrumentType
   status: AttemptStatus

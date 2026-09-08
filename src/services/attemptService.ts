@@ -1,111 +1,190 @@
 import type { InstrumentType, StudyLanguage } from '@/types/domain'
-import type { AnswerMap, RunnableQuiz, StoredAttempt } from '@/types/assessment'
-import { INSTRUMENT_META } from '@/utils/instruments'
-import { scoreAttempt } from '@/utils/scoring'
+import type { AnswerMap, AttemptResult, RunnableQuiz, StoredAttempt } from '@/types/assessment'
+import { api } from '@/services/apiClient'
+import {
+  fetchBackendQuiz,
+  instrumentForAlgo,
+  isRenderableAlgo,
+  loadCategoriesForInstrument,
+  members,
+  toRunnableQuiz,
+  type QuizRef,
+} from '@/services/quizService'
 
 /**
- * Attempts live in localStorage, keyed by the student's HEMIS id — so an
- * admin "viewing as" a student, and that student themselves, share the same
- * record. Scoring runs here (simulating the backend). Swap the storage for
- * HTTP calls later; the async signatures already fit.
+ * Test-taking lifecycle against the backend:
+ *   startTest  → POST /attempts/start {categoryId}  (needs an open Assignment)
+ *   saveTest   → POST /attempts/{id}/answers        (full replace, debounced)
+ *   submitTest → POST /attempts/{id}/submit         (scores server-side)
+ *   resetTest  → POST /attempts/{id}/reset
+ *
+ * The index-based AnswerMap is translated to/from `{questionId, optionIds}`
+ * using the QuizRef that startTest returns.
  */
 
-const KEY = (studentKey: string) => `psy.attempts.${studentKey}`
-const seg = (t: InstrumentType) => INSTRUMENT_META[t].routeSegment
+interface BackendResult {
+  label: string
+  description: string
+  score: number | null
+  breakdown: { label: string; value: number }[]
+}
+interface BackendAttempt {
+  id: number
+  status: 'not_started' | 'in_progress' | 'submitted' | 'reviewed'
+  quiz?: { id: number; category?: { instrumentType?: string } }
+  result?: BackendResult | null
+  answers?: { questionId: number; selectedOptionIds: number[] }[]
+  createdAt?: string
+  updatedAt?: string
+  submittedAt?: string | null
+}
 
-type Bucket = Record<string, StoredAttempt> // routeSegment → attempt
+function toResult(r: BackendResult | null | undefined): AttemptResult | undefined {
+  if (!r) return undefined
+  return { label: r.label, description: r.description, breakdown: r.breakdown ?? [] }
+}
 
-function read(studentKey: string): Bucket {
+function toStoredAttempt(a: BackendAttempt): StoredAttempt {
+  const submitted = a.status === 'submitted' || a.status === 'reviewed'
+  return {
+    id: a.id,
+    quizId: a.quiz?.id != null ? String(a.quiz.id) : '',
+    instrumentType: instrumentForAlgo(a.quiz?.category?.instrumentType),
+    status: submitted ? 'submitted' : 'in_progress',
+    answers: {},
+    result: toResult(a.result),
+    updatedAt: a.updatedAt ?? a.createdAt ?? '',
+    submittedAt: a.submittedAt ?? undefined,
+  }
+}
+
+export async function getAttempts(_studentKey?: string): Promise<StoredAttempt[]> {
+  const raw = members<BackendAttempt>((await api.get('/attempts')).data)
+  return raw.map(toStoredAttempt)
+}
+
+export async function getAttempt(_studentKey: string, instrument: InstrumentType): Promise<StoredAttempt | null> {
+  const all = await getAttempts()
+  return all.find((a) => a.instrumentType === instrument) ?? null
+}
+
+// --- take-test lifecycle ---------------------------------------------------
+
+export type StartTestResult =
+  | { unavailable: true; reason: 'not_assigned' | 'not_configured' | 'error' }
+  | {
+      unavailable?: false
+      status: 'in_progress' | 'submitted'
+      attemptId: number
+      quiz: RunnableQuiz
+      ref: QuizRef
+      savedAnswers: AnswerMap
+    }
+
+export async function startTest(instrument: InstrumentType, language: StudyLanguage): Promise<StartTestResult> {
+  const category = await loadCategoriesForInstrument(instrument, language)
+  if (!category) return { unavailable: true, reason: 'not_configured' }
+  if (!isRenderableAlgo(category.instrumentType)) return { unavailable: true, reason: 'not_configured' }
+
+  let attempt: BackendAttempt
   try {
-    return JSON.parse(localStorage.getItem(KEY(studentKey)) ?? '{}')
-  } catch {
-    return {}
+    attempt = (await api.post('/attempts/start', { categoryId: category.id })).data as BackendAttempt
+  } catch (e) {
+    const status = (e as { response?: { status?: number } }).response?.status
+    if (status === 403) return { unavailable: true, reason: 'not_assigned' }
+    return { unavailable: true, reason: 'error' }
+  }
+
+  const bq = await fetchBackendQuiz(category.id, language)
+  if (!bq) return { unavailable: true, reason: 'not_configured' }
+  const { quiz, ref } = toRunnableQuiz(bq, language)
+
+  const submitted = attempt.status === 'submitted' || attempt.status === 'reviewed'
+  const full = submitted ? attempt : ((await api.get(`/attempts/${attempt.id}`)).data as BackendAttempt)
+
+  return {
+    status: submitted ? 'submitted' : 'in_progress',
+    attemptId: attempt.id,
+    quiz,
+    ref,
+    savedAnswers: decodeAnswers(ref, full.answers ?? []),
   }
 }
 
-function write(studentKey: string, bucket: Bucket) {
-  try {
-    localStorage.setItem(KEY(studentKey), JSON.stringify(bucket))
-  } catch {
-    /* non-fatal for a demo */
-  }
-}
-
-const delay = <T>(v: T, ms = 120) => new Promise<T>((r) => setTimeout(() => r(v), ms))
-
-export async function getAttempts(studentKey: string): Promise<StoredAttempt[]> {
-  return delay(Object.values(read(studentKey)))
-}
-
-export async function getAttempt(studentKey: string, instrument: InstrumentType): Promise<StoredAttempt | null> {
-  return delay(read(studentKey)[seg(instrument)] ?? null)
-}
-
-export async function saveDraft(studentKey: string, instrument: InstrumentType, answers: AnswerMap): Promise<void> {
-  const bucket = read(studentKey)
-  const existing = bucket[seg(instrument)]
-  if (existing?.status === 'submitted') return
-  bucket[seg(instrument)] = {
-    quizId: existing?.quizId ?? '',
-    instrumentType: instrument,
-    status: 'in_progress',
-    answers,
-    updatedAt: new Date().toISOString(),
-  }
-  write(studentKey, bucket)
-  return delay(undefined, 0)
-}
-
-export async function submitAttempt(
-  studentKey: string,
+export async function saveTest(
+  attemptId: number,
   quiz: RunnableQuiz,
   answers: AnswerMap,
-  language: StudyLanguage,
-): Promise<StoredAttempt> {
-  const result = scoreAttempt(quiz, answers, language)
-  const attempt: StoredAttempt = {
-    quizId: quiz.id,
-    instrumentType: quiz.instrumentType,
-    status: 'submitted',
-    answers,
-    result,
-    updatedAt: new Date().toISOString(),
-    submittedAt: new Date().toISOString(),
+  ref: QuizRef,
+): Promise<void> {
+  await api.post(`/attempts/${attemptId}/answers`, { answers: encodeAnswers(quiz, answers, ref) })
+}
+
+export async function submitTest(attemptId: number): Promise<StoredAttempt> {
+  const a = (await api.post(`/attempts/${attemptId}/submit`, null)).data as BackendAttempt
+  return toStoredAttempt(a)
+}
+
+export async function resetTest(attemptId: number): Promise<void> {
+  await api.post(`/attempts/${attemptId}/reset`, null)
+}
+
+/** Back-compat shims for views that still call the old names. */
+export async function resetAttempt(_studentKey: string, instrument: InstrumentType): Promise<void> {
+  const all = await getAttempts()
+  const target = all.find((a) => a.instrumentType === instrument)
+  if (target?.id != null) await resetTest(target.id)
+}
+
+// --- AnswerMap <-> backend payload ---------------------------------------
+
+function encodeAnswers(
+  quiz: RunnableQuiz,
+  answers: AnswerMap,
+  ref: QuizRef,
+): { questionId: number; optionIds: number[] }[] {
+  const out: { questionId: number; optionIds: number[] }[] = []
+  const push = (key: string, value: number | undefined) => {
+    if (value === undefined) return
+    const item = ref.items[key]
+    const optionId = item?.optionIds[value]
+    if (item && optionId != null) out.push({ questionId: item.questionId, optionIds: [optionId] })
   }
-  const bucket = read(studentKey)
-  bucket[seg(quiz.instrumentType)] = attempt
-  write(studentKey, bucket)
-  return delay(attempt)
+
+  if (quiz.format === 'agree_statements') {
+    for (const b of quiz.blocks) b.statements.forEach((_s, i) => push(`${b.key}:${i}`, answers[`${b.key}:${i}`]))
+  } else if (quiz.format === 'single_choice') {
+    quiz.questions.forEach((_q, i) => push(`q${i}`, answers[`q${i}`]))
+  } else {
+    push('selected', answers.selected)
+  }
+  return out
 }
 
-export async function resetAttempt(studentKey: string, instrument: InstrumentType): Promise<void> {
-  const bucket = read(studentKey)
-  delete bucket[seg(instrument)]
-  write(studentKey, bucket)
-  return delay(undefined, 0)
+function decodeAnswers(ref: QuizRef, backendAnswers: { questionId: number; selectedOptionIds: number[] }[]): AnswerMap {
+  const byQuestion: Record<number, { key: string; optionIds: number[] }> = {}
+  for (const [key, item] of Object.entries(ref.items)) byQuestion[item.questionId] = { key, optionIds: item.optionIds }
+
+  const map: AnswerMap = {}
+  for (const a of backendAnswers) {
+    const entry = byQuestion[a.questionId]
+    if (!entry) continue
+    const idx = entry.optionIds.indexOf(a.selectedOptionIds[0])
+    if (idx >= 0) map[entry.key] = idx
+  }
+  return map
 }
 
-/**
- * The result labels a psychologist's group table needs, resolved from a
- * student's real submitted attempts (by HEMIS id). Falls back to `null`
- * for anything the student hasn't taken.
- */
-export function submittedResultsFor(hemisId: string): {
+// --- staff mock fallback (localStorage; inert once attempts go to the API) --
+
+export function submittedResultsFor(_hemisId: string): {
   temperament: string | null
   geometricFigure: string | null
   conclusion: string | null
 } {
-  const bucket = read(hemisId)
-  const t = bucket['temperament']
-  const p = bucket['psixogeometrik']
-  const n = bucket['nevrasteniya']
-  return {
-    temperament: t?.status === 'submitted' ? t.result?.label ?? null : null,
-    geometricFigure: p?.status === 'submitted' ? p.result?.label ?? null : null,
-    conclusion: n?.status === 'submitted' ? n.result?.description ?? null : null,
-  }
+  return { temperament: null, geometricFigure: null, conclusion: null }
 }
 
-export function hasAnySubmission(hemisId: string): boolean {
-  return Object.values(read(hemisId)).some((a) => a.status === 'submitted')
+export function hasAnySubmission(_hemisId: string): boolean {
+  return false
 }

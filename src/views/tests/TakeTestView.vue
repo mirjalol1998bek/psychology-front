@@ -3,8 +3,8 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { instrumentByRoute, INSTRUMENT_META } from '@/utils/instruments'
-import { getQuiz } from '@/services/quizService'
-import { getAttempt, saveDraft, submitAttempt } from '@/services/attemptService'
+import { startTest, saveTest, submitTest } from '@/services/attemptService'
+import type { QuizRef } from '@/services/quizService'
 import { answeredCount, totalItems } from '@/utils/scoring'
 import type { AnswerMap, RunnableQuiz } from '@/types/assessment'
 import type { StudyLanguage } from '@/types/domain'
@@ -16,42 +16,51 @@ const auth = useAuthStore()
 const instrument = instrumentByRoute(route.params.id as string)
 const meta = INSTRUMENT_META[instrument]
 const language = (auth.user?.hemis.studyLanguage ?? 'uz') as StudyLanguage
-const studentKey = auth.user?.hemis.hemisId ?? 'anon'
 
 const quiz = ref<RunnableQuiz | null>(null)
 const answers = ref<AnswerMap>({})
 const loading = ref(true)
 const submitting = ref(false)
 const notAvailable = ref(false)
+const unavailableReason = ref<'not_assigned' | 'not_configured' | 'error'>('not_configured')
 const blockIndex = ref(0)
+
+let attemptId = 0
+let quizRef: QuizRef | null = null
 
 const t = (uz: string, ru: string) => (language === 'ru' ? ru : uz)
 
 async function load() {
-  const existing = await getAttempt(studentKey, instrument)
-  if (existing?.status === 'submitted') {
-    router.replace(`/tests/${meta.routeSegment}/result`)
-    return
-  }
-  const q = await getQuiz(instrument, language)
-  if (!q) {
+  const started = await startTest(instrument, language)
+  if (started.unavailable) {
     notAvailable.value = true
+    unavailableReason.value = started.reason
     loading.value = false
     return
   }
-  quiz.value = q
-  answers.value = existing?.answers ?? {}
+  if (started.status === 'submitted') {
+    router.replace(`/tests/${meta.routeSegment}/result`)
+    return
+  }
+  quiz.value = started.quiz
+  quizRef = started.ref
+  attemptId = started.attemptId
+  answers.value = started.savedAnswers
   loading.value = false
 }
 load()
 
-// Debounced draft save.
+// Debounced draft save (full-replace on the backend).
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 watch(
   answers,
   (a) => {
+    if (!quiz.value || !quizRef || !attemptId) return
     clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => saveDraft(studentKey, instrument, { ...a }), 500)
+    const snapshot = { ...a }
+    saveTimer = setTimeout(() => {
+      if (quiz.value && quizRef) saveTest(attemptId, quiz.value, snapshot, quizRef).catch(() => {})
+    }, 600)
   },
   { deep: true },
 )
@@ -95,10 +104,16 @@ const figureShape: Record<string, string> = {
 }
 
 async function submit() {
-  if (!quiz.value || !canSubmit.value) return
+  if (!quiz.value || !quizRef || !canSubmit.value) return
   submitting.value = true
-  await submitAttempt(studentKey, quiz.value, { ...answers.value }, language)
-  router.push(`/tests/${meta.routeSegment}/result`)
+  try {
+    clearTimeout(saveTimer)
+    await saveTest(attemptId, quiz.value, { ...answers.value }, quizRef)
+    await submitTest(attemptId)
+    router.push(`/tests/${meta.routeSegment}/result`)
+  } catch {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -113,10 +128,20 @@ async function submit() {
     </div>
 
     <v-card v-else-if="notAvailable" class="surface-card pa-8 text-center" rounded="lg" max-width="480">
-      <v-icon icon="mdi-progress-wrench" size="40" color="primary" class="mb-3" />
+      <v-icon
+        :icon="unavailableReason === 'not_assigned' ? 'mdi-calendar-clock-outline' : 'mdi-progress-wrench'"
+        size="40"
+        color="primary"
+        class="mb-3"
+      />
       <div class="text-h6 text-display font-weight-bold mb-2">{{ meta.label }}</div>
       <p class="text-body-2 text-medium-emphasis mb-5">
-        {{ t('Bu metodika hali platformaga ulanmagan.', 'Эта методика ещё не подключена.') }}
+        <template v-if="unavailableReason === 'not_assigned'">
+          {{ t('Bu metodika hozircha sizning guruhingizga biriktirilmagan.', 'Эта методика пока не назначена вашей группе.') }}
+        </template>
+        <template v-else>
+          {{ t('Bu metodika hali platformaga ulanmagan.', 'Эта методика ещё не подключена.') }}
+        </template>
       </p>
       <v-btn color="primary" variant="tonal" to="/tests">{{ t('Ortga', 'Назад') }}</v-btn>
     </v-card>

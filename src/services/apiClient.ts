@@ -61,6 +61,10 @@ export const api: AxiosInstance = axios.create({
 api.interceptors.request.use((config) => {
   const token = tokenStore.access()
   if (token) config.headers.Authorization = `Bearer ${token}`
+  // API Platform only negotiates the formats it's told about — send JSON-LD.
+  if (config.data !== undefined && !config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/ld+json'
+  }
   return config
 })
 

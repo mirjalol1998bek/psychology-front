@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { tokenStore } from '@/services/apiClient'
 import type { UserRole } from '@/types/domain'
 
 declare module 'vue-router' {
@@ -78,8 +79,13 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
+
+  // A JWT (HEMIS/impersonation) but no loaded profile yet → resolve it first.
+  if (!auth.isAuthenticated && tokenStore.access()) {
+    await auth.fetchMe()
+  }
 
   if (!to.meta.public && !auth.isAuthenticated) {
     return { name: 'login' }
