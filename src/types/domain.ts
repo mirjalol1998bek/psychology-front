@@ -76,7 +76,7 @@ export interface CategoryDto {
   quizCount: number
 }
 
-export type QuestionType = 'YES_NO' | 'SINGLE_CHOICE' | 'MULTI_SELECT' | 'SINGLE_CHOICE_IMAGE' | 'WRITING'
+export type QuestionType = 'YES_NO' | 'SINGLE_CHOICE' | 'MULTI_SELECT' | 'SINGLE_CHOICE_IMAGE' | 'FIGURE' | 'SCALE' | 'WRITING'
 
 export interface OptionDto {
   id: string

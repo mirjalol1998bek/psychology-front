@@ -12,6 +12,8 @@ import { listInstruments } from '@/services/quizService'
 import { getAttempts } from '@/services/attemptService'
 import { useAppealsStore } from '@/stores/appeals'
 import { usePassportStore, completeness } from '@/stores/passport'
+import { api } from '@/services/apiClient'
+import { members } from '@/services/quizService'
 import type { InstrumentType, StudyLanguage } from '@/types/domain'
 import type { StoredAttempt } from '@/types/assessment'
 
@@ -25,6 +27,22 @@ const passportStore = usePassportStore()
 appealsStore.load()
 calendarStore.load()
 if (!auth.isStaff) passportStore.load()
+
+const assignmentCount = ref(0)
+if (auth.isStaff) {
+  api.get('/assignments').then((r) => (assignmentCount.value = members(r.data).length)).catch(() => {})
+}
+
+const todayKey = new Date().toISOString().slice(0, 10)
+const todaysAppointments = computed(
+  () => calendarStore.events.filter((e) => e.date === todayKey && e.status === 'booked').length,
+)
+const freeSlots = computed(() => calendarStore.events.filter((e) => e.status === 'free').length)
+const nextAppointment = computed(() =>
+  [...calendarStore.events]
+    .filter((e) => e.date >= todayKey && e.status !== 'cancelled')
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0],
+)
 
 const passportPct = computed(() => completeness(passportStore.get(auth.user?.hemis.hemisId ?? 'anon')))
 
@@ -50,15 +68,13 @@ const subline = computed(() =>
   auth.isStaff ? auth.user?.hemis.faculty : `${auth.user?.hemis.faculty} · ${auth.user?.hemis.group}`,
 )
 
-// Placeholder data — replaced once /student/assignments, /student/result and
-// /admin/result/fakulty exist on the new backend.
 const statTiles = computed(() =>
   auth.isStaff
     ? [
-        { label: 'Tayinlangan testlar', value: '18', hint: '3 ta bu hafta', icon: 'mdi-clipboard-text-outline', tint: 'rgb(var(--v-theme-primary))' },
+        { label: 'Biriktirilgan testlar', value: String(assignmentCount.value), hint: 'Guruhlarga', icon: 'mdi-clipboard-text-outline', tint: 'rgb(var(--v-theme-primary))', to: '/assignments' },
         { label: 'Faol murojaatlar', value: String(appealsStore.openCount), hint: 'Javob kutmoqda', icon: 'mdi-message-text-outline', tint: 'rgb(var(--v-theme-error))', to: '/appeals' },
-        { label: 'Bugungi qabullar', value: '6', hint: 'Keyingisi 11:00 da', icon: 'mdi-calendar-heart', tint: 'rgb(var(--v-theme-secondary))' },
-        { label: 'O‘rtacha qamrov', value: '78%', hint: '+5% oldingi oyga nisbatan', icon: 'mdi-chart-arc', tint: 'rgb(var(--v-theme-success))' },
+        { label: 'Bugungi qabullar', value: String(todaysAppointments.value), hint: 'Band slotlar', icon: 'mdi-calendar-heart', tint: 'rgb(var(--v-theme-secondary))', to: '/calendar' },
+        { label: 'Bo‘sh slotlar', value: String(freeSlots.value), hint: 'Kalendarda', icon: 'mdi-calendar-blank-outline', tint: 'rgb(var(--v-theme-success))', to: '/calendar' },
       ]
     : [
         {
@@ -75,7 +91,15 @@ const statTiles = computed(() =>
           icon: 'mdi-check-circle-outline',
           tint: 'rgb(var(--v-theme-success))',
         },
-        { label: 'Yaqin qabul', value: '9-sen', hint: '10:00 · 305-xona', icon: 'mdi-calendar-heart', tint: 'rgb(var(--v-theme-secondary))' },
+        {
+          label: 'Yaqin qabul',
+          value: nextAppointment.value
+            ? `${new Date(nextAppointment.value.date).getDate()}-${MONTH_NAMES[new Date(nextAppointment.value.date).getMonth()].toLowerCase().slice(0, 3)}`
+            : '—',
+          hint: nextAppointment.value ? nextAppointment.value.time : 'Rejalashtirilmagan',
+          icon: 'mdi-calendar-heart',
+          tint: 'rgb(var(--v-theme-secondary))',
+        },
         {
           label: 'Pasport to‘liqligi',
           value: `${passportPct.value}%`,
@@ -254,15 +278,16 @@ const topFaculties = [
         <v-col cols="12" lg="5">
           <v-card class="surface-card pa-5 h-100 d-flex flex-column" rounded="lg">
             <div class="text-subtitle-1 font-weight-bold mb-3">{{ t('dashboard.upcomingAppointment') }}</div>
-            <div class="d-flex align-center mb-4" style="gap: 12px">
+            <div v-if="nextAppointment" class="d-flex align-center mb-4" style="gap: 12px">
               <div class="icon-tile" style="--tint: rgb(var(--v-theme-secondary))">
                 <v-icon icon="mdi-calendar-heart" size="20" />
               </div>
               <div>
-                <div class="text-body-1 font-weight-bold">9-sentabr, 10:00</div>
-                <div class="text-caption text-medium-emphasis">Psixolog N. Egamova · 305-xona</div>
+                <div class="text-body-1 font-weight-bold">{{ formatUpcoming(nextAppointment) }}</div>
+                <div class="text-caption text-medium-emphasis">{{ nextAppointment.title }}</div>
               </div>
             </div>
+            <div v-else class="text-body-2 text-medium-emphasis mb-4">Rejalashtirilgan qabul yo‘q.</div>
             <v-spacer />
             <v-btn variant="tonal" color="secondary" block to="/appeals" prepend-icon="mdi-message-text-outline">
               Psixologga murojaat

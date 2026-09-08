@@ -174,17 +174,3 @@ function decodeAnswers(ref: QuizRef, backendAnswers: { questionId: number; selec
   }
   return map
 }
-
-// --- staff mock fallback (localStorage; inert once attempts go to the API) --
-
-export function submittedResultsFor(_hemisId: string): {
-  temperament: string | null
-  geometricFigure: string | null
-  conclusion: string | null
-} {
-  return { temperament: null, geometricFigure: null, conclusion: null }
-}
-
-export function hasAnySubmission(_hemisId: string): boolean {
-  return false
-}

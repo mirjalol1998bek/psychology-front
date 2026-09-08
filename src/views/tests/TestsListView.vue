@@ -2,26 +2,61 @@
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { INSTRUMENT_META } from '@/utils/instruments'
-import { listInstruments } from '@/services/quizService'
+import { listInstruments, members, instrumentForAlgo } from '@/services/quizService'
 import { getAttempts } from '@/services/attemptService'
-import type { InstrumentType, QuizDto, StudyLanguage } from '@/types/domain'
+import { api } from '@/services/apiClient'
+import type { InstrumentType, StudyLanguage } from '@/types/domain'
 import type { StoredAttempt } from '@/types/assessment'
 
 const auth = useAuthStore()
 
-// Placeholder — wired to GET /admin/quizzes (staff) or GET /student/assignments
-// (student) once the backend exists.
-const quizzes: (QuizDto & { instrumentType: InstrumentType })[] = [
-  { id: 't1', categoryId: 'c1', instrumentType: 'FREQUENCY_BASED', title: 'Temperament testi', description: 'Ustuvor javoblar bo‘yicha temperament turini aniqlaydi', timeLimitMinutes: 20, isActive: true, questionCount: 20 },
-  { id: 't2', categoryId: 'c2', instrumentType: 'RANKING_BASED', title: 'Psixogeometrik test', description: 'Figuralarni afzallik tartibida saralash', timeLimitMinutes: 10, isActive: true, questionCount: 5 },
-  { id: 't3', categoryId: 'c3', instrumentType: 'SCORE_RANGE_BASED', title: 'Nevrasteniya so‘rovnomasi', description: 'Ball yig‘indisi bo‘yicha xulosa beradi', timeLimitMinutes: 15, isActive: false, questionCount: 24 },
-]
+interface QuizRow {
+  id: number
+  categoryId: number
+  instrumentType: InstrumentType
+  title: string
+  description: string
+  timeLimitMinutes: number
+  isActive: boolean
+  questionCount: number
+}
+
+const quizzes = ref<QuizRow[]>([])
+
+interface BackendQuiz {
+  id: number
+  title: string
+  description?: string | null
+  timeLimitMinutes?: number
+  isActive?: boolean
+  questionCount?: number
+  category?: { id?: number; instrumentType?: string } | null
+}
+
+async function loadStaff() {
+  quizzes.value = members<BackendQuiz>((await api.get('/quizzes')).data).map((q) => ({
+    id: q.id,
+    categoryId: q.category?.id ?? 0,
+    instrumentType: instrumentForAlgo(q.category?.instrumentType),
+    title: q.title,
+    description: q.description ?? '',
+    timeLimitMinutes: q.timeLimitMinutes ?? 0,
+    isActive: !!q.isActive,
+    questionCount: q.questionCount ?? 0,
+  }))
+}
+if (auth.isStaff) loadStaff()
+
+async function removeQuiz(id: number) {
+  await api.delete(`/quizzes/${id}`)
+  quizzes.value = quizzes.value.filter((q) => q.id !== id)
+}
 
 const categoryFilter = ref<InstrumentType | 'all'>('all')
 const search = ref('')
 
 const filtered = computed(() =>
-  quizzes.filter((q) => {
+  quizzes.value.filter((q) => {
     if (categoryFilter.value !== 'all' && q.instrumentType !== categoryFilter.value) return false
     if (search.value && !q.title.toLowerCase().includes(search.value.toLowerCase())) return false
     return true
@@ -29,10 +64,10 @@ const filtered = computed(() =>
 )
 
 const stats = computed(() => [
-  { label: 'Jami testlar', value: quizzes.length, icon: 'mdi-clipboard-text-outline', tint: 'rgb(var(--v-theme-primary))' },
-  { label: 'Faol testlar', value: quizzes.filter((q) => q.isActive).length, icon: 'mdi-check-circle-outline', tint: 'rgb(var(--v-theme-success))' },
-  { label: 'Kategoriyalar', value: new Set(quizzes.map((q) => q.categoryId)).size, icon: 'mdi-shape-outline', tint: 'rgb(var(--v-theme-secondary))' },
-  { label: 'Jami savollar', value: quizzes.reduce((s, q) => s + q.questionCount, 0), icon: 'mdi-help-circle-outline', tint: 'rgb(var(--v-theme-warning))' },
+  { label: 'Jami testlar', value: quizzes.value.length, icon: 'mdi-clipboard-text-outline', tint: 'rgb(var(--v-theme-primary))' },
+  { label: 'Faol testlar', value: quizzes.value.filter((q) => q.isActive).length, icon: 'mdi-check-circle-outline', tint: 'rgb(var(--v-theme-success))' },
+  { label: 'Kategoriyalar', value: new Set(quizzes.value.map((q) => q.categoryId)).size, icon: 'mdi-shape-outline', tint: 'rgb(var(--v-theme-secondary))' },
+  { label: 'Jami savollar', value: quizzes.value.reduce((s, q) => s + q.questionCount, 0), icon: 'mdi-help-circle-outline', tint: 'rgb(var(--v-theme-warning))' },
 ])
 
 // Student-facing: real quiz catalogue + this student's attempts.
@@ -138,7 +173,7 @@ function attemptFor(instrument: InstrumentType) {
             </td>
             <td class="text-right">
               <v-btn :to="`/tests/${q.id}`" icon="mdi-pencil-outline" variant="text" size="small" color="primary" />
-              <v-btn icon="mdi-delete-outline" variant="text" size="small" color="error" />
+              <v-btn v-if="auth.isAdmin" icon="mdi-delete-outline" variant="text" size="small" color="error" @click="removeQuiz(q.id)" />
             </td>
           </tr>
         </tbody>

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import type { QuestionType } from '@/types/domain'
+import { api } from '@/services/apiClient'
+import { members } from '@/services/quizService'
+import type { QuestionType, StudyLanguage } from '@/types/domain'
 
 const route = useRoute()
 const router = useRouter()
@@ -10,16 +12,29 @@ const isEditing = computed(() => route.params.id !== undefined)
 const QUESTION_TYPES: { value: QuestionType; label: string; icon: string }[] = [
   { value: 'SINGLE_CHOICE', label: 'Bitta javob (matn)', icon: 'mdi-radiobox-marked' },
   { value: 'MULTI_SELECT', label: 'Ko‘p javob (matn)', icon: 'mdi-checkbox-multiple-marked-outline' },
-  { value: 'SINGLE_CHOICE_IMAGE', label: 'Bitta javob (rasm)', icon: 'mdi-image-outline' },
   { value: 'YES_NO', label: 'Ha / Yo‘q', icon: 'mdi-thumbs-up-down-outline' },
+  { value: 'SCALE', label: 'Shkala (ball)', icon: 'mdi-gauge' },
   { value: 'WRITING', label: 'Erkin matn', icon: 'mdi-text-long' },
 ]
 
-const CATEGORIES = [
-  { id: 'c1', name: 'Temperament testi' },
-  { id: 'c2', name: 'Psixogeometrik test' },
-  { id: 'c3', name: 'Nevrasteniya so‘rovnomasi' },
+interface Category {
+  id: string
+  name: string
+}
+const CATEGORIES = ref<Category[]>([])
+const langOptions: { title: string; value: StudyLanguage }[] = [
+  { title: 'O‘zbek', value: 'uz' },
+  { title: 'Rus', value: 'ru' },
 ]
+const studyLanguage = ref<StudyLanguage>('uz')
+
+async function loadCategories() {
+  CATEGORIES.value = members<{ id: number; name: string }>((await api.get('/categories')).data).map((c) => ({
+    id: String(c.id),
+    name: c.name,
+  }))
+}
+loadCategories()
 
 interface OptionDraft {
   id: string
@@ -44,6 +59,14 @@ const description = ref('')
 const isActive = ref(true)
 const newCategoryDialog = ref(false)
 const newCategoryName = ref('')
+const newCategoryType = ref('SCORE_SCALE')
+const savingCategory = ref(false)
+const categoryTypeOptions = [
+  { title: 'Ball shkalasi (yig‘indi → oraliq)', value: 'SCORE_SCALE' },
+  { title: 'Temperament — bayonotlar (Ha/Yo‘q)', value: 'TEMPERAMENT_STATEMENTS' },
+  { title: 'Temperament — variant tanlash', value: 'TEMPERAMENT_CHOICE' },
+  { title: 'Figura tanlash', value: 'FIGURE_CHOICE' },
+]
 
 const questions = ref<QuestionDraft[]>([
   {
@@ -86,15 +109,26 @@ function onTypeChange(q: QuestionDraft) {
   }
 }
 
-function createCategory() {
-  if (!newCategoryName.value.trim()) return
-  CATEGORIES.push({ id: nextId(), name: newCategoryName.value.trim() })
-  categoryId.value = CATEGORIES[CATEGORIES.length - 1].id
-  newCategoryName.value = ''
-  newCategoryDialog.value = false
+async function createCategory() {
+  if (!newCategoryName.value.trim() || savingCategory.value) return
+  savingCategory.value = true
+  try {
+    const { data } = await api.post('/categories', {
+      name: newCategoryName.value.trim(),
+      instrumentType: newCategoryType.value,
+      position: CATEGORIES.value.length + 1,
+    })
+    const created = { id: String(data.id), name: data.name as string }
+    CATEGORIES.value.push(created)
+    categoryId.value = created.id
+    newCategoryName.value = ''
+    newCategoryDialog.value = false
+  } finally {
+    savingCategory.value = false
+  }
 }
 
-const categoryName = computed(() => CATEGORIES.find((c) => c.id === categoryId.value)?.name ?? '—')
+const categoryName = computed(() => CATEGORIES.value.find((c) => c.id === categoryId.value)?.name ?? '—')
 function typeLabel(t: QuestionType) {
   return QUESTION_TYPES.find((q) => q.value === t)?.label ?? t
 }
@@ -144,16 +178,41 @@ function back() {
 
 const saving = ref(false)
 const toastOpen = ref(false)
+const publishError = ref('')
 
 async function publish() {
+  if (!categoryId.value || saving.value) return
   saving.value = true
-  // TODO(backend): createQuiz → createQuestion (per question) →
-  // createOption / createOptionWithImage (per option), matching the
-  // sequential save flow the old create-test.vue already implements (TZ §14).
-  await new Promise((r) => setTimeout(r, 700))
-  saving.value = false
-  toastOpen.value = true
-  setTimeout(() => router.push('/tests'), 900)
+  publishError.value = ''
+  try {
+    const quiz = (
+      await api.post('/quizzes', {
+        category: `/api/categories/${categoryId.value}`,
+        title: title.value.trim(),
+        description: description.value || null,
+        studyLanguage: studyLanguage.value,
+        timeLimitMinutes: timeLimit.value || 0,
+        isActive: isActive.value,
+      })
+    ).data
+    let position = 0
+    for (const q of questions.value) {
+      position++
+      await api.post('/questions', {
+        quiz: `/api/quizzes/${quiz.id}`,
+        type: q.type,
+        text: q.text.trim(),
+        position,
+        options: q.options.map((o, i) => ({ text: o.text.trim(), score: o.score || 0, position: i })),
+      })
+    }
+    toastOpen.value = true
+    setTimeout(() => router.push('/tests'), 900)
+  } catch {
+    publishError.value = 'Nashr qilishda xatolik yuz berdi.'
+  } finally {
+    saving.value = false
+  }
 }
 </script>
 
@@ -193,6 +252,9 @@ async function publish() {
         </v-col>
         <v-col cols="12" md="4">
           <v-text-field v-model.number="timeLimit" type="number" label="Vaqt chegarasi (daqiqa, 0 = cheklanmagan)" density="comfortable" />
+        </v-col>
+        <v-col cols="12" md="4">
+          <v-select v-model="studyLanguage" :items="langOptions" item-title="title" item-value="value" label="Ta’lim tili" density="comfortable" />
         </v-col>
         <v-col cols="12" md="8">
           <v-textarea v-model="description" label="Test tavsifi" rows="2" density="comfortable" />
@@ -336,6 +398,9 @@ async function publish() {
         </div>
       </div>
 
+      <v-alert v-if="publishError" type="error" variant="tonal" density="compact" class="mb-4 mx-auto" style="max-width: 380px">
+        {{ publishError }}
+      </v-alert>
       <v-btn color="primary" size="x-large" class="text-none font-weight-bold" :loading="saving" @click="publish">
         <v-icon icon="mdi-check" start />Nashr qilish
       </v-btn>
@@ -348,13 +413,21 @@ async function publish() {
       <v-btn v-if="step < 4" color="primary" variant="flat" class="text-none" append-icon="mdi-arrow-right" @click="next">Keyingi</v-btn>
     </div>
 
-    <v-dialog v-model="newCategoryDialog" max-width="360">
+    <v-dialog v-model="newCategoryDialog" max-width="420">
       <v-card class="surface-card pa-5" rounded="lg">
-        <div class="text-subtitle-1 font-weight-bold mb-3">Yangi kategoriya</div>
+        <div class="text-subtitle-1 font-weight-bold mb-3">Yangi kategoriya (metodika)</div>
         <v-text-field v-model="newCategoryName" label="Kategoriya nomi" density="comfortable" />
+        <v-select
+          v-model="newCategoryType"
+          :items="categoryTypeOptions"
+          item-title="title"
+          item-value="value"
+          label="Ballash turi"
+          density="comfortable"
+        />
         <div class="d-flex justify-end mt-2" style="gap: 8px">
           <v-btn variant="text" class="text-none" @click="newCategoryDialog = false">Bekor qilish</v-btn>
-          <v-btn color="primary" variant="flat" class="text-none" @click="createCategory">Yaratish</v-btn>
+          <v-btn color="primary" variant="flat" class="text-none" :loading="savingCategory" @click="createCategory">Yaratish</v-btn>
         </div>
       </v-card>
     </v-dialog>
