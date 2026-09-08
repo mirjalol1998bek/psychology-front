@@ -22,6 +22,14 @@ const router = createRouter({
       meta: { public: true },
     },
     {
+      // HEMIS OAuth2 return target. The backend redirects here with the JWTs
+      // in the URL fragment (#access=...&refresh=...).
+      path: '/auth/hemis',
+      name: 'hemis-callback',
+      component: () => import('@/views/auth/HemisCallbackView.vue'),
+      meta: { public: true },
+    },
+    {
       path: '/',
       component: () => import('@/layouts/DefaultLayout.vue'),
       children: [

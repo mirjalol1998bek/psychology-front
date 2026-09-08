@@ -1,8 +1,33 @@
 import { defineStore } from 'pinia'
 import type { AuthUser, HemisProfile, UserRole } from '@/types/domain'
+import { api, tokenStore } from '@/services/apiClient'
 
 const STORAGE_KEY = 'psy.auth.user'
 const IMPERSONATOR_KEY = 'psy.auth.impersonator'
+
+/** Maps the Symfony User payload (/api/users/about_me) to our AuthUser. */
+function mapBackendUser(u: Record<string, unknown>): AuthUser {
+  const roles = (u.roles as string[]) ?? []
+  const role: UserRole = roles.includes('ROLE_ADMIN')
+    ? 'admin'
+    : roles.includes('ROLE_PSYCHOLOGIST')
+      ? 'psychologist'
+      : 'student'
+  const group = u.studyGroup as { name?: string; faculty?: { name?: string } } | null
+  const faculty = u.faculty as { name?: string } | null
+  return {
+    id: String(u.id ?? u['@id'] ?? ''),
+    role,
+    hemis: {
+      hemisId: (u.hemisId as string) ?? (u.email as string) ?? '',
+      fullName: (u.fullName as string) ?? (u.email as string) ?? '',
+      faculty: faculty?.name ?? group?.faculty?.name ?? '—',
+      group: group?.name ?? '—',
+      studyLanguage: (u.studyLanguage as 'uz' | 'ru') ?? 'uz',
+      image: (u.image as string) ?? undefined,
+    },
+  }
+}
 
 /**
  * TODO(backend): replace with real HEMIS OAuth2 flow (TZ §2.1) —
@@ -100,6 +125,39 @@ export const useAuthStore = defineStore('auth', {
       sessionStorage.removeItem(IMPERSONATOR_KEY)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.user))
     },
+    /** Real HEMIS OAuth2: hand off to the backend, which redirects to HEMIS. */
+    startHemisLogin() {
+      window.location.href = '/api/auth/hemis'
+    },
+    /**
+     * Called by the HEMIS callback route once the backend has redirected back
+     * with `#access=...&refresh=...`. Stores the JWTs and loads the profile.
+     */
+    async completeHemisLogin(access: string, refresh: string): Promise<boolean> {
+      this.isSigningIn = true
+      try {
+        tokenStore.set(access, refresh)
+        return await this.fetchMe()
+      } finally {
+        this.isSigningIn = false
+      }
+    },
+    /** Loads the authenticated user from the backend using the stored JWT. */
+    async fetchMe(): Promise<boolean> {
+      if (!tokenStore.access()) return false
+      try {
+        const { data } = await api.post('/users/about_me')
+        this.user = mapBackendUser(data)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.user))
+        return true
+      } catch {
+        tokenStore.clear()
+        this.user = null
+        localStorage.removeItem(STORAGE_KEY)
+        return false
+      }
+    },
+    /** Demo/mock HEMIS login — kept for offline development without the API. */
     async signInWithHemis(role: UserRole = 'student') {
       this.isSigningIn = true
       try {
@@ -130,6 +188,7 @@ export const useAuthStore = defineStore('auth', {
     signOut() {
       this.user = null
       this.impersonator = null
+      tokenStore.clear()
       localStorage.removeItem(STORAGE_KEY)
       sessionStorage.removeItem(IMPERSONATOR_KEY)
     },

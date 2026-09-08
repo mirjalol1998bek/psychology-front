@@ -16,6 +16,16 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3100,
+    // HEMIS OAuth redirect_uri is registered on port 3000
+    // (http://localhost:3000/api/auth/callback/hemis), so the dev server must
+    // run here and proxy /api to the Symfony backend.
+    port: 3000,
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_TARGET ?? 'http://localhost:8508',
+        changeOrigin: true,
+      },
+    },
   },
 })

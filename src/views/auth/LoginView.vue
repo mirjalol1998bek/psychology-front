@@ -23,7 +23,12 @@ const hemisRoleOptions: { value: UserRole; label: string; icon: string }[] = [
   { value: 'admin', label: 'Admin', icon: 'mdi-shield-crown-outline' },
 ]
 
-async function handleHemisLogin() {
+function handleHemisLogin() {
+  // Real OAuth2: leaves the SPA, backend redirects to HEMIS, returns to /auth/hemis.
+  auth.startHemisLogin()
+}
+
+async function handleDemoLogin() {
   await auth.signInWithHemis(hemisRole.value)
   router.push('/')
 }
@@ -117,23 +122,6 @@ const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixo
         </v-btn-toggle>
 
         <div v-if="mode === 'hemis'">
-          <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase d-block mb-2">
-            Kim sifatida kirasiz?
-          </span>
-          <v-btn-toggle
-            v-model="hemisRole"
-            mandatory
-            color="primary"
-            density="comfortable"
-            rounded="lg"
-            variant="outlined"
-            class="d-flex mb-6"
-          >
-            <v-btn v-for="opt in hemisRoleOptions" :key="opt.value" :value="opt.value" class="flex-grow-1" size="small">
-              <v-icon :icon="opt.icon" start size="16" />{{ opt.label }}
-            </v-btn>
-          </v-btn-toggle>
-
           <v-btn
             block
             size="large"
@@ -149,6 +137,28 @@ const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixo
             <v-icon icon="mdi-information-outline" size="14" style="margin-top: 2px" />
             <span>{{ t('auth.hemisHint') }}</span>
           </p>
+
+          <div class="demo-hint mt-5">
+            <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase d-block mb-2">
+              Demo — API'siz kirish (sinov uchun)
+            </span>
+            <v-btn-toggle
+              v-model="hemisRole"
+              mandatory
+              color="primary"
+              density="comfortable"
+              rounded="lg"
+              variant="outlined"
+              class="d-flex mb-3"
+            >
+              <v-btn v-for="opt in hemisRoleOptions" :key="opt.value" :value="opt.value" class="flex-grow-1" size="small">
+                <v-icon :icon="opt.icon" start size="16" />{{ opt.label }}
+              </v-btn>
+            </v-btn-toggle>
+            <v-btn block variant="tonal" size="small" :loading="auth.isSigningIn" @click="handleDemoLogin">
+              Demo hisob bilan davom etish
+            </v-btn>
+          </div>
         </div>
 
         <form v-else @submit.prevent="handlePasswordLogin">
