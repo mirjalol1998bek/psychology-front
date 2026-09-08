@@ -14,6 +14,7 @@ export default {
     review: 'Проверка',
     assign: 'Назначить тест',
     organization: 'Структура',
+    accessRequests: 'Запросы доступа',
     appeals: 'Обращения',
     passport: 'Паспорт',
     section: 'Управление',

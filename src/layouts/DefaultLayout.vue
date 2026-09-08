@@ -51,6 +51,7 @@ const staffNav = computed(() => {
     { title: t('nav.statistics'), icon: 'mdi-chart-timeline-variant', to: '/statistics' },
   ]
   if (auth.isAdmin) {
+    items.push({ title: t('nav.accessRequests'), icon: 'mdi-account-key-outline', to: '/admin/access-requests' })
     items.push({ title: t('nav.organization'), icon: 'mdi-sitemap-outline', to: '/admin/organization' })
   }
   return items

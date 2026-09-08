@@ -14,6 +14,7 @@ export default {
     review: 'Tekshirish',
     assign: 'Test biriktirish',
     organization: 'Tashkilot tuzilmasi',
+    accessRequests: 'Kirish so‘rovlari',
     appeals: 'Murojaat',
     passport: 'Pasport',
     section: 'Boshqaruv',

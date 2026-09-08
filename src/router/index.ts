@@ -69,6 +69,9 @@ const router = createRouter({
 
         // Admin-only: create faculties / groups / students to test a flow.
         { path: 'admin/organization', name: 'admin-organization', component: () => import('@/views/admin/OrganizationView.vue'), meta: { roles: ADMIN } },
+
+        // Admin-only: approve/reject HEMIS access requests.
+        { path: 'admin/access-requests', name: 'admin-access-requests', component: () => import('@/views/admin/AccessRequestsView.vue'), meta: { roles: ADMIN } },
       ],
     },
     {
