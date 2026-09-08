@@ -4,9 +4,14 @@ import { useMonthGrid, WEEKDAYS, MONTH_NAMES } from '@/composables/useMonthGrid'
 import { useEventBars } from '@/composables/useEventBars'
 import { CAL_STATUS_META, TODAY, type CalEvent } from '@/mocks/calendar'
 import { useCalendarStore } from '@/stores/calendar'
+import { useAuthStore } from '@/stores/auth'
 import type { AppointmentSlotStatus } from '@/types/domain'
 
 const calendarStore = useCalendarStore()
+const auth = useAuthStore()
+const busy = ref(false)
+
+calendarStore.load()
 
 const { monthLabel, weeks, prevMonth, nextMonth, goToday } = useMonthGrid(calendarStore.events, TODAY)
 const bars = useEventBars(weeks, computed(() => calendarStore.events))
@@ -46,10 +51,9 @@ const defaultDate = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const form = ref<{ title: string; date: string; endDate: string; time: string; status: AppointmentSlotStatus }>({
+const form = ref<{ title: string; date: string; time: string; status: AppointmentSlotStatus }>({
   title: '',
   date: defaultDate(),
-  endDate: '',
   time: '10:00',
   status: 'booked',
 })
@@ -61,7 +65,7 @@ const statusOptions: { title: string; value: AppointmentSlotStatus }[] = [
 
 function openCreate(dateKey?: string) {
   editingId.value = null
-  form.value = { title: '', date: dateKey ?? defaultDate(), endDate: '', time: '10:00', status: 'booked' }
+  form.value = { title: '', date: dateKey ?? defaultDate(), time: '10:00', status: 'booked' }
   dialog.value = true
 }
 
@@ -70,39 +74,50 @@ function openEdit(ev: CalEvent) {
   form.value = {
     title: ev.title,
     date: ev.date,
-    endDate: ev.endDate ?? '',
     time: ev.time === 'Kun bo‘yi' ? '' : ev.time,
     status: ev.status,
   }
   dialog.value = true
 }
 
-function submitEvent() {
-  if (!form.value.title.trim() || !form.value.date) return
+async function submitEvent() {
+  if (!form.value.title.trim() || !form.value.date || busy.value) return
+  busy.value = true
   const payload = {
     title: form.value.title.trim(),
     date: form.value.date,
-    endDate: form.value.endDate || undefined,
     time: form.value.time || 'Kun bo‘yi',
     status: form.value.status,
   }
-  if (editingId.value) {
-    calendarStore.updateEvent(editingId.value, payload)
-    toast.value = 'Voqea yangilandi'
-  } else {
-    calendarStore.addEvent(payload)
-    toast.value = 'Voqea qo‘shildi'
+  try {
+    if (editingId.value) {
+      await calendarStore.updateEvent(editingId.value, payload)
+      toast.value = 'Voqea yangilandi'
+    } else {
+      await calendarStore.addEvent(payload)
+      toast.value = 'Voqea qo‘shildi'
+    }
+    dialog.value = false
+    toastOpen.value = true
+  } catch {
+    toast.value = 'Xatolik — saqlanmadi'
+    toastOpen.value = true
+  } finally {
+    busy.value = false
   }
-  dialog.value = false
-  toastOpen.value = true
 }
 
-function deleteEvent() {
-  if (!editingId.value) return
-  calendarStore.removeEvent(editingId.value)
-  dialog.value = false
-  toast.value = 'Voqea o‘chirildi'
-  toastOpen.value = true
+async function deleteEvent() {
+  if (!editingId.value || busy.value) return
+  busy.value = true
+  try {
+    await calendarStore.removeEvent(editingId.value)
+    dialog.value = false
+    toast.value = 'Voqea o‘chirildi'
+    toastOpen.value = true
+  } finally {
+    busy.value = false
+  }
 }
 </script>
 
@@ -111,7 +126,7 @@ function deleteEvent() {
     <div class="d-flex align-center justify-space-between page-head flex-wrap" style="gap: 12px">
       <div>
         <h1 class="text-h4">Qabul kalendari</h1>
-        <p class="text-body-2 text-medium-emphasis mb-0">Psixolog Nilufar Egamova — oylik jadval</p>
+        <p class="text-body-2 text-medium-emphasis mb-0">{{ auth.user?.hemis.fullName }} — oylik jadval</p>
       </div>
       <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreate()">Voqea qo‘shish</v-btn>
     </div>
@@ -212,10 +227,9 @@ function deleteEvent() {
             <v-text-field v-model="form.date" type="date" label="Sana" density="comfortable" />
           </v-col>
           <v-col cols="6">
-            <v-text-field v-model="form.endDate" type="date" label="Tugash (ixtiyoriy)" density="comfortable" />
+            <v-text-field v-model="form.time" type="time" label="Vaqt" density="comfortable" />
           </v-col>
         </v-row>
-        <v-text-field v-model="form.time" label="Vaqt (masalan 10:00, bo‘sh = kun bo‘yi)" density="comfortable" />
         <v-select v-model="form.status" :items="statusOptions" item-title="title" item-value="value" label="Holat" density="comfortable" />
         <div class="d-flex align-center mt-3" style="gap: 8px">
           <v-btn
@@ -223,13 +237,14 @@ function deleteEvent() {
             variant="text"
             color="error"
             prepend-icon="mdi-delete-outline"
+            :loading="busy"
             @click="deleteEvent"
           >
             O‘chirish
           </v-btn>
           <v-spacer />
           <v-btn variant="text" @click="dialog = false">Bekor qilish</v-btn>
-          <v-btn color="primary" variant="flat" :disabled="!form.title.trim()" @click="submitEvent">
+          <v-btn color="primary" variant="flat" :loading="busy" :disabled="!form.title.trim()" @click="submitEvent">
             {{ editingId ? 'Saqlash' : 'Qo‘shish' }}
           </v-btn>
         </div>

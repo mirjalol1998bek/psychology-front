@@ -23,6 +23,7 @@ const appealsStore = useAppealsStore()
 const passportStore = usePassportStore()
 
 appealsStore.load()
+calendarStore.load()
 if (!auth.isStaff) passportStore.load()
 
 const passportPct = computed(() => completeness(passportStore.get(auth.user?.hemis.hemisId ?? 'anon')))
