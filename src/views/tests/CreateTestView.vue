@@ -13,9 +13,12 @@ const QUESTION_TYPES: { value: QuestionType; label: string; icon: string }[] = [
   { value: 'SINGLE_CHOICE', label: 'Bitta javob (matn)', icon: 'mdi-radiobox-marked' },
   { value: 'MULTI_SELECT', label: 'Ko‘p javob (matn)', icon: 'mdi-checkbox-multiple-marked-outline' },
   { value: 'YES_NO', label: 'Ha / Yo‘q', icon: 'mdi-thumbs-up-down-outline' },
+  { value: 'FIGURE', label: 'Figura tanlash', icon: 'mdi-shape-outline' },
+  { value: 'SINGLE_CHOICE_IMAGE', label: 'Bitta javob (rasm)', icon: 'mdi-image-multiple-outline' },
   { value: 'SCALE', label: 'Shkala (ball)', icon: 'mdi-gauge' },
   { value: 'WRITING', label: 'Erkin matn', icon: 'mdi-text-long' },
 ]
+const OPTION_TYPES: QuestionType[] = ['SINGLE_CHOICE', 'MULTI_SELECT', 'FIGURE']
 
 interface Category {
   id: string
@@ -41,12 +44,16 @@ interface OptionDraft {
   text: string
   score: number
   imageUrl?: string
+  /** Metodika ballash uchun — UI'da tahrirlanmaydi, saqlashda saqlanadi. */
+  categoryKey?: string | null
 }
 interface QuestionDraft {
   id: string
   type: QuestionType
   text: string
   options: OptionDraft[]
+  imageUrl?: string | null
+  isReversed?: boolean
 }
 
 let uid = 0
@@ -108,6 +115,77 @@ function onTypeChange(q: QuestionDraft) {
     q.options = [{ id: nextId(), text: '', score: 0 }, { id: nextId(), text: '', score: 0 }]
   }
 }
+
+// --- Edit mode: load the existing quiz + its questions ---------------------
+interface BackendOption {
+  id: number
+  text: string
+  score?: number
+  imageUrl?: string | null
+  position?: number
+  categoryKey?: string | null
+}
+interface BackendQuestion {
+  id: number
+  type: QuestionType
+  text: string
+  imageUrl?: string | null
+  position?: number
+  isReversed?: boolean
+  options?: BackendOption[]
+}
+interface BackendQuizFull {
+  title?: string
+  description?: string | null
+  studyLanguage?: StudyLanguage
+  timeLimitMinutes?: number
+  isActive?: boolean
+  category?: { id?: number } | null
+  questions?: BackendQuestion[]
+}
+
+const loadingQuiz = ref(isEditing.value)
+const loadError = ref('')
+let originalQuestionIds: number[] = []
+
+async function loadExisting() {
+  try {
+    const bq = (await api.get(`/quizzes/${route.params.id}`)).data as BackendQuizFull
+    title.value = bq.title ?? ''
+    categoryId.value = bq.category?.id != null ? String(bq.category.id) : null
+    timeLimit.value = bq.timeLimitMinutes ?? 0
+    description.value = bq.description ?? ''
+    isActive.value = bq.isActive ?? true
+    studyLanguage.value = (bq.studyLanguage ?? 'uz') as StudyLanguage
+
+    const loaded = [...(bq.questions ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    originalQuestionIds = loaded.map((q) => q.id)
+
+    if (loaded.length) {
+      questions.value = loaded.map((q) => ({
+        id: nextId(),
+        type: q.type,
+        text: q.text ?? '',
+        imageUrl: q.imageUrl ?? null,
+        isReversed: !!q.isReversed,
+        options: [...(q.options ?? [])]
+          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+          .map((o) => ({
+            id: nextId(),
+            text: o.text ?? '',
+            score: o.score ?? 0,
+            imageUrl: o.imageUrl ?? undefined,
+            categoryKey: o.categoryKey ?? null,
+          })),
+      }))
+    }
+  } catch {
+    loadError.value = 'Testni yuklab bo‘lmadi.'
+  } finally {
+    loadingQuiz.value = false
+  }
+}
+if (isEditing.value) loadExisting()
 
 async function createCategory() {
   if (!newCategoryName.value.trim() || savingCategory.value) return
@@ -185,33 +263,69 @@ async function publish() {
   saving.value = true
   publishError.value = ''
   try {
-    const quiz = (
-      await api.post('/quizzes', {
-        category: `/api/categories/${categoryId.value}`,
-        title: title.value.trim(),
-        description: description.value || null,
-        studyLanguage: studyLanguage.value,
-        timeLimitMinutes: timeLimit.value || 0,
-        isActive: isActive.value,
-      })
-    ).data
-    let position = 0
-    for (const q of questions.value) {
-      position++
-      await api.post('/questions', {
-        quiz: `/api/quizzes/${quiz.id}`,
-        type: q.type,
-        text: q.text.trim(),
-        position,
-        options: q.options.map((o, i) => ({ text: o.text.trim(), score: o.score || 0, position: i })),
-      })
+    const quizFields = {
+      category: `/api/categories/${categoryId.value}`,
+      title: title.value.trim(),
+      description: description.value || null,
+      studyLanguage: studyLanguage.value,
+      timeLimitMinutes: timeLimit.value || 0,
+      isActive: isActive.value,
     }
+
+    const quizId = isEditing.value
+      ? await updateQuiz(Number(route.params.id), quizFields)
+      : (await api.post('/quizzes', quizFields)).data.id
+
+    await writeQuestions(quizId)
+
     toastOpen.value = true
     setTimeout(() => router.push('/tests'), 900)
   } catch {
-    publishError.value = 'Nashr qilishda xatolik yuz berdi.'
+    publishError.value = 'Saqlashda xatolik yuz berdi.'
   } finally {
     saving.value = false
+  }
+}
+
+/** Edit: patch scalar fields, then drop the old questions (recreated below). */
+async function updateQuiz(quizId: number, fields: Record<string, unknown>): Promise<number> {
+  await api.patch(`/quizzes/${quizId}`, fields, {
+    headers: { 'Content-Type': 'application/merge-patch+json' },
+  })
+
+  for (const id of originalQuestionIds) {
+    await api.delete(`/questions/${id}`).catch((e: unknown) => {
+      // A question already gone (e.g. a retried save) is fine.
+      if ((e as { response?: { status?: number } })?.response?.status !== 404) {
+        throw e
+      }
+    })
+  }
+  originalQuestionIds = []
+
+  return quizId
+}
+
+async function writeQuestions(quizId: number): Promise<void> {
+  let position = 0
+
+  for (const q of questions.value) {
+    position++
+    await api.post('/questions', {
+      quiz: `/api/quizzes/${quizId}`,
+      type: q.type,
+      text: q.text.trim(),
+      imageUrl: q.imageUrl || null,
+      isReversed: q.isReversed ?? false,
+      position,
+      options: q.options.map((o, i) => ({
+        text: o.text.trim(),
+        score: o.score || 0,
+        position: i,
+        imageUrl: o.imageUrl || null,
+        categoryKey: o.categoryKey || null,
+      })),
+    })
   }
 }
 </script>
@@ -221,6 +335,12 @@ async function publish() {
     <v-btn variant="text" prepend-icon="mdi-arrow-left" class="text-none mb-2" @click="router.push('/tests')">Orqaga</v-btn>
     <h1 class="text-display text-h4 font-weight-bold mb-6">{{ isEditing ? 'Testni tahrirlash' : 'Yangi test yaratish' }}</h1>
 
+    <div v-if="loadingQuiz" class="d-flex justify-center py-16">
+      <v-progress-circular indeterminate color="primary" size="40" />
+    </div>
+    <v-alert v-else-if="loadError" type="error" variant="tonal" class="mb-4">{{ loadError }}</v-alert>
+
+    <template v-else>
     <!-- Stepper header -->
     <div class="stepper-head mb-8">
       <template v-for="(s, i) in STEPS" :key="s.n">
@@ -295,13 +415,16 @@ async function publish() {
           </v-col>
         </v-row>
 
-        <!-- SINGLE_CHOICE / MULTI_SELECT -->
-        <div v-else-if="q.type === 'SINGLE_CHOICE' || q.type === 'MULTI_SELECT'" class="mt-1">
+        <!-- SINGLE_CHOICE / MULTI_SELECT / FIGURE / SCALE — matnli variantlar -->
+        <div v-else-if="OPTION_TYPES.includes(q.type) || q.type === 'SCALE'" class="mt-1">
           <div v-for="opt in q.options" :key="opt.id" class="d-flex align-center mb-2" style="gap: 8px">
-            <v-icon :icon="q.type === 'SINGLE_CHOICE' ? 'mdi-circle-outline' : 'mdi-checkbox-blank-outline'" size="18" class="text-medium-emphasis" />
+            <v-icon :icon="q.type === 'MULTI_SELECT' ? 'mdi-checkbox-blank-outline' : 'mdi-circle-outline'" size="18" class="text-medium-emphasis" />
             <v-text-field v-model="opt.text" placeholder="Javob matni" density="compact" hide-details style="flex: 2" />
             <v-text-field v-model.number="opt.score" type="number" placeholder="Ball" density="compact" hide-details style="max-width: 90px" />
             <v-btn icon="mdi-close" variant="text" size="x-small" :disabled="q.options.length <= 2" @click="removeOption(q, opt.id)" />
+          </div>
+          <div v-if="q.options.some((o) => o.categoryKey)" class="text-caption text-medium-emphasis mb-2">
+            <v-icon icon="mdi-tag-outline" size="13" class="mr-1" />Bu savol metodika kalitlariga bog‘langan — kalitlar saqlanadi.
           </div>
           <v-btn variant="text" size="small" color="primary" prepend-icon="mdi-plus" class="text-none" @click="addOption(q)">Variant qo‘shish</v-btn>
         </div>
@@ -380,7 +503,7 @@ async function publish() {
       <div class="gradient-accent icon-badge mx-auto mb-4" style="width: 56px; height: 56px; border-radius: 18px">
         <v-icon icon="mdi-cloud-upload-outline" color="white" size="28" />
       </div>
-      <div class="text-h5 font-weight-bold mb-1">Nashr qilishga tayyor</div>
+      <div class="text-h5 font-weight-bold mb-1">{{ isEditing ? 'O‘zgarishlarni saqlash' : 'Nashr qilishga tayyor' }}</div>
       <p class="text-body-2 text-medium-emphasis mb-6">Ma’lumotlarni tekshirib, testni faollashtiring.</p>
 
       <div class="publish-summary mx-auto mb-6">
@@ -402,7 +525,7 @@ async function publish() {
         {{ publishError }}
       </v-alert>
       <v-btn color="primary" size="x-large" class="text-none font-weight-bold" :loading="saving" @click="publish">
-        <v-icon icon="mdi-check" start />Nashr qilish
+        <v-icon icon="mdi-check" start />{{ isEditing ? 'Saqlash' : 'Nashr qilish' }}
       </v-btn>
     </v-card>
 
@@ -412,6 +535,7 @@ async function publish() {
       </v-btn>
       <v-btn v-if="step < 4" color="primary" variant="flat" class="text-none" append-icon="mdi-arrow-right" @click="next">Keyingi</v-btn>
     </div>
+    </template>
 
     <v-dialog v-model="newCategoryDialog" max-width="420">
       <v-card class="surface-card pa-5" rounded="lg">

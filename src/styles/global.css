@@ -138,6 +138,16 @@ body {
   border-radius: 4px;
 }
 
+/* Vuetify fields draw their own focus border — the global ring above would
+   sit outside it and read as a doubled border. Suppress it for the native
+   controls Vuetify wraps (text field, textarea, select, autocomplete). */
+.v-field input:focus-visible,
+.v-field textarea:focus-visible,
+.v-field .v-field__input:focus-visible,
+.v-field__input:focus-visible {
+  outline: none;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
