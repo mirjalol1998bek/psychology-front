@@ -21,12 +21,21 @@ const groups = computed(() => (selFacultyId.value ? org.groupsFor(selFacultyId.v
 const selGroup = computed(() => groups.value.find((g) => g.id === selGroupId.value) ?? null)
 const students = computed(() => (selGroupId.value ? org.studentsForGroup(selGroupId.value) : []))
 
-// Reset the downstream selection whenever its parent changes.
-watch(selFacultyId, () => {
+// Reset the downstream selection whenever its parent changes, and lazy-load
+// that faculty's groups (there can be hundreds once HEMIS is synced).
+const groupSearch = ref('')
+watch(selFacultyId, (id) => {
   selGroupId.value = null
+  groupSearch.value = ''
+  if (id) org.loadGroups(id)
 })
 watch(selGroupId, (id) => {
   if (id) org.loadStudents(id)
+})
+
+const filteredGroups = computed(() => {
+  const q = groupSearch.value.trim().toLowerCase()
+  return q ? groups.value.filter((g) => g.name.toLowerCase().includes(q)) : groups.value
 })
 
 // --- add forms -------------------------------------------------------------
@@ -243,9 +252,22 @@ async function syncStudents() {
             Avval fakultet tanlang
           </div>
           <template v-else>
-            <v-list nav density="comfortable" class="flex-grow-1" bg-color="transparent" style="min-height: 120px">
+            <div v-if="groups.length > 8" class="px-3 pt-2">
+              <v-text-field
+                v-model="groupSearch"
+                density="compact"
+                variant="solo-filled"
+                flat
+                hide-details
+                rounded="lg"
+                bg-color="surface-variant"
+                prepend-inner-icon="mdi-magnify"
+                placeholder="Guruh qidirish..."
+              />
+            </div>
+            <v-list nav density="comfortable" class="flex-grow-1" bg-color="transparent" style="min-height: 120px; max-height: 340px; overflow-y: auto">
               <v-list-item
-                v-for="g in groups"
+                v-for="g in filteredGroups"
                 :key="g.id"
                 :active="g.id === selGroupId"
                 rounded="lg"
@@ -257,7 +279,7 @@ async function syncStudents() {
                   <span class="text-caption text-medium-emphasis">{{ g.studentCount }} ta</span>
                 </template>
               </v-list-item>
-              <div v-if="!groups.length" class="pa-4 text-center text-caption text-medium-emphasis">Guruh yo‘q</div>
+              <div v-if="!filteredGroups.length" class="pa-4 text-center text-caption text-medium-emphasis">Guruh yo‘q</div>
             </v-list>
             <div class="pa-3 surface-sunken" style="border-radius: 0 0 var(--radius) var(--radius)">
               <v-btn

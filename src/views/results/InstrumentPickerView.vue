@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import FacultyGroupPicker from '@/components/psixologiya/FacultyGroupPicker.vue'
@@ -16,6 +16,16 @@ const { faculties, groupsByFaculty } = storeToRefs(org)
 const instrument = computed(() => instrumentByRoute(route.params.instrument as string))
 const meta = computed(() => INSTRUMENT_META[instrument.value])
 
+const loadingGroups = ref(false)
+async function onFacultyChange(facultyId: string) {
+  loadingGroups.value = true
+  try {
+    await org.loadGroups(facultyId)
+  } finally {
+    loadingGroups.value = false
+  }
+}
+
 function handleSelect(faculty: FacultyDto, group: GroupDto) {
   router.push(`/results/${meta.value.routeSegment}/${faculty.id}/${group.id}`)
 }
@@ -28,6 +38,12 @@ function handleSelect(faculty: FacultyDto, group: GroupDto) {
       <h1 class="text-h4">{{ meta.label }} natijalari</h1>
       <p class="text-body-2 text-medium-emphasis mb-0">Fakultet va guruhni tanlang.</p>
     </header>
-    <FacultyGroupPicker :faculties="faculties" :groups-by-faculty="groupsByFaculty" @select="handleSelect" />
+    <FacultyGroupPicker
+      :faculties="faculties"
+      :groups-by-faculty="groupsByFaculty"
+      :loading-groups="loadingGroups"
+      @faculty-change="onFacultyChange"
+      @select="handleSelect"
+    />
   </div>
 </template>

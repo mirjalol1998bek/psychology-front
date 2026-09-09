@@ -24,7 +24,6 @@ const route = useRoute()
 const router = useRouter()
 const org = useOrganizationStore()
 const auth = useAuthStore()
-org.load()
 
 const instrument = computed(() => instrumentByRoute(route.params.instrument as string))
 const meta = computed(() => INSTRUMENT_META[instrument.value])
@@ -32,6 +31,7 @@ const facultyId = route.params.facultyId as string
 const groupId = route.params.groupId as string
 const faculty = computed(() => org.facultyById(facultyId))
 const group = computed(() => org.groupById(groupId))
+org.load().then(() => org.loadGroups(facultyId))
 
 const search = ref('')
 const valueFilter = ref<string | null>(null)
@@ -51,6 +51,7 @@ async function fetchRows() {
   loading.value = true
   try {
     await org.load()
+    await org.loadGroups(facultyId)
     const lang = group.value?.studyLanguage ?? 'uz'
     const category = await loadCategoriesForInstrument(instrument.value, lang)
     if (!category) {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import FacultyGroupPicker from '@/components/psixologiya/FacultyGroupPicker.vue'
@@ -9,6 +10,16 @@ const router = useRouter()
 const org = useOrganizationStore()
 org.load()
 const { faculties, groupsByFaculty } = storeToRefs(org)
+
+const loadingGroups = ref(false)
+async function onFacultyChange(facultyId: string) {
+  loadingGroups.value = true
+  try {
+    await org.loadGroups(facultyId)
+  } finally {
+    loadingGroups.value = false
+  }
+}
 
 function handleSelect(faculty: FacultyDto, group: GroupDto) {
   router.push({ name: 'tekshirish-group', params: { facultyId: faculty.id, groupId: group.id } })
@@ -23,6 +34,12 @@ function handleSelect(faculty: FacultyDto, group: GroupDto) {
         Fakultet va guruhni tanlang — talabalarning temperament va psixogeometrik natijalarini bir joyda ko‘ring.
       </p>
     </header>
-    <FacultyGroupPicker :faculties="faculties" :groups-by-faculty="groupsByFaculty" @select="handleSelect" />
+    <FacultyGroupPicker
+      :faculties="faculties"
+      :groups-by-faculty="groupsByFaculty"
+      :loading-groups="loadingGroups"
+      @faculty-change="onFacultyChange"
+      @select="handleSelect"
+    />
   </div>
 </template>

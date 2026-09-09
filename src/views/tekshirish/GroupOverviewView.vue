@@ -11,10 +11,10 @@ import { downloadXlsx, fileSlug } from '@/utils/exportXlsx'
 const route = useRoute()
 const router = useRouter()
 const org = useOrganizationStore()
-org.load()
 
 const facultyId = route.params.facultyId as string
 const groupId = route.params.groupId as string
+org.load().then(() => org.loadGroups(facultyId))
 
 const faculty = computed(() => org.facultyById(facultyId))
 const group = computed(() => org.groupById(groupId))
@@ -30,6 +30,7 @@ async function load() {
   loading.value = true
   try {
     await org.load()
+    await org.loadGroups(facultyId)
     allRows.value = await fetchGroupOverview(groupId, group.value?.studyLanguage ?? 'uz')
   } catch {
     allRows.value = []

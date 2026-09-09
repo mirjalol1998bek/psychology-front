@@ -5,11 +5,18 @@ import type { FacultyDto, GroupDto } from '@/types/domain'
 const props = defineProps<{
   faculties: FacultyDto[]
   groupsByFaculty: Record<string, GroupDto[]>
+  /** true while the active faculty's groups are being fetched */
+  loadingGroups?: boolean
 }>()
 
-const emit = defineEmits<{ select: [faculty: FacultyDto, group: GroupDto] }>()
+const emit = defineEmits<{
+  select: [faculty: FacultyDto, group: GroupDto]
+  'faculty-change': [facultyId: string]
+}>()
 
 const activeFacultyId = ref(props.faculties[0]?.id ?? '')
+const groupSearch = ref('')
+
 // Faculties load asynchronously — select the first one once they arrive.
 watch(
   () => props.faculties,
@@ -18,8 +25,21 @@ watch(
   },
   { immediate: true },
 )
+watch(
+  activeFacultyId,
+  (id) => {
+    groupSearch.value = ''
+    if (id) emit('faculty-change', id)
+  },
+  { immediate: true },
+)
+
 const activeFaculty = computed(() => props.faculties.find((f) => f.id === activeFacultyId.value))
 const groups = computed(() => props.groupsByFaculty[activeFacultyId.value] ?? [])
+const filteredGroups = computed(() => {
+  const q = groupSearch.value.trim().toLowerCase()
+  return q ? groups.value.filter((g) => g.name.toLowerCase().includes(q)) : groups.value
+})
 </script>
 
 <template>
@@ -27,7 +47,7 @@ const groups = computed(() => props.groupsByFaculty[activeFacultyId.value] ?? []
     <v-col cols="12" md="4" lg="3">
       <v-card class="surface-card pa-2" rounded="lg">
         <div class="px-3 pt-2 pb-1 text-caption font-weight-bold text-medium-emphasis text-uppercase">Fakultetlar</div>
-        <v-list nav density="comfortable" bg-color="transparent">
+        <v-list nav density="comfortable" bg-color="transparent" style="max-height: 60vh; overflow-y: auto">
           <v-list-item
             v-for="f in faculties"
             :key="f.id"
@@ -48,11 +68,29 @@ const groups = computed(() => props.groupsByFaculty[activeFacultyId.value] ?? []
 
     <v-col cols="12" md="8" lg="9">
       <v-card class="surface-card pa-5" rounded="lg" min-height="100%">
-        <div class="text-subtitle-1 font-weight-bold mb-4">
-          {{ activeFaculty?.name }} — guruhlar
+        <div class="d-flex align-center flex-wrap mb-4" style="gap: 12px">
+          <div class="text-subtitle-1 font-weight-bold">{{ activeFaculty?.name }} — guruhlar</div>
+          <v-spacer />
+          <v-text-field
+            v-if="groups.length > 8"
+            v-model="groupSearch"
+            density="compact"
+            variant="solo-filled"
+            flat
+            hide-details
+            rounded="lg"
+            bg-color="surface-variant"
+            prepend-inner-icon="mdi-magnify"
+            placeholder="Guruh qidirish..."
+            style="max-width: 220px"
+          />
         </div>
-        <v-row v-if="groups.length">
-          <v-col v-for="g in groups" :key="g.id" cols="6" sm="4" lg="3">
+
+        <div v-if="loadingGroups" class="d-flex justify-center py-10">
+          <v-progress-circular indeterminate color="primary" />
+        </div>
+        <v-row v-else-if="filteredGroups.length">
+          <v-col v-for="g in filteredGroups" :key="g.id" cols="6" sm="4" lg="3">
             <button class="group-tile w-100" @click="activeFaculty && emit('select', activeFaculty, g)">
               <div class="icon-tile mb-2" style="--tint: rgb(var(--v-theme-primary))">
                 <v-icon icon="mdi-account-group-outline" size="20" />

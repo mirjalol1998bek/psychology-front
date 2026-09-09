@@ -13,9 +13,13 @@ interface OrgState {
   faculties: FacultyDto[]
   groupsByFaculty: Record<string, GroupDto[]>
   studentsByGroup: Record<string, StudentDto[]>
+  loadedFacultyGroups: Record<string, boolean>
   loaded: boolean
   loading: boolean
 }
+
+/** A faculty can have hundreds of HEMIS groups — pull them all in one page. */
+const BIG_PAGE = 2000
 
 function mapFaculty(f: { id: number; name: string; groupCount?: number; externalId?: string | null }): FacultyDto {
   return { id: String(f.id), name: f.name, groupCount: f.groupCount ?? 0, externalId: f.externalId ?? undefined }
@@ -53,6 +57,7 @@ export const useOrganizationStore = defineStore('organization', {
     faculties: [],
     groupsByFaculty: {},
     studentsByGroup: {},
+    loadedFacultyGroups: {},
     loaded: false,
     loading: false,
   }),
@@ -65,27 +70,34 @@ export const useOrganizationStore = defineStore('organization', {
     studentsForGroup: (s) => (groupId: string): StudentDto[] => s.studentsByGroup[groupId] ?? [],
   },
   actions: {
+    /** Faculties only — groups are pulled per faculty on demand (there can be
+     *  thousands once HEMIS is synced). */
     async load(force = false) {
       if (this.loaded && !force) return
       this.loading = true
       try {
-        const [faculties, groups] = await Promise.all([
-          api.get('/faculties').then((r) => members<Parameters<typeof mapFaculty>[0]>(r.data)),
-          api.get('/study_groups').then((r) => members<Parameters<typeof mapGroup>[0]>(r.data)),
-        ])
+        const faculties = members<Parameters<typeof mapFaculty>[0]>(
+          (await api.get('/faculties', { params: { itemsPerPage: BIG_PAGE } })).data,
+        )
         this.faculties = faculties.map(mapFaculty)
-        const byFaculty: Record<string, GroupDto[]> = {}
-        for (const g of groups.map(mapGroup)) (byFaculty[g.facultyId] ??= []).push(g)
-        this.groupsByFaculty = byFaculty
         this.loaded = true
       } finally {
         this.loading = false
       }
     },
+    /** One faculty's groups. */
+    async loadGroups(facultyId: string, force = false) {
+      if (!facultyId || (this.loadedFacultyGroups[facultyId] && !force)) return
+      const groups = members<Parameters<typeof mapGroup>[0]>(
+        (await api.get('/study_groups', { params: { faculty: facultyId, itemsPerPage: BIG_PAGE } })).data,
+      )
+      this.groupsByFaculty = { ...this.groupsByFaculty, [facultyId]: groups.map(mapGroup) }
+      this.loadedFacultyGroups = { ...this.loadedFacultyGroups, [facultyId]: true }
+    },
     async loadStudents(groupId: string, force = false) {
       if (this.studentsByGroup[groupId] && !force) return
       const users = members<Parameters<typeof mapStudent>[0]>(
-        (await api.get('/users', { params: { studyGroup: groupId } })).data,
+        (await api.get('/users', { params: { studyGroup: groupId, itemsPerPage: 500 } })).data,
       )
       this.studentsByGroup = { ...this.studentsByGroup, [groupId]: users.map(mapStudent) }
     },
@@ -145,7 +157,9 @@ export const useOrganizationStore = defineStore('organization', {
       const counts = (
         await api.post(`/admin/hemis/faculties/${facultyId}/groups/${groupExternalId}`, null)
       ).data as SyncCounts
-      await this.load(true)
+      await this.loadGroups(facultyId, true)
+      const faculty = this.faculties.find((f) => f.id === facultyId)
+      if (faculty) faculty.groupCount = (this.groupsByFaculty[facultyId] ?? []).length
       return counts
     },
     /** Re-pull a group's students from HEMIS. */

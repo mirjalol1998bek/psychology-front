@@ -42,9 +42,11 @@ const availableGroups = computed(() =>
 )
 
 function toggleFaculty(id: string) {
-  selectedFaculties.value = selectedFaculties.value.includes(id)
-    ? selectedFaculties.value.filter((x) => x !== id)
-    : [...selectedFaculties.value, id]
+  const nowSelected = !selectedFaculties.value.includes(id)
+  selectedFaculties.value = nowSelected
+    ? [...selectedFaculties.value, id]
+    : selectedFaculties.value.filter((x) => x !== id)
+  if (nowSelected) org.loadGroups(id)
   // Deselect groups that belonged only to a now-unselected faculty.
   const validIds = new Set(availableGroups.value.map((g) => g.id))
   selectedGroups.value = selectedGroups.value.filter((g) => validIds.has(g))
