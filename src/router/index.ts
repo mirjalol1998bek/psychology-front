@@ -57,6 +57,8 @@ const router = createRouter({
 
         // Murojaatlar: talaba yozadi, psixolog/admin javob beradi — hamma uchun.
         { path: 'appeals', name: 'appeals', component: () => import('@/views/appeals/AppealsView.vue') },
+        // Bildirishnomadan kelinganda — o'sha murojaatga fokus (#appeal-<id>).
+        { path: 'appeals/:id(\\d+)', name: 'appeal-detail', component: () => import('@/views/appeals/AppealsView.vue') },
 
         // Ijtimoiy-psixologik pasport: talaba to'ldiradi.
         { path: 'passport', name: 'passport', component: () => import('@/views/passport/PassportView.vue'), meta: { roles: ['student'] } },

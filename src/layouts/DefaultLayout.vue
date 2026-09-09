@@ -8,6 +8,8 @@ import { setLocale } from '@/i18n'
 import { useThemeMode, type ThemeMode } from '@/composables/useThemeMode'
 import { useNotifications } from '@/composables/useNotifications'
 import { useIdleLogout } from '@/composables/useIdleLogout'
+import { useNavItems } from '@/composables/useNavItems'
+import GlobalSearch from '@/components/GlobalSearch.vue'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -16,6 +18,7 @@ const auth = useAuthStore()
 const { mobile } = useDisplay()
 const { mode, setMode } = useThemeMode()
 const { items: notifItems, unreadCount: notifUnread, markRead: markNotifRead } = useNotifications()
+const { mainNav, staffNav, allNav } = useNavItems()
 
 // 5 daqiqa harakatsizlikdan keyin login sahifasiga chiqaradi.
 useIdleLogout()
@@ -29,44 +32,11 @@ const roleLabel = computed(
     ],
 )
 
-const mainNav = computed(() => {
-  const items = [
-    { title: t('nav.dashboard'), icon: 'mdi-view-dashboard-outline', to: '/' },
-    { title: t('nav.tests'), icon: 'mdi-clipboard-text-outline', to: '/tests' },
-    { title: t('nav.results'), icon: 'mdi-chart-box-outline', to: '/results' },
-  ]
-  if (!auth.isStaff) {
-    items.push({ title: t('nav.passport'), icon: 'mdi-card-account-details-outline', to: '/passport' })
-    items.push({ title: t('nav.appeals'), icon: 'mdi-message-text-outline', to: '/appeals' })
-  }
-  return items
-})
-
-// The appointment calendar is staff-only — a student sees their own next
-// slot on the dashboard instead. The organization editor is admin-only.
-const staffNav = computed(() => {
-  if (!auth.isStaff) return []
-  const items = [
-    { title: t('nav.appeals'), icon: 'mdi-message-text-outline', to: '/appeals' },
-    { title: t('nav.review'), icon: 'mdi-account-search-outline', to: '/tekshirish' },
-    { title: t('nav.calendar'), icon: 'mdi-calendar-heart', to: '/calendar' },
-    { title: t('nav.assign'), icon: 'mdi-clipboard-plus-outline', to: '/assignments/create' },
-    { title: t('nav.assignments'), icon: 'mdi-clipboard-check-outline', to: '/assignments' },
-    { title: t('nav.statistics'), icon: 'mdi-chart-timeline-variant', to: '/statistics' },
-  ]
-  if (auth.isAdmin) {
-    items.push({ title: t('nav.accessRequests'), icon: 'mdi-account-key-outline', to: '/admin/access-requests' })
-    items.push({ title: t('nav.organization'), icon: 'mdi-sitemap-outline', to: '/admin/organization' })
-  }
-  return items
-})
-
 const currentTitle = computed(() => {
-  const all = [...mainNav.value, ...staffNav.value]
-  const exact = all.find((n) => n.to === route.path)
+  const exact = allNav.value.find((n) => n.to === route.path)
   if (exact) return exact.title
   // Detail routes (e.g. /results/temperament/f1/g1) inherit their section's title.
-  const section = all
+  const section = allNav.value
     .filter((n) => n.to !== '/' && route.path.startsWith(n.to))
     .sort((a, b) => b.to.length - a.to.length)[0]
   return section?.title ?? t('app.name')
@@ -157,17 +127,6 @@ const initials = computed(() =>
           />
         </v-list>
       </template>
-
-      <template #append>
-        <div class="pa-4">
-          <div class="surface-sunken pa-4" style="border-radius: var(--radius)">
-            <v-icon icon="mdi-lifebuoy" color="primary" size="20" class="mb-2" />
-            <div class="text-body-2 font-weight-bold mb-1">{{ t('help.title') }}</div>
-            <p class="text-caption text-medium-emphasis mb-3">{{ t('help.body') }}</p>
-            <v-btn size="small" block variant="tonal" color="primary">{{ t('help.action') }}</v-btn>
-          </div>
-        </div>
-      </template>
     </v-navigation-drawer>
 
     <v-app-bar flat border="0" height="68" class="app-topbar">
@@ -182,18 +141,7 @@ const initials = computed(() =>
 
       <v-spacer />
 
-      <v-text-field
-        density="compact"
-        variant="solo-filled"
-        rounded="lg"
-        hide-details
-        flat
-        :placeholder="t('common.search')"
-        prepend-inner-icon="mdi-magnify"
-        class="topbar-search mr-2 d-none d-md-flex"
-        max-width="230"
-        bg-color="surface-variant"
-      />
+      <GlobalSearch class="mr-3 d-none d-md-block" />
 
       <v-btn variant="text" size="small" class="px-2" @click="toggleLocale">
         <span class="text-caption font-weight-bold">{{ locale.toUpperCase() }}</span>
@@ -218,7 +166,7 @@ const initials = computed(() =>
         </v-list>
       </v-menu>
 
-      <v-menu location="bottom end" :close-on-content-click="false" @update:model-value="(o) => o && markNotifRead()">
+      <v-menu location="bottom end" @update:model-value="(o) => o && markNotifRead()">
         <template #activator="{ props }">
           <v-btn icon variant="text" v-bind="props" :aria-label="t('common.notifications')">
             <v-badge :model-value="notifUnread > 0" :content="notifUnread" color="error" offset-x="2" offset-y="2">
@@ -334,10 +282,6 @@ const initials = computed(() =>
 
 .nav-item.v-list-item--active :deep(.v-icon) {
   opacity: 1;
-}
-
-.topbar-search :deep(.v-field) {
-  font-size: 0.875rem;
 }
 
 /* Keyed on route path — re-runs a quiet fade-in on each navigation without

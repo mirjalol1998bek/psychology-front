@@ -1,18 +1,44 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppealsStore, type AppealMode, type AppealTopic, type Appeal } from '@/stores/appeals'
 import { useNotifications } from '@/composables/useNotifications'
 import { MONTH_NAMES } from '@/composables/useMonthGrid'
 
 const { locale } = useI18n()
+const route = useRoute()
 const auth = useAuthStore()
 const store = useAppealsStore()
 const { refresh: refreshNotifications } = useNotifications()
 
 store.load()
 const sending = ref(false)
+
+// Bildirishnoma havolasi (/appeals/<id> yoki ?focus=<id>) — o'sha murojaatga
+// aylantiramiz va bir lahzaga ajratib ko'rsatamiz.
+const highlightedId = ref('')
+const focusId = computed(() => {
+  const raw = route.params.id ?? route.query.focus
+  return Array.isArray(raw) ? String(raw[0] ?? '') : raw ? String(raw) : ''
+})
+
+async function focusRequestedAppeal() {
+  const id = focusId.value
+  if (!id || store.loading) return
+  if (auth.isStaff) filter.value = 'all'
+
+  await nextTick()
+  const card = document.getElementById(`appeal-${id}`)
+  if (!card) return
+
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  highlightedId.value = id
+  window.setTimeout(() => {
+    if (highlightedId.value === id) highlightedId.value = ''
+  }, 2600)
+}
 
 const ru = computed(() => locale.value === 'ru')
 const t = (uz: string, rut: string) => (ru.value ? rut : uz)
@@ -82,6 +108,13 @@ async function sendReply(a: Appeal) {
     replying.value = null
   }
 }
+
+// `filter` yuqorida e'lon qilingandan keyin — bildirishnoma havolasiga reaksiya.
+watch(
+  [focusId, () => store.loading, () => store.appeals.length],
+  focusRequestedAppeal,
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -106,7 +139,14 @@ async function sendReply(a: Appeal) {
       </v-chip>
     </div>
 
-    <v-card v-for="a in inbox" :key="a.id" class="surface-card pa-5 mb-3" rounded="lg">
+    <v-card
+      v-for="a in inbox"
+      :id="`appeal-${a.id}`"
+      :key="a.id"
+      class="surface-card pa-5 mb-3"
+      :class="{ 'appeal-focused': highlightedId === a.id }"
+      rounded="lg"
+    >
       <div class="d-flex align-center flex-wrap mb-3" style="gap: 10px">
         <div class="icon-tile" :style="{ '--tint': a.mode === 'anonymous' ? 'rgb(var(--v-theme-secondary))' : 'rgb(var(--v-theme-primary))' }">
           <v-icon :icon="a.mode === 'anonymous' ? 'mdi-incognito' : 'mdi-account-outline'" size="19" />
@@ -265,7 +305,14 @@ async function sendReply(a: Appeal) {
       <v-col cols="12" md="6">
         <div class="text-subtitle-1 font-weight-bold mb-3">{{ t('Mening murojaatlarim', 'Мои обращения') }}</div>
 
-        <v-card v-for="a in myAppeals" :key="a.id" class="surface-card pa-4 mb-3" rounded="lg">
+        <v-card
+          v-for="a in myAppeals"
+          :id="`appeal-${a.id}`"
+          :key="a.id"
+          class="surface-card pa-4 mb-3"
+          :class="{ 'appeal-focused': highlightedId === a.id }"
+          rounded="lg"
+        >
           <div class="d-flex align-center flex-wrap mb-2" style="gap: 8px">
             <v-chip size="x-small" variant="tonal" :prepend-icon="topicMeta(a.topic).icon">
               {{ ru ? topicMeta(a.topic).ru : topicMeta(a.topic).uz }}
@@ -306,5 +353,19 @@ async function sendReply(a: Appeal) {
   background: rgba(var(--v-theme-primary), 0.05);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   padding: 10px 14px;
+}
+
+.appeal-focused {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
+  animation: appeal-pulse 2.4s var(--ease);
+}
+@keyframes appeal-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--v-theme-primary), 0.45);
+  }
+  60% {
+    box-shadow: 0 0 0 10px rgba(var(--v-theme-primary), 0);
+  }
 }
 </style>

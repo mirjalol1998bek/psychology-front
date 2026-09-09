@@ -30,11 +30,6 @@ export default {
     dark: 'Qorong‘i',
     system: 'Tizim bo‘yicha',
   },
-  help: {
-    title: 'Yordam kerakmi?',
-    body: 'Qo‘llanma va ko‘rsatmalar bilan tanishing.',
-    action: 'Qo‘llanma',
-  },
   auth: {
     title: 'Tizimga kirish',
     subtitle: 'Universitet psixologik diagnostika platformasi',
