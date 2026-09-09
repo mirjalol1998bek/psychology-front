@@ -168,6 +168,21 @@ async function importGroup(opt: HemisGroupOption) {
   }
 }
 
+const queueingFacultyGroups = ref(false)
+async function importAllGroups() {
+  if (!selFacultyId.value || queueingFacultyGroups.value) return
+  queueingFacultyGroups.value = true
+  try {
+    await org.queueHemisFacultyGroups(selFacultyId.value)
+    notify('Fakultetning barcha guruhlari navbatga qo‘yildi — fon rejimida yuklanadi')
+    hemisDialog.value = false
+  } catch {
+    notify('Navbatga qo‘yib bo‘lmadi')
+  } finally {
+    queueingFacultyGroups.value = false
+  }
+}
+
 async function syncStudents() {
   if (!selGroupId.value || syncingStudents.value) return
   syncingStudents.value = true
@@ -482,7 +497,17 @@ async function queueAllStudents() {
           </v-list>
         </div>
         <v-divider />
-        <div class="pa-3 d-flex justify-end">
+        <div class="pa-3 d-flex justify-space-between align-center flex-wrap" style="gap: 8px">
+          <v-btn
+            variant="tonal"
+            color="primary"
+            size="small"
+            prepend-icon="mdi-download-multiple"
+            :loading="queueingFacultyGroups"
+            @click="importAllGroups"
+          >
+            Barcha guruhlarni yuklash
+          </v-btn>
           <v-btn variant="text" @click="hemisDialog = false">Yopish</v-btn>
         </div>
       </v-card>

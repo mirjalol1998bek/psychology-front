@@ -58,6 +58,10 @@ if (!auth.isStaff) {
 }
 const attemptFor = (i: InstrumentType) => attempts.value.find((a) => a.instrumentType === i)
 const availableInstruments = computed(() => instruments.value.filter((q) => q.available))
+/** Biriktirilgan yoki allaqachon ishlangan testlargina ro'yxatda. */
+const visibleInstruments = computed(() =>
+  instruments.value.filter((q) => q.available || attemptFor(q.instrumentType)),
+)
 const submittedAttempts = computed(() => attempts.value.filter((a) => a.status === 'submitted'))
 const nextTest = computed(() =>
   availableInstruments.value.find((q) => attemptFor(q.instrumentType)?.status !== 'submitted'),
@@ -296,10 +300,10 @@ const topFaculties = [
         </v-col>
       </v-row>
 
-      <v-card class="surface-card" rounded="lg">
+      <v-card v-if="visibleInstruments.length" class="surface-card" rounded="lg">
         <div class="pa-5 pb-2 text-subtitle-1 font-weight-bold">{{ t('nav.tests') }}</div>
         <v-list bg-color="transparent" lines="two">
-          <v-list-item v-for="q in instruments" :key="q.instrumentType" class="px-5">
+          <v-list-item v-for="q in visibleInstruments" :key="q.instrumentType" class="px-5">
             <template #prepend>
               <div class="icon-tile mr-3" style="--tint: rgb(var(--v-theme-primary))">
                 <v-icon :icon="INSTRUMENT_META[q.instrumentType].icon" size="19" />

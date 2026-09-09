@@ -87,6 +87,11 @@ if (!auth.isStaff) loadStudent()
 function attemptFor(instrument: InstrumentType) {
   return attempts.value.find((a) => a.instrumentType === instrument)
 }
+
+/** Faqat biriktirilgan (yoki talaba allaqachon ishlagan) testlar ko'rinadi. */
+const visibleInstruments = computed(() =>
+  instruments.value.filter((q) => q.available || attemptFor(q.instrumentType)),
+)
 </script>
 
 <template>
@@ -190,7 +195,7 @@ function attemptFor(instrument: InstrumentType) {
     </header>
 
     <v-row>
-      <v-col v-for="q in instruments" :key="q.instrumentType" cols="12" sm="6" lg="4">
+      <v-col v-for="q in visibleInstruments" :key="q.instrumentType" cols="12" sm="6" lg="4">
         <v-card class="pa-5 h-100 d-flex flex-column surface-card" rounded="lg">
           <div class="d-flex align-start justify-space-between mb-4">
             <div class="icon-tile" style="--tint: rgb(var(--v-theme-primary))">
@@ -251,5 +256,13 @@ function attemptFor(instrument: InstrumentType) {
         </v-card>
       </v-col>
     </v-row>
+
+    <v-empty-state
+      v-if="!visibleInstruments.length"
+      icon="mdi-clipboard-text-off-outline"
+      title="Sizga hali test biriktirilmagan"
+      text="Psixolog test biriktirgach, bu yerda ko‘rinadi."
+      density="comfortable"
+    />
   </div>
 </template>
