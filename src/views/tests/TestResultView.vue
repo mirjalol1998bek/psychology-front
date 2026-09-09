@@ -1,28 +1,24 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { instrumentByRoute, INSTRUMENT_META, colorFor, SHAPE_ICONS } from '@/utils/instruments'
+import { instrumentByRoute, INSTRUMENT_META, instrumentLabel, colorFor, SHAPE_ICONS } from '@/utils/instruments'
 import { getAttempt } from '@/services/attemptService'
-import { MONTH_NAMES } from '@/composables/useMonthGrid'
+import { formatDay } from '@/utils/datetime'
 import type { StoredAttempt } from '@/types/assessment'
-import type { StudyLanguage } from '@/types/domain'
 
-const MONTHS_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
-
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
 const instrument = instrumentByRoute(route.params.id as string)
 const meta = INSTRUMENT_META[instrument]
-const language = (auth.user?.hemis.studyLanguage ?? 'uz') as StudyLanguage
 const studentKey = auth.user?.hemis.hemisId ?? 'anon'
 
 const attempt = ref<StoredAttempt | null>(null)
 const loading = ref(true)
-
-const t = (uz: string, ru: string) => (language === 'ru' ? ru : uz)
 
 getAttempt(studentKey, instrument).then((a) => {
   attempt.value = a
@@ -44,19 +40,14 @@ const scaleScore = computed(() => {
 const chartBreakdown = computed(() => (scaleScore.value === null ? (result.value?.breakdown ?? []) : []))
 const maxBreakdown = computed(() => Math.max(1, ...chartBreakdown.value.map((b) => b.value)))
 
-const submittedAt = computed(() => {
-  if (!attempt.value?.submittedAt) return ''
-  const d = new Date(attempt.value.submittedAt)
-  const month = language === 'ru' ? MONTHS_RU[d.getMonth()] : MONTH_NAMES[d.getMonth()].toLowerCase()
-  return `${d.getDate()}-${month} ${d.getFullYear()}`
-})
+const submittedAt = computed(() => formatDay(attempt.value?.submittedAt, { year: true }))
 
 </script>
 
 <template>
   <div>
     <v-btn variant="text" prepend-icon="mdi-arrow-left" class="mb-3" @click="router.push('/tests')">
-      {{ t('Testlar', 'Тесты') }}
+      {{ t('nav.tests') }}
     </v-btn>
 
     <div v-if="loading" class="d-flex justify-center py-16">
@@ -75,25 +66,25 @@ const submittedAt = computed(() => {
           </div>
           <div>
             <div class="text-caption text-uppercase" style="opacity: 0.8; letter-spacing: 0.08em">
-              {{ meta.label }} · {{ submittedAt }}
+              {{ instrumentLabel(instrument) }} · {{ submittedAt }}
             </div>
             <div class="text-h4 text-display font-weight-bold" style="color: #fff">{{ result.label }}</div>
             <div v-if="scaleScore !== null" class="text-body-2" style="color: #fff; opacity: 0.85">
-              {{ t('Umumiy ball', 'Итоговый балл') }}: <strong>{{ scaleScore }}</strong>
+              {{ t('result.totalScore') }}: <strong>{{ scaleScore }}</strong>
             </div>
           </div>
         </div>
 
         <div class="pa-5 pa-md-6">
           <div class="text-subtitle-2 font-weight-bold text-uppercase text-medium-emphasis mb-2">
-            {{ t('Natija tahlili', 'Анализ результата') }}
+            {{ t('result.analysis') }}
           </div>
           <p class="result-text">{{ result.description }}</p>
         </div>
       </v-card>
 
       <v-card v-if="chartBreakdown.length" class="surface-card pa-5" rounded="lg">
-        <div class="text-subtitle-1 font-weight-bold mb-4">{{ t('Ballar taqsimoti', 'Распределение баллов') }}</div>
+        <div class="text-subtitle-1 font-weight-bold mb-4">{{ t('result.scoreDistribution') }}</div>
         <div v-for="b in chartBreakdown" :key="b.label" class="mb-3">
           <div class="d-flex justify-space-between text-body-2 mb-1">
             <span :class="{ 'font-weight-bold': b.label === result.label }">{{ b.label }}</span>
@@ -110,16 +101,11 @@ const submittedAt = computed(() => {
       </v-card>
 
       <div class="d-flex flex-wrap mt-4" style="gap: 10px">
-        <v-btn variant="tonal" color="primary" to="/results">{{ t('Barcha natijalar', 'Все результаты') }}</v-btn>
+        <v-btn variant="tonal" color="primary" to="/results">{{ t('result.allResults') }}</v-btn>
       </div>
       <p class="text-caption text-medium-emphasis mt-3">
         <v-icon icon="mdi-lock-outline" size="13" class="mr-1" />
-        {{
-          t(
-            'Test bir marta topshiriladi. Qayta topshirish kerak bo‘lsa psixologga murojaat qiling.',
-            'Тест проходится один раз. Если нужно пройти заново — обратитесь к психологу.',
-          )
-        }}
+        {{ t('result.onceNote') }}
       </p>
     </template>
   </div>

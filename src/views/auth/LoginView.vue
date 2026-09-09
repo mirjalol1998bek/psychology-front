@@ -33,12 +33,12 @@ const rememberMe = ref(true)
 async function handlePasswordLogin() {
   loginError.value = ''
   if (!username.value.trim() || !password.value) {
-    loginError.value = 'Email va parolni kiriting.'
+    loginError.value = t('auth.enterEmailPassword')
     return
   }
   const ok = await auth.signInWithPassword(username.value, password.value)
   if (!ok) {
-    loginError.value = 'Email yoki parol noto‘g‘ri.'
+    loginError.value = t('auth.wrongCredentials')
     return
   }
   router.push('/')
@@ -71,9 +71,9 @@ async function handlePasswordLogin() {
         <h2 class="text-display text-h4 font-weight-bold mb-3">{{ t('app.name') }}</h2>
         <p class="text-body-1 mb-8" style="max-width: 34ch; opacity: 0.9">{{ t('app.tagline') }}</p>
         <ul class="login-points">
-          <li><v-icon icon="mdi-lock-check-outline" size="18" class="mr-2" />Ma’lumotlaringiz maxfiy saqlanadi</li>
-          <li><v-icon icon="mdi-clipboard-text-outline" size="18" class="mr-2" />Psixologik testlar va xulosalar</li>
-          <li><v-icon icon="mdi-calendar-heart" size="18" class="mr-2" />Psixolog bilan qabulga yozilish</li>
+          <li><v-icon icon="mdi-lock-check-outline" size="18" class="mr-2" />{{ t('auth.points.confidential') }}</li>
+          <li><v-icon icon="mdi-clipboard-text-outline" size="18" class="mr-2" />{{ t('auth.points.tests') }}</li>
+          <li><v-icon icon="mdi-calendar-heart" size="18" class="mr-2" />{{ t('auth.points.appointments') }}</li>
         </ul>
       </aside>
 
@@ -136,7 +136,7 @@ async function handlePasswordLogin() {
         <form v-else @submit.prevent="handlePasswordLogin">
           <v-text-field
             v-model="username"
-            label="Email"
+            :label="t('auth.emailLabel')"
             type="email"
             prepend-inner-icon="mdi-email-outline"
             class="mb-1"
@@ -145,14 +145,14 @@ async function handlePasswordLogin() {
           <v-text-field
             v-model="password"
             :type="showPassword ? 'text' : 'password'"
-            label="Parol"
+            :label="t('auth.passwordLabel')"
             prepend-inner-icon="mdi-lock-outline"
             :append-inner-icon="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
             autocomplete="current-password"
             @click:append-inner="showPassword = !showPassword"
           />
           <div class="d-flex align-center justify-space-between mb-4">
-            <v-switch v-model="rememberMe" color="primary" density="compact" hide-details label="Meni eslab qol" />
+            <v-switch v-model="rememberMe" color="primary" density="compact" hide-details :label="t('auth.rememberMe')" />
           </div>
 
           <v-alert v-if="loginError" type="error" variant="tonal" density="compact" class="mb-4">
@@ -160,7 +160,7 @@ async function handlePasswordLogin() {
           </v-alert>
 
           <v-btn type="submit" block size="large" color="primary" class="font-weight-bold" :loading="auth.isSigningIn">
-            Kirish
+            {{ t('auth.signInBtn') }}
           </v-btn>
         </form>
       </v-card>

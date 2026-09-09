@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+const { t } = useI18n()
 const router = useRouter()
 const auth = useAuthStore()
 const error = ref('')
@@ -39,7 +41,7 @@ onMounted(async () => {
     return
   }
   if (!access || !refresh) {
-    error.value = 'HEMIS javobida token topilmadi.'
+    error.value = t('hemisCallback.noToken')
     return
   }
 
@@ -47,7 +49,7 @@ onMounted(async () => {
   if (ok) {
     router.replace('/')
   } else {
-    error.value = 'Kirish amalga oshmadi. Qaytadan urinib ko‘ring.'
+    error.value = t('hemisCallback.loginFailed')
   }
 })
 </script>
@@ -56,33 +58,31 @@ onMounted(async () => {
   <div class="hemis-callback">
     <template v-if="state === 'pending'">
       <v-icon icon="mdi-clock-outline" color="primary" size="44" />
-      <h2 class="text-h6 mt-4 mb-2">Arizangiz yuborildi</h2>
+      <h2 class="text-h6 mt-4 mb-2">{{ t('hemisCallback.pendingTitle') }}</h2>
       <p class="text-body-2 text-medium-emphasis mb-4" style="max-width: 40ch">
-        Hisobingiz administrator tasdig‘ini kutmoqda. Tasdiqlangach, HEMIS orqali
-        qayta kirib tizimga o‘tasiz.
+        {{ t('hemisCallback.pendingText') }}
       </p>
-      <v-btn color="primary" variant="tonal" to="/login">Kirish sahifasiga</v-btn>
+      <v-btn color="primary" variant="tonal" to="/login">{{ t('hemisCallback.toLogin') }}</v-btn>
     </template>
 
     <template v-else-if="state === 'rejected'">
       <v-icon icon="mdi-cancel" color="error" size="44" />
-      <h2 class="text-h6 mt-4 mb-2">Kirish rad etilgan</h2>
+      <h2 class="text-h6 mt-4 mb-2">{{ t('hemisCallback.rejectedTitle') }}</h2>
       <p class="text-body-2 text-medium-emphasis mb-4" style="max-width: 40ch">
-        Administrator hisobingizga kirish ruxsatini bermadi. Savollar bo‘lsa
-        psixologik xizmat bilan bog‘laning.
+        {{ t('hemisCallback.rejectedText') }}
       </p>
-      <v-btn color="primary" variant="tonal" to="/login">Kirish sahifasiga</v-btn>
+      <v-btn color="primary" variant="tonal" to="/login">{{ t('hemisCallback.toLogin') }}</v-btn>
     </template>
 
     <template v-else-if="!error">
       <v-progress-circular indeterminate color="primary" size="40" />
-      <p class="text-body-2 text-medium-emphasis mt-4">HEMIS orqali kirilmoqda…</p>
+      <p class="text-body-2 text-medium-emphasis mt-4">{{ t('hemisCallback.signingIn') }}</p>
     </template>
 
     <template v-else>
       <v-icon icon="mdi-alert-circle-outline" color="error" size="40" />
       <p class="text-body-2 mt-4 mb-4">{{ error }}</p>
-      <v-btn color="primary" variant="tonal" to="/login">Kirish sahifasiga</v-btn>
+      <v-btn color="primary" variant="tonal" to="/login">{{ t('hemisCallback.toLogin') }}</v-btn>
     </template>
   </div>
 </template>

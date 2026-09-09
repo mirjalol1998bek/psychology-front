@@ -6,8 +6,8 @@ import { useAuthStore } from '@/stores/auth'
 import MiniCalendar from '@/components/dashboard/MiniCalendar.vue'
 import { CAL_STATUS_META, TODAY, type CalEvent } from '@/mocks/calendar'
 import { useCalendarStore } from '@/stores/calendar'
-import { MONTH_NAMES } from '@/composables/useMonthGrid'
-import { INSTRUMENT_META } from '@/utils/instruments'
+import { formatDay } from '@/utils/datetime'
+import { INSTRUMENT_META, instrumentLabel } from '@/utils/instruments'
 import { listInstruments } from '@/services/quizService'
 import { getAttempts } from '@/services/attemptService'
 import { useAppealsStore } from '@/stores/appeals'
@@ -84,30 +84,28 @@ const statTiles = computed(() =>
         {
           label: t('dashboard.assignedTests'),
           value: String(availableInstruments.value.length),
-          hint: `${availableInstruments.value.length - submittedAttempts.value.length} ta bajarilmagan`,
+          hint: t('dashboard.notDone', { n: availableInstruments.value.length - submittedAttempts.value.length }),
           icon: 'mdi-clipboard-text-outline',
           tint: 'rgb(var(--v-theme-primary))',
         },
         {
           label: t('dashboard.completed'),
           value: String(submittedAttempts.value.length),
-          hint: submittedAttempts.value.length ? 'Natijalarni ko‘rish mumkin' : 'Hali topshirilmagan',
+          hint: submittedAttempts.value.length ? t('dashboard.canViewResults') : t('dashboard.notSubmittedYet'),
           icon: 'mdi-check-circle-outline',
           tint: 'rgb(var(--v-theme-success))',
         },
         {
-          label: 'Yaqin qabul',
-          value: nextAppointment.value
-            ? `${new Date(nextAppointment.value.date).getDate()}-${MONTH_NAMES[new Date(nextAppointment.value.date).getMonth()].toLowerCase().slice(0, 3)}`
-            : '—',
-          hint: nextAppointment.value ? nextAppointment.value.time : 'Rejalashtirilmagan',
+          label: t('dashboard.nearAppointment'),
+          value: nextAppointment.value ? formatDay(nextAppointment.value.date, { short: true }) : '—',
+          hint: nextAppointment.value ? nextAppointment.value.time : t('dashboard.notScheduled'),
           icon: 'mdi-calendar-heart',
           tint: 'rgb(var(--v-theme-secondary))',
         },
         {
-          label: 'Pasport to‘liqligi',
+          label: t('dashboard.passportCompleteness'),
           value: `${passportPct.value}%`,
-          hint: passportPct.value === 100 ? 'To‘liq to‘ldirilgan' : 'To‘ldirishni yakunlang',
+          hint: passportPct.value === 100 ? t('dashboard.passportFull') : t('dashboard.passportFinish'),
           icon: 'mdi-card-account-details-outline',
           tint: 'rgb(var(--v-theme-warning))',
           to: '/passport',
@@ -122,8 +120,7 @@ const upcomingAppointments = computed(() =>
     .slice(0, 4),
 )
 function formatUpcoming(e: CalEvent) {
-  const d = new Date(e.date)
-  return `${d.getDate()}-${MONTH_NAMES[d.getMonth()].toLowerCase()} · ${e.time}`
+  return `${formatDay(e.date)} · ${e.time}`
 }
 
 const quickActions = [
@@ -195,14 +192,14 @@ const topFaculties = [
                   <div class="text-caption text-medium-emphasis">{{ formatUpcoming(e) }}</div>
                 </div>
                 <v-chip size="small" variant="tonal" :color="e.status === 'free' ? 'success' : 'primary'">
-                  {{ e.status === 'free' ? 'Bo‘sh' : 'Band' }}
+                  {{ e.status === 'free' ? t('dashboard.free') : t('dashboard.busy') }}
                 </v-chip>
               </div>
             </div>
             <v-empty-state
               v-else
               icon="mdi-calendar-check-outline"
-              title="Rejalashtirilgan qabul yo‘q"
+              :title="t('dashboard.noPlannedAppointment')"
               density="comfortable"
             />
           </v-card>
@@ -223,7 +220,7 @@ const topFaculties = [
                 <span class="text-body-2 font-weight-bold">{{ f.pct }}%</span>
               </div>
               <v-progress-linear :model-value="f.pct" height="8" rounded color="primary" bg-color="surface-variant" />
-              <div class="text-caption text-medium-emphasis mt-1">{{ f.groups }} guruh · {{ f.students }} talaba</div>
+              <div class="text-caption text-medium-emphasis mt-1">{{ t('dashboard.groupsStudents', { groups: f.groups, students: f.students }) }}</div>
             </div>
           </v-card>
         </v-col>
@@ -258,7 +255,7 @@ const topFaculties = [
                 </div>
                 <div>
                   <div class="text-h6 text-display font-weight-bold">{{ nextTest.title }}</div>
-                  <div class="text-caption text-medium-emphasis">{{ nextTest.itemCount }} ta savol</div>
+                  <div class="text-caption text-medium-emphasis">{{ t('dashboard.questionCount', { n: nextTest.itemCount }) }}</div>
                 </div>
               </div>
               <v-btn
@@ -272,8 +269,8 @@ const topFaculties = [
             <v-empty-state
               v-else
               icon="mdi-check-circle-outline"
-              title="Barcha testlar bajarilgan"
-              text="Yangi test tayinlanganda shu yerda ko‘rinadi."
+              :title="t('dashboard.allTestsDone')"
+              :text="t('dashboard.allTestsDoneHint')"
               density="comfortable"
             />
           </v-card>
@@ -291,10 +288,10 @@ const topFaculties = [
                 <div class="text-caption text-medium-emphasis">{{ nextAppointment.title }}</div>
               </div>
             </div>
-            <div v-else class="text-body-2 text-medium-emphasis mb-4">Rejalashtirilgan qabul yo‘q.</div>
+            <div v-else class="text-body-2 text-medium-emphasis mb-4">{{ t('dashboard.noScheduledAppointment') }}</div>
             <v-spacer />
             <v-btn variant="tonal" color="secondary" block to="/appeals" prepend-icon="mdi-message-text-outline">
-              Psixologga murojaat
+              {{ t('dashboard.contactPsychologist') }}
             </v-btn>
           </v-card>
         </v-col>
@@ -311,12 +308,12 @@ const topFaculties = [
             </template>
             <v-list-item-title class="font-weight-bold">{{ q.title }}</v-list-item-title>
             <v-list-item-subtitle>
-              <template v-if="!q.available">Tez orada</template>
+              <template v-if="!q.available">{{ t('dashboard.comingSoon') }}</template>
               <template v-else-if="attemptFor(q.instrumentType)?.status === 'submitted'">
-                Natija: {{ attemptFor(q.instrumentType)?.result?.label }}
+                {{ t('dashboard.resultLabel') }}: {{ attemptFor(q.instrumentType)?.result?.label }}
               </template>
-              <template v-else-if="attemptFor(q.instrumentType)">Boshlangan — davom ettiring</template>
-              <template v-else>{{ q.itemCount }} ta savol</template>
+              <template v-else-if="attemptFor(q.instrumentType)">{{ t('dashboard.startedContinue') }}</template>
+              <template v-else>{{ t('dashboard.questionCount', { n: q.itemCount }) }}</template>
             </v-list-item-subtitle>
             <template #append>
               <v-btn
@@ -356,7 +353,7 @@ const topFaculties = [
                 <v-icon :icon="INSTRUMENT_META[r.instrumentType].icon" size="19" />
               </div>
             </template>
-            <v-list-item-title class="font-weight-bold">{{ INSTRUMENT_META[r.instrumentType].label }}</v-list-item-title>
+            <v-list-item-title class="font-weight-bold">{{ instrumentLabel(r.instrumentType) }}</v-list-item-title>
             <v-list-item-subtitle>{{ r.result?.description }}</v-list-item-subtitle>
             <template #append>
               <v-chip color="secondary" variant="tonal" size="small">{{ r.result?.label }}</v-chip>

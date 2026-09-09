@@ -1,4 +1,5 @@
 import type { InstrumentType } from '@/types/domain'
+import { i18n } from '@/i18n'
 
 /**
  * The old app re-implemented temperament/shape color coding and result-mode
@@ -17,6 +18,11 @@ export const INSTRUMENT_META: Record<
   FREQUENCY_BASED: { label: 'Temperament', renderMode: 'badge', icon: 'mdi-account-heart-outline', routeSegment: 'temperament' },
   RANKING_BASED: { label: 'Psixogeometrik', renderMode: 'icon-badge', icon: 'mdi-shape-outline', routeSegment: 'psixogeometrik' },
   SCORE_RANGE_BASED: { label: 'Nevrasteniya', renderMode: 'freetext', icon: 'mdi-gauge', routeSegment: 'nevrasteniya' },
+}
+
+/** Metodika nomi joriy interfeys tiliga qarab (`instrument.*` locale kaliti). */
+export function instrumentLabel(type: InstrumentType): string {
+  return i18n.global.t(`instrument.${type}`)
 }
 
 export function instrumentByRoute(segment: string): InstrumentType {

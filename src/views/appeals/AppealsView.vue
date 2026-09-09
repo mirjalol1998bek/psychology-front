@@ -5,9 +5,9 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppealsStore, type AppealMode, type AppealTopic, type Appeal } from '@/stores/appeals'
 import { useNotifications } from '@/composables/useNotifications'
-import { MONTH_NAMES } from '@/composables/useMonthGrid'
+import { formatDay } from '@/utils/datetime'
 
-const { locale } = useI18n()
+const { t } = useI18n()
 const route = useRoute()
 const auth = useAuthStore()
 const store = useAppealsStore()
@@ -40,24 +40,15 @@ async function focusRequestedAppeal() {
   }, 2600)
 }
 
-const ru = computed(() => locale.value === 'ru')
-const t = (uz: string, rut: string) => (ru.value ? rut : uz)
-
-const TOPICS: { value: AppealTopic; uz: string; ru: string; icon: string }[] = [
-  { value: 'question', uz: 'Savol', ru: 'Вопрос', icon: 'mdi-help-circle-outline' },
-  { value: 'appointment', uz: 'Qabulga yozilish', ru: 'Запись на приём', icon: 'mdi-calendar-heart' },
-  { value: 'stress', uz: 'Ruhiy holat / stress', ru: 'Состояние / стресс', icon: 'mdi-weather-cloudy' },
-  { value: 'other', uz: 'Boshqa', ru: 'Другое', icon: 'mdi-dots-horizontal' },
+const TOPICS: { value: AppealTopic; label: string; icon: string }[] = [
+  { value: 'question', label: 'appeals.topics.question', icon: 'mdi-help-circle-outline' },
+  { value: 'appointment', label: 'appeals.topics.appointment', icon: 'mdi-calendar-heart' },
+  { value: 'stress', label: 'appeals.topics.stress', icon: 'mdi-weather-cloudy' },
+  { value: 'other', label: 'appeals.topics.other', icon: 'mdi-dots-horizontal' },
 ]
 const topicMeta = (v: AppealTopic) => TOPICS.find((x) => x.value === v)!
 
-function fmt(iso: string) {
-  const d = new Date(iso)
-  const m = ru.value
-    ? ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'][d.getMonth()]
-    : MONTH_NAMES[d.getMonth()].toLowerCase().slice(0, 3)
-  return `${d.getDate()}-${m}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
+const fmt = (iso: string) => formatDay(iso, { short: true, time: true })
 
 // ============================ STUDENT ============================
 const studentKey = computed(() => auth.user?.hemis.hemisId ?? 'anon')
@@ -121,9 +112,9 @@ watch(
   <!-- ============================ STAFF INBOX ============================ -->
   <div v-if="auth.isStaff">
     <header class="page-head">
-      <h1 class="text-h4">Murojaatlar</h1>
+      <h1 class="text-h4">{{ t('appeals.staff.title') }}</h1>
       <p class="text-body-2 text-medium-emphasis mb-0">
-        Talabalarning savollari va qabul so‘rovlari. {{ store.openCount }} ta javob kutmoqda.
+        {{ t('appeals.staff.subtitle', { n: store.openCount }) }}
       </p>
     </header>
 
@@ -135,7 +126,7 @@ watch(
         :color="filter === f ? 'primary' : undefined"
         @click="filter = f"
       >
-        {{ { open: 'Javob kutmoqda', answered: 'Javob berilgan', all: 'Barchasi' }[f] }}
+        {{ { open: t('appeals.staff.filterOpen'), answered: t('appeals.staff.filterAnswered'), all: t('appeals.staff.filterAll') }[f] }}
       </v-chip>
     </div>
 
@@ -153,7 +144,7 @@ watch(
         </div>
         <div class="flex-grow-1" style="min-width: 0">
           <div class="font-weight-bold">
-            {{ a.mode === 'anonymous' ? 'Anonim talaba' : a.studentName }}
+            {{ a.mode === 'anonymous' ? t('appeals.staff.anonStudent') : a.studentName }}
           </div>
           <div class="text-caption text-medium-emphasis">
             <template v-if="a.mode !== 'anonymous' && a.group">{{ a.faculty }} · {{ a.group }} · </template>
@@ -161,13 +152,13 @@ watch(
           </div>
         </div>
         <v-chip size="small" variant="tonal" :prepend-icon="topicMeta(a.topic).icon">
-          {{ topicMeta(a.topic).uz }}
+          {{ t(topicMeta(a.topic).label) }}
         </v-chip>
         <v-chip v-if="a.wantsAppointment" size="small" variant="tonal" color="secondary" prepend-icon="mdi-calendar-heart">
-          Qabul so‘ralgan
+          {{ t('appeals.staff.appointmentRequested') }}
         </v-chip>
         <v-chip size="small" :color="a.status === 'answered' ? 'success' : 'warning'" variant="tonal">
-          {{ a.status === 'answered' ? 'Javob berilgan' : 'Ochiq' }}
+          {{ a.status === 'answered' ? t('appeals.staff.answered') : t('appeals.staff.open') }}
         </v-chip>
       </div>
 
@@ -183,7 +174,7 @@ watch(
       <div v-else>
         <v-textarea
           v-model="replyDrafts[a.id]"
-          :placeholder="a.wantsAppointment ? 'Javob yozing va kerak bo‘lsa qabul kalendaridan vaqt belgilang…' : 'Javob yozing…'"
+          :placeholder="a.wantsAppointment ? t('appeals.staff.replyPlaceholderAppointment') : t('appeals.staff.replyPlaceholder')"
           rows="2"
           auto-grow
           hide-details
@@ -191,7 +182,7 @@ watch(
         />
         <div class="d-flex justify-end" style="gap: 8px">
           <v-btn v-if="a.wantsAppointment" variant="tonal" color="secondary" size="small" to="/calendar" prepend-icon="mdi-calendar-plus">
-            Qabul kalendari
+            {{ t('appeals.staff.calendar') }}
           </v-btn>
           <v-btn
             color="primary"
@@ -200,7 +191,7 @@ watch(
             :disabled="!replyDrafts[a.id]?.trim()"
             @click="sendReply(a)"
           >
-            Javob berish
+            {{ t('appeals.staff.reply') }}
           </v-btn>
         </div>
       </div>
@@ -209,32 +200,27 @@ watch(
     <v-empty-state
       v-if="!inbox.length"
       icon="mdi-inbox-outline"
-      title="Murojaat yo‘q"
-      text="Bu bo‘limda talabalarning murojaatlari ko‘rinadi."
+      :title="t('appeals.staff.emptyTitle')"
+      :text="t('appeals.staff.emptyText')"
     />
   </div>
 
   <!-- ============================ STUDENT ============================ -->
   <div v-else>
     <header class="page-head">
-      <h1 class="text-h4">{{ t('Psixologga murojaat', 'Обращение к психологу') }}</h1>
+      <h1 class="text-h4">{{ t('appeals.studentTitle') }}</h1>
       <p class="text-body-2 text-medium-emphasis mb-0" style="max-width: 62ch">
-        {{
-          t(
-            'Savolingiz, qabulga yozilish yoki ruhiy holatingiz bo‘yicha psixologga yozing. Xohlasangiz anonim yuboring — ismingiz ko‘rinmaydi.',
-            'Напишите психологу вопрос, запрос на приём или о своём состоянии. Можно отправить анонимно — ваше имя не будет видно.',
-          )
-        }}
+        {{ t('appeals.studentSubtitle') }}
       </p>
     </header>
 
     <v-row>
       <v-col cols="12" md="6">
         <v-card class="surface-card pa-5" rounded="lg">
-          <div class="text-subtitle-1 font-weight-bold mb-4">{{ t('Yangi murojaat', 'Новое обращение') }}</div>
+          <div class="text-subtitle-1 font-weight-bold mb-4">{{ t('appeals.newAppeal') }}</div>
 
           <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase mb-2">
-            {{ t('Mavzu', 'Тема') }}
+            {{ t('appeals.topic') }}
           </div>
           <div class="d-flex flex-wrap mb-4" style="gap: 8px">
             <v-chip
@@ -245,13 +231,13 @@ watch(
               :prepend-icon="tp.icon"
               @click="form.topic = tp.value"
             >
-              {{ ru ? tp.ru : tp.uz }}
+              {{ t(tp.label) }}
             </v-chip>
           </div>
 
           <v-textarea
             v-model="form.message"
-            :label="t('Xabaringiz', 'Ваше сообщение')"
+            :label="t('appeals.yourMessage')"
             rows="4"
             auto-grow
             counter
@@ -260,7 +246,7 @@ watch(
 
           <v-checkbox
             v-model="form.wantsAppointment"
-            :label="t('Shaxsiy qabulga yozilishni so‘rayman', 'Прошу записать на личный приём')"
+            :label="t('appeals.requestAppointment')"
             density="compact"
             hide-details
             class="mb-2"
@@ -271,7 +257,7 @@ watch(
               <v-radio value="named">
                 <template #label>
                   <span class="text-body-2">
-                    {{ t('Ismim bilan', 'От своего имени') }}
+                    {{ t('appeals.named') }}
                     <span class="text-caption text-medium-emphasis d-block">
                       {{ auth.user?.hemis.fullName }} · {{ auth.user?.hemis.group }}
                     </span>
@@ -281,9 +267,9 @@ watch(
               <v-radio value="anonymous">
                 <template #label>
                   <span class="text-body-2">
-                    {{ t('Anonim', 'Анонимно') }}
+                    {{ t('appeals.anonymous') }}
                     <span class="text-caption text-medium-emphasis d-block">
-                      {{ t('Psixolog ismingizni ko‘rmaydi', 'Психолог не увидит ваше имя') }}
+                      {{ t('appeals.psychologistWontSee') }}
                     </span>
                   </span>
                 </template>
@@ -292,18 +278,18 @@ watch(
           </div>
 
           <v-btn color="primary" block :loading="sending" :disabled="!form.message.trim()" @click="submitAppeal">
-            {{ t('Yuborish', 'Отправить') }}
+            {{ t('appeals.send') }}
           </v-btn>
           <v-expand-transition>
             <v-alert v-if="sent" type="success" variant="tonal" density="compact" class="mt-3">
-              {{ t('Murojaatingiz yuborildi. Javob shu sahifada ko‘rinadi.', 'Обращение отправлено. Ответ появится на этой странице.') }}
+              {{ t('appeals.sent') }}
             </v-alert>
           </v-expand-transition>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="6">
-        <div class="text-subtitle-1 font-weight-bold mb-3">{{ t('Mening murojaatlarim', 'Мои обращения') }}</div>
+        <div class="text-subtitle-1 font-weight-bold mb-3">{{ t('appeals.myAppeals') }}</div>
 
         <v-card
           v-for="a in myAppeals"
@@ -315,10 +301,10 @@ watch(
         >
           <div class="d-flex align-center flex-wrap mb-2" style="gap: 8px">
             <v-chip size="x-small" variant="tonal" :prepend-icon="topicMeta(a.topic).icon">
-              {{ ru ? topicMeta(a.topic).ru : topicMeta(a.topic).uz }}
+              {{ t(topicMeta(a.topic).label) }}
             </v-chip>
             <v-chip v-if="a.mode === 'anonymous'" size="x-small" variant="tonal" prepend-icon="mdi-incognito">
-              {{ t('Anonim', 'Аноним') }}
+              {{ t('appeals.anon') }}
             </v-chip>
             <v-spacer />
             <span class="text-caption text-medium-emphasis">{{ fmt(a.createdAt) }}</span>
@@ -332,14 +318,14 @@ watch(
             <p class="text-body-2 mb-0" style="white-space: pre-wrap">{{ a.reply }}</p>
           </div>
           <div v-else class="text-caption text-warning font-weight-medium mt-2">
-            <v-icon icon="mdi-clock-outline" size="14" class="mr-1" />{{ t('Javob kutilmoqda', 'Ожидается ответ') }}
+            <v-icon icon="mdi-clock-outline" size="14" class="mr-1" />{{ t('appeals.awaitingReply') }}
           </div>
         </v-card>
 
         <v-empty-state
           v-if="!myAppeals.length"
           icon="mdi-message-text-outline"
-          :title="t('Hali murojaat yo‘q', 'Пока нет обращений')"
+          :title="t('appeals.emptyTitle')"
           density="comfortable"
         />
       </v-col>

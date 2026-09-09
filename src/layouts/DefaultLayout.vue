@@ -218,11 +218,9 @@ const initials = computed(() =>
     <v-main>
       <div v-if="auth.isImpersonating" class="impersonation-bar">
         <v-icon icon="mdi-account-eye-outline" size="18" />
-        <span class="text-body-2">
-          Siz <strong>{{ auth.user?.hemis.fullName }}</strong> talaba sifatida ko‘ryapsiz
-        </span>
+        <span class="text-body-2">{{ t('layout.impersonating', { name: auth.user?.hemis.fullName }) }}</span>
         <v-spacer />
-        <v-btn size="small" variant="outlined" @click="returnToAdmin">Adminga qaytish</v-btn>
+        <v-btn size="small" variant="outlined" @click="returnToAdmin">{{ t('layout.backToAdmin') }}</v-btn>
       </div>
       <v-container :key="route.path" class="page-container page-fade pa-4 pa-md-6 pa-lg-8">
         <router-view />

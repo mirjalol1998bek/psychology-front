@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
-import { INSTRUMENT_META } from '@/utils/instruments'
+import { INSTRUMENT_META, instrumentLabel } from '@/utils/instruments'
 import { listInstruments, members, instrumentForAlgo } from '@/services/quizService'
 import { getAttempts } from '@/services/attemptService'
 import { api } from '@/services/apiClient'
@@ -9,6 +10,7 @@ import type { InstrumentType, StudyLanguage } from '@/types/domain'
 import type { StoredAttempt } from '@/types/assessment'
 
 const auth = useAuthStore()
+const { t } = useI18n()
 
 interface QuizRow {
   id: number
@@ -190,8 +192,8 @@ const visibleInstruments = computed(() =>
   <!-- Student: take / view tests -->
   <div v-else>
     <header class="page-head">
-      <h1 class="text-h4">Testlar</h1>
-      <p class="text-body-2 text-medium-emphasis mb-0">Sizga tayinlangan psixologik metodikalar.</p>
+      <h1 class="text-h4">{{ t('nav.tests') }}</h1>
+      <p class="text-body-2 text-medium-emphasis mb-0">{{ t('tests.studentSubtitle') }}</p>
     </header>
 
     <v-row>
@@ -208,7 +210,7 @@ const visibleInstruments = computed(() =>
               size="small"
               prepend-icon="mdi-check"
             >
-              Yakunlangan
+              {{ t('tests.completed') }}
             </v-chip>
             <v-chip
               v-else-if="attemptFor(q.instrumentType)?.status === 'in_progress'"
@@ -216,20 +218,20 @@ const visibleInstruments = computed(() =>
               variant="tonal"
               size="small"
             >
-              Boshlangan
+              {{ t('tests.started') }}
             </v-chip>
-            <v-chip v-else-if="!q.available" size="small" variant="tonal">Tez orada</v-chip>
-            <v-chip v-else color="warning" variant="tonal" size="small">Kutilmoqda</v-chip>
+            <v-chip v-else-if="!q.available" size="small" variant="tonal">{{ t('tests.comingSoon') }}</v-chip>
+            <v-chip v-else color="warning" variant="tonal" size="small">{{ t('tests.pending') }}</v-chip>
           </div>
 
           <div class="text-subtitle-1 font-weight-bold mb-1">{{ q.title }}</div>
-          <div class="text-caption text-medium-emphasis mb-3">{{ INSTRUMENT_META[q.instrumentType].label }}</div>
+          <div class="text-caption text-medium-emphasis mb-3">{{ instrumentLabel(q.instrumentType) }}</div>
           <p v-if="q.available" class="text-caption text-medium-emphasis mb-0">{{ q.description }}</p>
 
           <v-spacer />
 
           <div v-if="q.available" class="text-caption text-medium-emphasis mt-3">
-            <v-icon icon="mdi-format-list-numbered" size="14" class="mr-1" />{{ q.itemCount }} ta savol
+            <v-icon icon="mdi-format-list-numbered" size="14" class="mr-1" />{{ t('tests.questionCount', { n: q.itemCount }) }}
           </div>
 
           <v-btn
@@ -240,7 +242,7 @@ const visibleInstruments = computed(() =>
             block
             :to="`/tests/${INSTRUMENT_META[q.instrumentType].routeSegment}/result`"
           >
-            Natijani ko‘rish
+            {{ t('tests.viewResult') }}
           </v-btn>
           <v-btn
             v-else-if="q.available"
@@ -250,9 +252,9 @@ const visibleInstruments = computed(() =>
             block
             :to="`/tests/${INSTRUMENT_META[q.instrumentType].routeSegment}/take`"
           >
-            {{ attemptFor(q.instrumentType) ? 'Davom etish' : 'Boshlash' }}
+            {{ attemptFor(q.instrumentType) ? t('tests.continue') : t('tests.start') }}
           </v-btn>
-          <v-btn v-else variant="tonal" class="mt-4" block disabled>Mavjud emas</v-btn>
+          <v-btn v-else variant="tonal" class="mt-4" block disabled>{{ t('tests.notAvailable') }}</v-btn>
         </v-card>
       </v-col>
     </v-row>
@@ -260,8 +262,8 @@ const visibleInstruments = computed(() =>
     <v-empty-state
       v-if="!visibleInstruments.length"
       icon="mdi-clipboard-text-off-outline"
-      title="Sizga hali test biriktirilmagan"
-      text="Psixolog test biriktirgach, bu yerda ko‘rinadi."
+      :title="t('tests.emptyTitle')"
+      :text="t('tests.emptyText')"
       density="comfortable"
     />
   </div>

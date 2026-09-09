@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { instrumentByRoute, INSTRUMENT_META } from '@/utils/instruments'
+import { instrumentByRoute, INSTRUMENT_META, instrumentLabel } from '@/utils/instruments'
 import { startTest, saveTest, submitTest } from '@/services/attemptService'
 import type { QuizRef } from '@/services/quizService'
 import { answeredCount, totalItems } from '@/utils/scoring'
 import type { AnswerMap, RunnableQuiz } from '@/types/assessment'
 import type { StudyLanguage } from '@/types/domain'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
@@ -27,8 +29,6 @@ const blockIndex = ref(0)
 
 let attemptId = 0
 let quizRef: QuizRef | null = null
-
-const t = (uz: string, ru: string) => (language === 'ru' ? ru : uz)
 
 async function load() {
   const started = await startTest(instrument, language)
@@ -121,7 +121,7 @@ async function submit() {
 <template>
   <div>
     <v-btn variant="text" prepend-icon="mdi-arrow-left" class="mb-3" @click="router.push('/tests')">
-      {{ t('Testlar', 'Тесты') }}
+      {{ t('nav.tests') }}
     </v-btn>
 
     <div v-if="loading" class="d-flex justify-center py-16">
@@ -135,16 +135,16 @@ async function submit() {
         color="primary"
         class="mb-3"
       />
-      <div class="text-h6 text-display font-weight-bold mb-2">{{ meta.label }}</div>
+      <div class="text-h6 text-display font-weight-bold mb-2">{{ instrumentLabel(instrument) }}</div>
       <p class="text-body-2 text-medium-emphasis mb-5">
         <template v-if="unavailableReason === 'not_assigned'">
-          {{ t('Bu metodika hozircha sizning guruhingizga biriktirilmagan.', 'Эта методика пока не назначена вашей группе.') }}
+          {{ t('takeTest.notAssigned') }}
         </template>
         <template v-else>
-          {{ t('Bu metodika hali platformaga ulanmagan.', 'Эта методика ещё не подключена.') }}
+          {{ t('takeTest.notConfigured') }}
         </template>
       </p>
-      <v-btn color="primary" variant="tonal" to="/tests">{{ t('Ortga', 'Назад') }}</v-btn>
+      <v-btn color="primary" variant="tonal" to="/tests">{{ t('takeTest.back') }}</v-btn>
     </v-card>
 
     <template v-else-if="quiz">
@@ -168,7 +168,7 @@ async function submit() {
           :disabled="!canSubmit"
           @click="submit"
         >
-          {{ t('Yakunlash', 'Завершить') }}
+          {{ t('takeTest.finish') }}
         </v-btn>
       </v-card>
 
@@ -183,7 +183,7 @@ async function submit() {
             :color="bi === blockIndex ? 'primary' : undefined"
             @click="blockIndex = bi"
           >
-            {{ t('Blok', 'Блок') }} {{ bi + 1 }}
+            {{ t('takeTest.block') }} {{ bi + 1 }}
             <v-icon
               v-if="agreeQuiz.blocks[bi].statements.every((_s, si) => answers[`${b.key}:${si}`] !== undefined)"
               icon="mdi-check"
@@ -214,7 +214,7 @@ async function submit() {
                 @click="setAgree(currentBlock.key, i, 1)"
               >
                 <v-icon icon="mdi-check-bold" size="16" />
-                {{ t('Ha', 'Да') }}
+                {{ t('takeTest.yes') }}
               </button>
               <button
                 type="button"
@@ -224,7 +224,7 @@ async function submit() {
                 @click="setAgree(currentBlock.key, i, 0)"
               >
                 <v-icon icon="mdi-close-thick" size="16" />
-                {{ t('Yo‘q', 'Нет') }}
+                {{ t('takeTest.no') }}
               </button>
             </div>
           </div>
@@ -232,7 +232,7 @@ async function submit() {
 
         <div class="d-flex justify-space-between mt-4">
           <v-btn variant="text" prepend-icon="mdi-arrow-left" :disabled="blockIndex === 0" @click="blockIndex--">
-            {{ t('Oldingi', 'Назад') }}
+            {{ t('takeTest.previous') }}
           </v-btn>
           <v-btn
             v-if="blockIndex < agreeQuiz.blocks.length - 1"
@@ -241,10 +241,10 @@ async function submit() {
             append-icon="mdi-arrow-right"
             @click="blockIndex++"
           >
-            {{ t('Keyingi blok', 'Следующий блок') }}
+            {{ t('takeTest.nextBlock') }}
           </v-btn>
           <v-btn v-else color="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">
-            {{ t('Yakunlash', 'Завершить') }}
+            {{ t('takeTest.finish') }}
           </v-btn>
         </div>
       </template>
@@ -281,7 +281,7 @@ async function submit() {
         </v-card>
 
         <v-btn color="primary" size="large" block class="mt-2" :loading="submitting" :disabled="!canSubmit" @click="submit">
-          {{ t('Yakunlash', 'Завершить') }}
+          {{ t('takeTest.finish') }}
         </v-btn>
       </template>
 
@@ -317,7 +317,7 @@ async function submit() {
         </v-card>
 
         <v-btn color="primary" size="large" block class="mt-2" :loading="submitting" :disabled="!canSubmit" @click="submit">
-          {{ t('Yakunlash', 'Завершить') }}
+          {{ t('takeTest.finish') }}
         </v-btn>
       </template>
 
@@ -341,10 +341,10 @@ async function submit() {
           </v-col>
         </v-row>
         <p class="text-caption text-medium-emphasis mt-3">
-          {{ t('Eng yoqadigan bitta figurani tanlang.', 'Выберите одну самую приятную фигуру.') }}
+          {{ t('takeTest.pickOneFigure') }}
         </p>
         <v-btn color="primary" size="large" class="mt-2" :loading="submitting" :disabled="!canSubmit" @click="submit">
-          {{ t('Yakunlash', 'Завершить') }}
+          {{ t('takeTest.finish') }}
         </v-btn>
       </template>
     </template>
