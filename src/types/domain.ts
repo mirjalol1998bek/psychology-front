@@ -48,6 +48,7 @@ export interface FacultyDto {
   id: string
   name: string
   groupCount: number
+  externalId?: string
 }
 
 export interface GroupDto {
@@ -56,6 +57,7 @@ export interface GroupDto {
   name: string
   studentCount: number
   studyLanguage: StudyLanguage
+  externalId?: string
 }
 
 export interface StudentDto {

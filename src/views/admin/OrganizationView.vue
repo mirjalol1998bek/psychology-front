@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useOrganizationStore } from '@/stores/organization'
+import { useOrganizationStore, type HemisGroupOption } from '@/stores/organization'
 import { useAuthStore } from '@/stores/auth'
 import type { StudyLanguage } from '@/types/domain'
 
@@ -98,6 +98,79 @@ async function viewAsStudent(studentId: string) {
   if (ok) router.push('/tests')
   else notify('Talaba sifatida kirib bo‘lmadi')
 }
+
+// --- HEMIS sync ----------------------------------------------------------
+const syncingFaculties = ref(false)
+const syncingStudents = ref(false)
+const hemisDialog = ref(false)
+const hemisLoading = ref(false)
+const hemisList = ref<HemisGroupOption[]>([])
+const hemisSearch = ref('')
+const importingId = ref<string | null>(null)
+
+const selFaculty = computed(() => org.facultyById(selFacultyId.value ?? '') ?? null)
+const importedExternalIds = computed(
+  () => new Set(groups.value.map((g) => g.externalId).filter(Boolean) as string[]),
+)
+const hemisFiltered = computed(() => {
+  const q = hemisSearch.value.trim().toLowerCase()
+  return hemisList.value.filter((g) => !q || g.name.toLowerCase().includes(q)).slice(0, 200)
+})
+
+async function syncFaculties() {
+  if (syncingFaculties.value) return
+  syncingFaculties.value = true
+  try {
+    const c = await org.syncHemisFaculties()
+    notify(`HEMIS: ${c.created} yangi, ${c.updated} yangilangan fakultet`)
+  } catch {
+    notify('HEMIS bilan bog‘lanib bo‘lmadi')
+  } finally {
+    syncingFaculties.value = false
+  }
+}
+
+async function openHemisGroups() {
+  if (!selFacultyId.value) return
+  hemisDialog.value = true
+  hemisSearch.value = ''
+  hemisLoading.value = true
+  hemisList.value = []
+  try {
+    hemisList.value = await org.hemisGroups(selFacultyId.value)
+  } catch {
+    notify('HEMIS guruhlarini olib bo‘lmadi')
+    hemisDialog.value = false
+  } finally {
+    hemisLoading.value = false
+  }
+}
+
+async function importGroup(opt: HemisGroupOption) {
+  if (!selFacultyId.value || importingId.value) return
+  importingId.value = opt.externalId
+  try {
+    const c = await org.importHemisGroup(selFacultyId.value, opt.externalId)
+    notify(`${opt.name}: ${c.created + c.updated} talaba yuklandi`)
+  } catch {
+    notify('Import xatosi')
+  } finally {
+    importingId.value = null
+  }
+}
+
+async function syncStudents() {
+  if (!selGroupId.value || syncingStudents.value) return
+  syncingStudents.value = true
+  try {
+    const c = await org.syncHemisStudents(selGroupId.value)
+    notify(`HEMIS: ${c.created} yangi, ${c.updated} yangilangan talaba`)
+  } catch {
+    notify('Talabalarni yangilab bo‘lmadi')
+  } finally {
+    syncingStudents.value = false
+  }
+}
 </script>
 
 <template>
@@ -106,10 +179,18 @@ async function viewAsStudent(studentId: string) {
       <div>
         <h1 class="text-h4">Tashkilot tuzilmasi</h1>
         <p class="text-body-2 text-medium-emphasis mb-0" style="max-width: 62ch">
-          Yangi testni talaba tomonidan tekshirish uchun fakultet, guruh va talaba qo‘shing.
-          Qo‘shilgan talaba testni hali topshirmagan holatda bo‘ladi.
+          Fakultet, guruh va talabalarni HEMIS'dan yuklang yoki qo‘lda qo‘shing.
         </p>
       </div>
+      <v-btn
+        color="primary"
+        variant="tonal"
+        prepend-icon="mdi-cloud-download-outline"
+        :loading="syncingFaculties"
+        @click="syncFaculties"
+      >
+        HEMIS'dan fakultetlar
+      </v-btn>
     </div>
 
     <v-row>
@@ -179,6 +260,18 @@ async function viewAsStudent(studentId: string) {
               <div v-if="!groups.length" class="pa-4 text-center text-caption text-medium-emphasis">Guruh yo‘q</div>
             </v-list>
             <div class="pa-3 surface-sunken" style="border-radius: 0 0 var(--radius) var(--radius)">
+              <v-btn
+                v-if="selFaculty?.externalId"
+                size="small"
+                block
+                color="primary"
+                variant="flat"
+                prepend-icon="mdi-cloud-download-outline"
+                class="mb-3"
+                @click="openHemisGroups"
+              >
+                HEMIS guruhidan tanlash
+              </v-btn>
               <v-text-field
                 v-model="newGroup"
                 density="compact"
@@ -198,7 +291,7 @@ async function viewAsStudent(studentId: string) {
                 class="mb-2"
               />
               <v-btn size="small" block color="primary" variant="tonal" prepend-icon="mdi-plus" :disabled="!newGroup.trim() || busy" :loading="busy" @click="addGroup">
-                Guruh qo‘shish
+                Qo‘lda guruh qo‘shish
               </v-btn>
             </div>
           </template>
@@ -210,7 +303,22 @@ async function viewAsStudent(studentId: string) {
         <v-card class="surface-card d-flex flex-column h-100" rounded="lg">
           <div class="px-4 pt-4 pb-2 d-flex align-center justify-space-between">
             <span class="text-subtitle-2 font-weight-bold text-uppercase">Talabalar</span>
-            <v-chip size="x-small" variant="tonal">{{ students.length }}</v-chip>
+            <div class="d-flex align-center" style="gap: 4px">
+              <v-tooltip v-if="selGroup?.externalId" text="HEMIS'dan yangilash" location="top">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-cloud-refresh-outline"
+                    size="x-small"
+                    variant="text"
+                    color="primary"
+                    :loading="syncingStudents"
+                    @click="syncStudents"
+                  />
+                </template>
+              </v-tooltip>
+              <v-chip size="x-small" variant="tonal">{{ students.length }}</v-chip>
+            </div>
           </div>
           <div v-if="!selGroupId" class="pa-6 text-center text-caption text-medium-emphasis flex-grow-1">
             Avval guruh tanlang
@@ -276,6 +384,63 @@ async function viewAsStudent(studentId: string) {
       tugmasi orqali o‘sha talaba sifatida tizimga kirib, unga tayinlangan testlarni tekshirishingiz mumkin.
       Keyin yuqoridagi banner orqali admin hisobiga qaytasiz.
     </v-alert>
+
+    <v-dialog v-model="hemisDialog" max-width="520" scrollable>
+      <v-card class="surface-card" rounded="lg">
+        <div class="px-5 pt-5 pb-2">
+          <div class="text-subtitle-1 font-weight-bold">HEMIS guruhlari</div>
+          <p class="text-caption text-medium-emphasis mb-3">
+            {{ selFaculty?.name }} — guruhni tanlang, talabalari ham yuklanadi.
+          </p>
+          <v-text-field
+            v-model="hemisSearch"
+            density="compact"
+            variant="solo-filled"
+            flat
+            hide-details
+            rounded="lg"
+            bg-color="surface-variant"
+            prepend-inner-icon="mdi-magnify"
+            placeholder="Guruh nomi bo‘yicha qidirish..."
+          />
+        </div>
+        <v-divider />
+        <div style="max-height: 55vh; overflow-y: auto">
+          <div v-if="hemisLoading" class="pa-8 text-center">
+            <v-progress-circular indeterminate color="primary" />
+          </div>
+          <v-list v-else density="comfortable" bg-color="transparent">
+            <v-list-item v-for="opt in hemisFiltered" :key="opt.externalId" class="px-4">
+              <v-list-item-title class="text-body-2 font-weight-medium">{{ opt.name }}</v-list-item-title>
+              <v-list-item-subtitle class="text-caption">{{ opt.studyLanguage === 'ru' ? 'Rus' : 'O‘zbek' }}</v-list-item-subtitle>
+              <template #append>
+                <v-chip v-if="importedExternalIds.has(opt.externalId)" size="x-small" color="success" variant="tonal" prepend-icon="mdi-check">
+                  Yuklangan
+                </v-chip>
+                <v-btn
+                  v-else
+                  size="small"
+                  variant="tonal"
+                  color="primary"
+                  :loading="importingId === opt.externalId"
+                  :disabled="importingId !== null"
+                  @click="importGroup(opt)"
+                >
+                  Yuklash
+                </v-btn>
+              </template>
+            </v-list-item>
+            <div v-if="!hemisFiltered.length" class="pa-6 text-center text-caption text-medium-emphasis">
+              Guruh topilmadi
+            </div>
+          </v-list>
+        </div>
+        <v-divider />
+        <div class="pa-3 d-flex justify-end">
+          <v-btn variant="text" @click="hemisDialog = false">Yopish</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
 
     <v-snackbar v-model="toastOpen" location="top end" color="success" timeout="2200">{{ toast }}</v-snackbar>
   </div>

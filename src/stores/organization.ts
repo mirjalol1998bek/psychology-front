@@ -17,14 +17,15 @@ interface OrgState {
   loading: boolean
 }
 
-function mapFaculty(f: { id: number; name: string; groupCount?: number }): FacultyDto {
-  return { id: String(f.id), name: f.name, groupCount: f.groupCount ?? 0 }
+function mapFaculty(f: { id: number; name: string; groupCount?: number; externalId?: string | null }): FacultyDto {
+  return { id: String(f.id), name: f.name, groupCount: f.groupCount ?? 0, externalId: f.externalId ?? undefined }
 }
 function mapGroup(g: {
   id: number
   name: string
   studyLanguage: StudyLanguage
   studentCount?: number
+  externalId?: string | null
   faculty?: { id?: number } | string
 }): GroupDto {
   const facultyId =
@@ -35,6 +36,7 @@ function mapGroup(g: {
     name: g.name,
     studentCount: g.studentCount ?? 0,
     studyLanguage: g.studyLanguage,
+    externalId: g.externalId ?? undefined,
   }
 }
 function mapStudent(u: { id: number; hemisId?: string | null; fullName?: string | null; image?: string | null }): StudentDto {
@@ -125,5 +127,47 @@ export const useOrganizationStore = defineStore('organization', {
       if (group) group.studentCount += 1
       return created
     },
+
+    // --- HEMIS sync (admin) -------------------------------------------------
+
+    /** Pull every faculty from HEMIS, then refresh. */
+    async syncHemisFaculties(): Promise<SyncCounts> {
+      const counts = (await api.post('/admin/hemis/faculties', null)).data as SyncCounts
+      await this.load(true)
+      return counts
+    },
+    /** HEMIS's groups for a faculty (not saved — for the import picker). */
+    async hemisGroups(facultyId: string): Promise<HemisGroupOption[]> {
+      return (await api.get(`/admin/hemis/faculties/${facultyId}/groups`)).data as HemisGroupOption[]
+    },
+    /** Import one HEMIS group + its current students. */
+    async importHemisGroup(facultyId: string, groupExternalId: string): Promise<SyncCounts> {
+      const counts = (
+        await api.post(`/admin/hemis/faculties/${facultyId}/groups/${groupExternalId}`, null)
+      ).data as SyncCounts
+      await this.load(true)
+      return counts
+    },
+    /** Re-pull a group's students from HEMIS. */
+    async syncHemisStudents(groupId: string): Promise<SyncCounts> {
+      const counts = (await api.post(`/admin/hemis/groups/${groupId}/students`, null)).data as SyncCounts
+      await this.loadStudents(groupId, true)
+      const group = Object.values(this.groupsByFaculty).flat().find((g) => g.id === groupId)
+      if (group) group.studentCount = (this.studentsByGroup[groupId] ?? []).length
+      return counts
+    },
   },
 })
+
+export interface SyncCounts {
+  created: number
+  updated: number
+}
+export interface HemisGroupOption {
+  externalId: string
+  name: string
+  facultyExternalId: string
+  facultyName: string
+  studyLanguage: StudyLanguage
+  active: boolean
+}
