@@ -1,5 +1,5 @@
 import type { InstrumentType, StudyLanguage } from '@/types/domain'
-import type { FigureKey, RunnableQuiz, TemperamentKey } from '@/types/assessment'
+import type { FigureKey, RunnableQuiz, ScaleChoiceQuiz, TemperamentKey } from '@/types/assessment'
 import { INSTRUMENT_META } from '@/utils/instruments'
 import { api } from '@/services/apiClient'
 
@@ -218,8 +218,27 @@ export function toRunnableQuiz(bq: BackendQuiz, language: StudyLanguage): { quiz
     }
   }
 
-  // FIGURE_CHOICE (SCORE_SCALE not renderable yet — treated as figure fallback is wrong,
-  // so callers gate on `available`/algo before reaching here).
+  if (algo === 'SCORE_SCALE') {
+    const questions = sortedQuestions.map((q, i) => {
+      const opts = sortOpts(q.options)
+      items[`q${i}`] = { questionId: q.id, optionIds: opts.map((o) => o.id) }
+      return { text: q.text }
+    })
+    const scale = sortOpts(sortedQuestions[0]?.options ?? []).map((o) => o.text)
+    const quiz: ScaleChoiceQuiz = {
+      id: `${bq.id}`,
+      instrumentType: 'SCORE_RANGE_BASED',
+      format: 'scale_choice',
+      language,
+      title: bq.title,
+      description: bq.description ?? '',
+      scale,
+      questions,
+    }
+    return { quiz, ref }
+  }
+
+  // FIGURE_CHOICE — every other renderable algo has its own branch above.
   const q0 = sortedQuestions[0]
   const opts = sortOpts(q0?.options ?? [])
   items['selected'] = { questionId: q0?.id ?? 0, optionIds: opts.map((o) => o.id) }
@@ -243,7 +262,12 @@ export function toRunnableQuiz(bq: BackendQuiz, language: StudyLanguage): { quiz
 
 /** True when the frontend can render this backend algorithm today. */
 export function isRenderableAlgo(algo: string): boolean {
-  return algo === 'TEMPERAMENT_STATEMENTS' || algo === 'TEMPERAMENT_CHOICE' || algo === 'FIGURE_CHOICE'
+  return (
+    algo === 'TEMPERAMENT_STATEMENTS' ||
+    algo === 'TEMPERAMENT_CHOICE' ||
+    algo === 'FIGURE_CHOICE' ||
+    algo === 'SCORE_SCALE'
+  )
 }
 
 export function clearQuizCache() {

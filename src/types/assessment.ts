@@ -48,7 +48,22 @@ export interface FigureChoiceQuiz {
   figures: { key: FigureKey; label: string; icon: string }[]
 }
 
-export type RunnableQuiz = AgreeStatementsQuiz | SingleChoiceQuiz | FigureChoiceQuiz
+/** Score scale (e.g. Zung SDS) — every question uses the same ordered scale
+ *  of frequency options; the backend sums the option scores (reverse-scoring
+ *  the questions flagged as such) and maps the total to a range. */
+export interface ScaleChoiceQuiz {
+  id: string
+  instrumentType: 'SCORE_RANGE_BASED'
+  format: 'scale_choice'
+  language: StudyLanguage
+  title: string
+  description: string
+  /** Shared option labels, lowest → highest, one column per question. */
+  scale: string[]
+  questions: { text: string }[]
+}
+
+export type RunnableQuiz = AgreeStatementsQuiz | SingleChoiceQuiz | FigureChoiceQuiz | ScaleChoiceQuiz
 
 // ---------------------------------------------------------------------------
 // Attempts
@@ -57,7 +72,7 @@ export type RunnableQuiz = AgreeStatementsQuiz | SingleChoiceQuiz | FigureChoice
 export type AttemptStatus = 'in_progress' | 'submitted'
 
 /** agree_statements: `${blockKey}:${index}` → 0 | 1
- *  single_choice:    `q${index}` → chosen option index
+ *  single_choice / scale_choice: `q${index}` → chosen option index
  *  figure_choice:    `selected` → chosen figure index */
 export type AnswerMap = Record<string, number>
 

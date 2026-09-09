@@ -34,7 +34,16 @@ getAttempt(studentKey, instrument).then((a) => {
 const result = computed(() => attempt.value?.result ?? null)
 const accent = computed(() => colorFor(instrument, result.value?.label))
 const isRanking = instrument === 'RANKING_BASED'
-const maxBreakdown = computed(() => Math.max(1, ...(result.value?.breakdown.map((b) => b.value) ?? [1])))
+
+// Score-scale (Zung) results come back as a single `{label:'score', value}`
+// item — show it as one number, not a lone 100%-wide bar.
+const scaleScore = computed(() => {
+  const only = result.value?.breakdown
+  if (only?.length === 1 && only[0].label === 'score') return only[0].value
+  return null
+})
+const chartBreakdown = computed(() => (scaleScore.value === null ? (result.value?.breakdown ?? []) : []))
+const maxBreakdown = computed(() => Math.max(1, ...chartBreakdown.value.map((b) => b.value)))
 
 const submittedAt = computed(() => {
   if (!attempt.value?.submittedAt) return ''
@@ -74,6 +83,9 @@ async function retake() {
               {{ meta.label }} · {{ submittedAt }}
             </div>
             <div class="text-h4 text-display font-weight-bold" style="color: #fff">{{ result.label }}</div>
+            <div v-if="scaleScore !== null" class="text-body-2" style="color: #fff; opacity: 0.85">
+              {{ t('Umumiy ball', 'Итоговый балл') }}: <strong>{{ scaleScore }}</strong>
+            </div>
           </div>
         </div>
 
@@ -85,9 +97,9 @@ async function retake() {
         </div>
       </v-card>
 
-      <v-card v-if="result.breakdown.length" class="surface-card pa-5" rounded="lg">
+      <v-card v-if="chartBreakdown.length" class="surface-card pa-5" rounded="lg">
         <div class="text-subtitle-1 font-weight-bold mb-4">{{ t('Ballar taqsimoti', 'Распределение баллов') }}</div>
-        <div v-for="b in result.breakdown" :key="b.label" class="mb-3">
+        <div v-for="b in chartBreakdown" :key="b.label" class="mb-3">
           <div class="d-flex justify-space-between text-body-2 mb-1">
             <span :class="{ 'font-weight-bold': b.label === result.label }">{{ b.label }}</span>
             <span class="text-medium-emphasis">{{ b.value }}</span>

@@ -74,6 +74,7 @@ const canSubmit = computed(() => answered.value === total.value && total.value >
 const agreeQuiz = computed(() => (quiz.value?.format === 'agree_statements' ? quiz.value : null))
 const choiceQuiz = computed(() => (quiz.value?.format === 'single_choice' ? quiz.value : null))
 const figureQuiz = computed(() => (quiz.value?.format === 'figure_choice' ? quiz.value : null))
+const scaleQuiz = computed(() => (quiz.value?.format === 'scale_choice' ? quiz.value : null))
 
 // --- agree_statements ---------------------------------------------------
 const currentBlock = computed(() => agreeQuiz.value?.blocks[blockIndex.value] ?? null)
@@ -86,7 +87,7 @@ function setAgree(key: string, i: number, value: 0 | 1) {
   answers.value[`${key}:${i}`] = value
 }
 
-// --- single_choice ----------------------------------------------------
+// --- single_choice / scale_choice ------------------------------------
 function setChoice(qi: number, oi: number) {
   answers.value[`q${qi}`] = oi
 }
@@ -275,6 +276,42 @@ async function submit() {
                 :color="answers[`q${qi}`] === oi ? 'primary' : undefined"
               />
               <span class="text-body-2">{{ opt.text }}</span>
+            </button>
+          </div>
+        </v-card>
+
+        <v-btn color="primary" size="large" block class="mt-2" :loading="submitting" :disabled="!canSubmit" @click="submit">
+          {{ t('Yakunlash', 'Завершить') }}
+        </v-btn>
+      </template>
+
+      <!-- ============ score scale (Zung SDS, …) ============ -->
+      <template v-else-if="scaleQuiz">
+        <v-card
+          v-for="(q, qi) in scaleQuiz.questions"
+          :key="qi"
+          class="surface-card pa-4 pa-md-5 mb-3"
+          rounded="lg"
+        >
+          <div class="d-flex align-start mb-3" style="gap: 10px">
+            <span class="stmt-num">{{ qi + 1 }}</span>
+            <span class="text-body-1 font-weight-medium">{{ q.text }}</span>
+          </div>
+          <div class="d-flex flex-column" style="gap: 8px">
+            <button
+              v-for="(label, oi) in scaleQuiz.scale"
+              :key="oi"
+              type="button"
+              class="choice-row"
+              :class="{ 'choice-row--on': answers[`q${qi}`] === oi }"
+              @click="setChoice(qi, oi)"
+            >
+              <v-icon
+                :icon="answers[`q${qi}`] === oi ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'"
+                size="18"
+                :color="answers[`q${qi}`] === oi ? 'primary' : undefined"
+              />
+              <span class="text-body-2">{{ label }}</span>
             </button>
           </div>
         </v-card>
