@@ -180,6 +180,20 @@ async function syncStudents() {
     syncingStudents.value = false
   }
 }
+
+const queueing = ref(false)
+async function queueAllStudents() {
+  if (queueing.value) return
+  queueing.value = true
+  try {
+    await org.queueHemisStudentsSync()
+    notify('Barcha guruhlar navbatga qo‘yildi — fon rejimida yangilanadi')
+  } catch {
+    notify('Navbatga qo‘yib bo‘lmadi')
+  } finally {
+    queueing.value = false
+  }
+}
 </script>
 
 <template>
@@ -191,15 +205,25 @@ async function syncStudents() {
           Fakultet, guruh va talabalarni HEMIS'dan yuklang yoki qo‘lda qo‘shing.
         </p>
       </div>
-      <v-btn
-        color="primary"
-        variant="tonal"
-        prepend-icon="mdi-cloud-download-outline"
-        :loading="syncingFaculties"
-        @click="syncFaculties"
-      >
-        HEMIS'dan fakultetlar
-      </v-btn>
+      <div class="d-flex flex-wrap" style="gap: 8px">
+        <v-btn
+          variant="text"
+          prepend-icon="mdi-sync"
+          :loading="queueing"
+          @click="queueAllStudents"
+        >
+          Barcha talabalarni yangilash
+        </v-btn>
+        <v-btn
+          color="primary"
+          variant="tonal"
+          prepend-icon="mdi-cloud-download-outline"
+          :loading="syncingFaculties"
+          @click="syncFaculties"
+        >
+          HEMIS'dan fakultetlar
+        </v-btn>
+      </div>
     </div>
 
     <v-row>

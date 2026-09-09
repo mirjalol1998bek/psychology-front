@@ -162,13 +162,17 @@ export const useOrganizationStore = defineStore('organization', {
       if (faculty) faculty.groupCount = (this.groupsByFaculty[facultyId] ?? []).length
       return counts
     },
-    /** Re-pull a group's students from HEMIS. */
+    /** Re-pull a group's students from HEMIS (one group, synchronous). */
     async syncHemisStudents(groupId: string): Promise<SyncCounts> {
       const counts = (await api.post(`/admin/hemis/groups/${groupId}/students`, null)).data as SyncCounts
       await this.loadStudents(groupId, true)
       const group = Object.values(this.groupsByFaculty).flat().find((g) => g.id === groupId)
       if (group) group.studentCount = (this.studentsByGroup[groupId] ?? []).length
       return counts
+    },
+    /** Queue a background re-sync of every imported group's students (202, non-blocking). */
+    async queueHemisStudentsSync(): Promise<void> {
+      await api.post('/admin/hemis/students', null)
     },
   },
 })
