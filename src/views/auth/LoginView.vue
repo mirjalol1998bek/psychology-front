@@ -2,9 +2,8 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore, DEMO_CREDENTIALS } from '@/stores/auth'
+import { useAuthStore } from '@/stores/auth'
 import { setLocale } from '@/i18n'
-import type { UserRole } from '@/types/domain'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -14,18 +13,10 @@ const auth = useAuthStore()
 // Harakatsizlik tufayli sessiya tugagach, router `?reason=idle` bilan qaytaradi.
 const idleNotice = computed(() => route.query.reason === 'idle')
 
-// Both paths — Hemis and login/password — are open to every role (TZ §2.1).
-// In production Hemis itself carries the role; until the backend exists we
-// pick it here for the demo.
+// HEMIS — asosiy yo'l (rolni HEMIS profili beradi); email/parol — HEMIS'da
+// bo'lmagan hisoblar (masalan CLI orqali yaratilgan admin) uchun.
 type Mode = 'hemis' | 'password'
 const mode = ref<Mode>('hemis')
-
-const hemisRole = ref<UserRole>('student')
-const hemisRoleOptions: { value: UserRole; label: string; icon: string }[] = [
-  { value: 'student', label: 'Talaba', icon: 'mdi-school-outline' },
-  { value: 'psychologist', label: 'Psixolog', icon: 'mdi-account-tie-outline' },
-  { value: 'admin', label: 'Admin', icon: 'mdi-shield-crown-outline' },
-]
 
 function handleHemisLogin() {
   // Real OAuth2: leaves the SPA, backend redirects to HEMIS, returns to /auth/hemis.
@@ -33,13 +24,6 @@ function handleHemisLogin() {
 }
 
 const loginError = ref('')
-
-async function handleDemoLogin() {
-  loginError.value = ''
-  const ok = await auth.signInWithHemis(hemisRole.value)
-  if (ok) router.push('/')
-  else loginError.value = 'Demo hisob topilmadi. Backendda "php bin/console ask:seed:demo" ni ishga tushiring.'
-}
 
 const username = ref('')
 const password = ref('')
@@ -59,14 +43,6 @@ async function handlePasswordLogin() {
   }
   router.push('/')
 }
-
-function fillDemo(cred: (typeof DEMO_CREDENTIALS)[number]) {
-  username.value = cred.email
-  password.value = cred.password
-  loginError.value = ''
-}
-
-const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixolog', student: 'Talaba' }
 </script>
 
 <template>
@@ -155,28 +131,6 @@ const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixo
             <v-icon icon="mdi-information-outline" size="14" style="margin-top: 2px" />
             <span>{{ t('auth.hemisHint') }}</span>
           </p>
-
-          <div class="demo-hint mt-5">
-            <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase d-block mb-2">
-              Demo — API'siz kirish (sinov uchun)
-            </span>
-            <v-btn-toggle
-              v-model="hemisRole"
-              mandatory
-              color="primary"
-              density="comfortable"
-              rounded="lg"
-              variant="outlined"
-              class="d-flex mb-3"
-            >
-              <v-btn v-for="opt in hemisRoleOptions" :key="opt.value" :value="opt.value" class="flex-grow-1" size="small">
-                <v-icon :icon="opt.icon" start size="16" />{{ opt.label }}
-              </v-btn>
-            </v-btn-toggle>
-            <v-btn block variant="tonal" size="small" :loading="auth.isSigningIn" @click="handleDemoLogin">
-              Demo hisob bilan davom etish
-            </v-btn>
-          </div>
         </div>
 
         <form v-else @submit.prevent="handlePasswordLogin">
@@ -208,24 +162,6 @@ const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixo
           <v-btn type="submit" block size="large" color="primary" class="font-weight-bold" :loading="auth.isSigningIn">
             Kirish
           </v-btn>
-
-          <div class="demo-hint mt-5">
-            <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase d-block mb-2">
-              Demo hisoblar (sinov uchun)
-            </span>
-            <div class="d-flex flex-column" style="gap: 6px">
-              <button
-                v-for="c in DEMO_CREDENTIALS"
-                :key="c.email"
-                type="button"
-                class="demo-cred-row"
-                @click="fillDemo(c)"
-              >
-                <v-chip size="x-small" variant="tonal" color="primary" class="mr-2">{{ roleLabel[c.role] }}</v-chip>
-                <span class="mono">{{ c.email }} / {{ c.password }}</span>
-              </button>
-            </div>
-          </div>
         </form>
       </v-card>
     </div>
@@ -288,24 +224,5 @@ const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixo
 
 .login-card {
   padding: 36px 32px;
-}
-
-.demo-cred-row {
-  display: flex;
-  align-items: center;
-  background: rgb(var(--v-theme-surface-variant));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 10px;
-  padding: 7px 10px;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.15s var(--ease);
-}
-.demo-cred-row:hover {
-  border-color: rgb(var(--v-theme-primary));
-}
-.mono {
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  font-size: 12px;
 }
 </style>

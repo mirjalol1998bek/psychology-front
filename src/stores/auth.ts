@@ -29,21 +29,6 @@ function mapBackendUser(u: Record<string, unknown>): AuthUser {
   }
 }
 
-/**
- * Demo accounts created by `php bin/console ask:seed:demo` on the backend.
- * They are real users — login authenticates against `POST /api/users/auth`.
- */
-interface Credential {
-  email: string
-  password: string
-  role: UserRole
-}
-export const DEMO_CREDENTIALS: Credential[] = [
-  { email: 'admin@demo.uz', password: 'demo1234', role: 'admin' },
-  { email: 'psixolog@demo.uz', password: 'demo1234', role: 'psychologist' },
-  { email: 'talaba@demo.uz', password: 'demo1234', role: 'student' },
-]
-
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as AuthUser | null,
@@ -136,12 +121,6 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem(STORAGE_KEY)
         return false
       }
-    },
-    /** Demo shortcut: sign in as the seeded account for a given role. */
-    async signInWithHemis(role: UserRole = 'student'): Promise<boolean> {
-      const cred = DEMO_CREDENTIALS.find((c) => c.role === role)
-      if (!cred) return false
-      return this.signInWithPassword(cred.email, cred.password)
     },
     /** Email + password against POST /api/users/auth. Returns true on success. */
     async signInWithPassword(email: string, password: string): Promise<boolean> {
