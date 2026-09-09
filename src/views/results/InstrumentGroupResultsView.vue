@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import InstrumentResult from '@/components/psixologiya/InstrumentResult.vue'
 import { useOrganizationStore } from '@/stores/organization'
 import { instrumentByRoute, INSTRUMENT_META, TEMPERAMENT_OPTIONS, SHAPE_OPTIONS } from '@/utils/instruments'
-import { downloadCsv, fileSlug } from '@/utils/exportTable'
+import { downloadXlsx, fileSlug } from '@/utils/exportXlsx'
 import { api } from '@/services/apiClient'
 import { loadCategoriesForInstrument } from '@/services/quizService'
 
@@ -78,11 +78,11 @@ const rows = computed(() =>
   }),
 )
 
-function exportCsv() {
-  const headers = ['T/R', 'Talaba ID', 'F.I.O', meta.value.label]
+function exportSheet() {
+  const headers = ['T/R', 'Talaba ID', 'F.I.SH', meta.value.label]
   const data = rows.value.map((r, i) => [i + 1, r.hemisId ?? '', r.fullName, valueOf(r) ?? 'Aniqlanmagan'])
   const name = `${fileSlug(faculty.value?.name ?? '')}_${fileSlug(group.value?.name ?? 'guruh')}_${meta.value.routeSegment}`
-  downloadCsv(name, headers, data)
+  downloadXlsx(name, meta.value.label, headers, data)
 }
 </script>
 
@@ -99,11 +99,11 @@ function exportCsv() {
       <v-btn
         variant="tonal"
         color="success"
-        prepend-icon="mdi-file-download-outline"
+        prepend-icon="mdi-microsoft-excel"
         :disabled="!rows.length"
-        @click="exportCsv"
+        @click="exportSheet"
       >
-        Jadvalni yuklab olish
+        Excelga yuklab olish
       </v-btn>
     </div>
 

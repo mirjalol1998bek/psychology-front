@@ -6,7 +6,7 @@ import { useOrganizationStore } from '@/stores/organization'
 import type { PassportData } from '@/stores/passport'
 import { fetchGroupOverview, type GroupRow } from '@/services/groupReport'
 import { TEMPERAMENT_OPTIONS, SHAPE_OPTIONS } from '@/utils/instruments'
-import { downloadCsv, fileSlug } from '@/utils/exportTable'
+import { downloadXlsx, fileSlug } from '@/utils/exportXlsx'
 
 const route = useRoute()
 const router = useRouter()
@@ -60,8 +60,8 @@ function resetFilters() {
 const fname = (suffix: string) =>
   `${fileSlug(faculty.value?.name ?? '')}_${fileSlug(group.value?.name ?? 'guruh')}_${suffix}`
 
-function exportCsv() {
-  const headers = ['T/R', 'Talaba ID', 'F.I.O', 'Temperament', 'Psixogeometrik']
+function exportResults() {
+  const headers = ['T/R', 'Talaba ID', 'F.I.SH', 'Temperament', 'Psixogeometrik']
   const data = rows.value.map((r, i) => [
     i + 1,
     r.hemisId ?? '',
@@ -69,36 +69,41 @@ function exportCsv() {
     r.temperament ?? 'Aniqlanmagan',
     r.figure ?? 'Aniqlanmagan',
   ])
-  downloadCsv(fname('natijalar'), headers, data)
+  downloadXlsx(fname('natijalar'), 'Natijalar', headers, data)
 }
 
-// Full socio-psychological passport table — columns match the official
-// "Ijtimoiy-psixologik portret" xlsx template.
+// "Ijtimoiy-psixologik portret" — har bir maydon alohida ustunda, shundagina
+// Excelda saralash/filtrlash ishlaydi.
 const FAMILY: Record<string, string> = { married: 'Uylangan / turmushga chiqqan', single: 'Uylanmagan / turmushga chiqmagan' }
 const ENV: Record<string, string> = { calm: 'Tinch', problematic: 'Muammoli' }
 
 function exportPassport() {
   const headers = [
-    '№',
-    'Talabaning F.I.O., tug‘ilgan sana',
-    'Fakultet, kurs, guruh',
-    'Hozirgi turar joyi, telefon',
+    'T/R',
+    'F.I.SH',
+    'Tug‘ilgan sana',
+    'Fakultet',
+    'Guruh',
+    'Hozirgi turar joyi',
+    'Telefon',
     'Oilaviy ahvoli',
     'Alohida qobiliyat va iqtidori',
     'Temperament tipi',
     'Xarakteri (psixogeometrik)',
     'Oilaviy yashash muhiti',
-    'Ota-onasi (F.I.O., tel, ish joyi)',
-    'Biriktirilgan tyutor (F.I.O., tel)',
+    'Ota-onasi (F.I.SH., tel, ish joyi)',
+    'Biriktirilgan tyutor (F.I.SH., tel)',
   ]
-  const fg = `${faculty.value?.name ?? ''}, ${group.value?.name ?? ''}`
   const data = rows.value.map((r, i) => {
     const p: PassportData | null = r.passport
     return [
       i + 1,
-      `${r.fullName}${p?.birthDate ? ', ' + p.birthDate : ''}`,
-      fg,
-      [p?.currentAddress, p?.phone].filter(Boolean).join(', '),
+      r.fullName,
+      p?.birthDate ?? '',
+      faculty.value?.name ?? '',
+      group.value?.name ?? '',
+      p?.currentAddress ?? '',
+      p?.phone ?? '',
       p?.familyStatus ? FAMILY[p.familyStatus] : '',
       p?.talents ?? '',
       r.temperament ?? '',
@@ -108,7 +113,7 @@ function exportPassport() {
       p?.tutorInfo ?? '',
     ]
   })
-  downloadCsv(fname('pasport'), headers, data)
+  downloadXlsx(fname('pasport'), 'Ijtimoiy-psixologik pasport', headers, data)
 }
 </script>
 
@@ -123,10 +128,10 @@ function exportPassport() {
       </div>
       <div class="d-flex flex-wrap" style="gap: 8px">
         <v-btn variant="tonal" color="secondary" prepend-icon="mdi-card-account-details-outline" :disabled="!rows.length" @click="exportPassport">
-          Ijtimoiy-psixologik pasport
+          Pasport (Excel)
         </v-btn>
-        <v-btn variant="tonal" color="success" prepend-icon="mdi-file-download-outline" :disabled="!rows.length" @click="exportCsv">
-          Natijalar jadvali
+        <v-btn variant="tonal" color="success" prepend-icon="mdi-microsoft-excel" :disabled="!rows.length" @click="exportResults">
+          Natijalar (Excel)
         </v-btn>
       </div>
     </div>
