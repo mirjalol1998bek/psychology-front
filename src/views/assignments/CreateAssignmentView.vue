@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { INSTRUMENT_META } from '@/utils/instruments'
 import { useOrganizationStore } from '@/stores/organization'
 import { api } from '@/services/apiClient'
 import { loadCategoriesForInstrument } from '@/services/quizService'
-import type { InstrumentType } from '@/types/domain'
+import type { InstrumentType, StudyLanguage } from '@/types/domain'
+
+/** HEMIS guruhning ta'lim tili — filtr va biriktiriladigan test tili shunga qarab. */
+const LANG_LABEL: Record<StudyLanguage, string> = { uz: 'O‘zbek', ru: 'Rus' }
 
 const org = useOrganizationStore()
 org.load()
@@ -21,6 +24,7 @@ const selectedFaculties = ref<string[]>([])
 const selectedGroups = ref<string[]>([])
 const facultySearch = ref('')
 const groupSearch = ref('')
+const langFilter = ref<'all' | StudyLanguage>('all')
 const submitting = ref(false)
 const toastOpen = ref(false)
 const toast = ref<{ text: string; color: string }>({ text: '', color: 'success' })
@@ -29,6 +33,7 @@ function openFor(instrument: InstrumentType) {
   activeInstrument.value = instrument
   selectedFaculties.value = []
   selectedGroups.value = []
+  langFilter.value = 'all'
   modalOpen.value = true
 }
 
@@ -38,7 +43,8 @@ const filteredFaculties = computed(() =>
 const availableGroups = computed(() =>
   selectedFaculties.value
     .flatMap((fid) => org.groupsByFaculty[fid] ?? [])
-    .filter((g) => g.name.toLowerCase().includes(groupSearch.value.toLowerCase())),
+    .filter((g) => g.name.toLowerCase().includes(groupSearch.value.toLowerCase()))
+    .filter((g) => langFilter.value === 'all' || g.studyLanguage === langFilter.value),
 )
 
 function toggleFaculty(id: string) {
@@ -57,15 +63,26 @@ function toggleGroup(id: string) {
     : [...selectedGroups.value, id]
 }
 
+// Til filtri o'zgarsa — ko'rinmay qolgan guruhlarni tanlangandan olib tashlaymiz.
+watch(langFilter, () => {
+  const visible = new Set(availableGroups.value.map((g) => g.id))
+  selectedGroups.value = selectedGroups.value.filter((id) => visible.has(id))
+})
+
 async function submit() {
   if (!selectedGroups.value.length || !activeInstrument.value) return
   submitting.value = true
   let done = 0
+  const skipped: string[] = []
   try {
     for (const groupId of selectedGroups.value) {
       const group = org.groupById(groupId)
-      const category = await loadCategoriesForInstrument(activeInstrument.value, group?.studyLanguage ?? 'uz')
-      if (!category) continue
+      const lang = group?.studyLanguage ?? 'uz'
+      const category = await loadCategoriesForInstrument(activeInstrument.value, lang)
+      if (!category) {
+        skipped.push(`${group?.name ?? groupId} (${LANG_LABEL[lang]})`)
+        continue
+      }
       await api.post('/assignments', {
         category: `/api/categories/${category.id}`,
         studyGroup: `/api/study_groups/${groupId}`,
@@ -73,7 +90,9 @@ async function submit() {
       })
       done++
     }
-    toast.value = { text: `${done} ta guruhga biriktirildi`, color: 'success' }
+    toast.value = skipped.length
+      ? { text: `${done} ta guruhga biriktirildi. ${skipped.length} ta guruh uchun mos tilli test yo‘q: ${skipped.join(', ')}`, color: 'warning' }
+      : { text: `${done} ta guruhga biriktirildi`, color: 'success' }
     modalOpen.value = false
   } catch {
     toast.value = { text: 'Xatolik — biriktirilmadi', color: 'error' }
@@ -139,13 +158,28 @@ async function submit() {
               <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase">Guruhlar</span>
               <v-chip size="x-small" variant="tonal">{{ selectedGroups.length }}</v-chip>
             </div>
+            <v-chip-group v-model="langFilter" mandatory selected-class="text-primary" class="mb-1">
+              <v-chip value="all" size="small" variant="tonal">Barchasi</v-chip>
+              <v-chip value="uz" size="small" variant="tonal">O‘zbek</v-chip>
+              <v-chip value="ru" size="small" variant="tonal">Rus</v-chip>
+            </v-chip-group>
             <v-text-field v-model="groupSearch" density="compact" variant="solo-filled" rounded="lg" hide-details flat bg-color="surface-variant" prepend-inner-icon="mdi-magnify" placeholder="Qidirish..." class="mb-2 app-search" :disabled="!selectedFaculties.length" />
-            <v-card class="surface-sunken pa-1" rounded="lg" style="max-height: 260px; overflow-y: auto">
+            <v-card class="surface-sunken pa-1" rounded="lg" style="max-height: 232px; overflow-y: auto">
               <template v-if="selectedFaculties.length">
                 <v-checkbox
                   v-for="g in availableGroups" :key="g.id" :model-value="selectedGroups.includes(g.id)"
-                  :label="`${g.name} (${g.studentCount})`" density="compact" hide-details class="px-2" @update:model-value="toggleGroup(g.id)"
-                />
+                  density="compact" hide-details class="px-2" @update:model-value="toggleGroup(g.id)"
+                >
+                  <template #label>
+                    <span>{{ g.name }} <span class="text-medium-emphasis">({{ g.studentCount }})</span></span>
+                    <v-chip size="x-small" variant="tonal" :color="g.studyLanguage === 'ru' ? 'info' : 'primary'" class="ml-2">
+                      {{ LANG_LABEL[g.studyLanguage] }}
+                    </v-chip>
+                  </template>
+                </v-checkbox>
+                <div v-if="!availableGroups.length" class="text-caption text-medium-emphasis pa-4 text-center">
+                  Bu til bo‘yicha guruh yo‘q
+                </div>
               </template>
               <div v-else class="text-caption text-medium-emphasis pa-4 text-center">Avval fakultet tanlang</div>
             </v-card>
