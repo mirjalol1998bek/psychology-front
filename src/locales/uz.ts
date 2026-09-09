@@ -43,6 +43,7 @@ export default {
     signingIn: 'Kirilmoqda...',
     passwordLogin: 'Login va parol',
     welcome: 'Xush kelibsiz',
+    idleLogout: 'Uzoq vaqt harakatsizlik tufayli tizimdan chiqarildingiz. Iltimos, qaytadan kiring.',
   },
   dashboard: {
     greeting: 'Assalomu alaykum',

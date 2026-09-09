@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { setLocale } from '@/i18n'
 import { useThemeMode, type ThemeMode } from '@/composables/useThemeMode'
 import { useNotifications } from '@/composables/useNotifications'
+import { useIdleLogout } from '@/composables/useIdleLogout'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -15,6 +16,9 @@ const auth = useAuthStore()
 const { mobile } = useDisplay()
 const { mode, setMode } = useThemeMode()
 const { items: notifItems, unreadCount: notifUnread, markRead: markNotifRead } = useNotifications()
+
+// 5 daqiqa harakatsizlikdan keyin login sahifasiga chiqaradi.
+useIdleLogout()
 
 const drawer = ref(!mobile.value)
 

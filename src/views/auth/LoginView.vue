@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore, DEMO_CREDENTIALS } from '@/stores/auth'
 import { setLocale } from '@/i18n'
 import type { UserRole } from '@/types/domain'
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
+
+// Harakatsizlik tufayli sessiya tugagach, router `?reason=idle` bilan qaytaradi.
+const idleNotice = computed(() => route.query.reason === 'idle')
 
 // Both paths — Hemis and login/password — are open to every role (TZ §2.1).
 // In production Hemis itself carries the role; until the backend exists we
@@ -106,6 +110,17 @@ const roleLabel: Record<string, string> = { admin: 'Admin', psychologist: 'Psixo
           <h1 class="text-display text-h5 font-weight-bold mb-1">{{ t('auth.title') }}</h1>
           <p class="text-body-2 text-medium-emphasis mb-0">{{ t('auth.subtitle') }}</p>
         </div>
+
+        <v-alert
+          v-if="idleNotice"
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="mb-6"
+          icon="mdi-timer-sand"
+        >
+          {{ t('auth.idleLogout') }}
+        </v-alert>
 
         <v-btn-toggle
           v-model="mode"

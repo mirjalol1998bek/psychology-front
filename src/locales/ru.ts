@@ -43,6 +43,7 @@ export default {
     signingIn: 'Вход...',
     passwordLogin: 'Логин и пароль',
     welcome: 'Добро пожаловать',
+    idleLogout: 'Вы вышли из системы из-за длительного бездействия. Пожалуйста, войдите снова.',
   },
   dashboard: {
     greeting: 'Здравствуйте',
