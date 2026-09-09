@@ -125,15 +125,14 @@ export async function submitTest(attemptId: number): Promise<StoredAttempt> {
   return toStoredAttempt(a)
 }
 
+/** Staff only — clears a student's attempt so they can take the test again. */
 export async function resetTest(attemptId: number): Promise<void> {
   await api.post(`/attempts/${attemptId}/reset`, null)
 }
 
-/** Back-compat shims for views that still call the old names. */
-export async function resetAttempt(_studentKey: string, instrument: InstrumentType): Promise<void> {
-  const all = await getAttempts()
-  const target = all.find((a) => a.instrumentType === instrument)
-  if (target?.id != null) await resetTest(target.id)
+/** Admin only — deletes a student's attempt + result entirely. */
+export async function deleteAttempt(attemptId: number): Promise<void> {
+  await api.delete(`/attempts/${attemptId}`)
 }
 
 // --- AnswerMap <-> backend payload ---------------------------------------

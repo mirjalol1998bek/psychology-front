@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { instrumentByRoute, INSTRUMENT_META, colorFor, SHAPE_ICONS } from '@/utils/instruments'
-import { getAttempt, resetAttempt } from '@/services/attemptService'
+import { getAttempt } from '@/services/attemptService'
 import { MONTH_NAMES } from '@/composables/useMonthGrid'
 import type { StoredAttempt } from '@/types/assessment'
 import type { StudyLanguage } from '@/types/domain'
@@ -21,7 +21,6 @@ const studentKey = auth.user?.hemis.hemisId ?? 'anon'
 
 const attempt = ref<StoredAttempt | null>(null)
 const loading = ref(true)
-const confirmRetake = ref(false)
 
 const t = (uz: string, ru: string) => (language === 'ru' ? ru : uz)
 
@@ -52,10 +51,6 @@ const submittedAt = computed(() => {
   return `${d.getDate()}-${month} ${d.getFullYear()}`
 })
 
-async function retake() {
-  await resetAttempt(studentKey, instrument)
-  router.push(`/tests/${meta.routeSegment}/take`)
-}
 </script>
 
 <template>
@@ -116,24 +111,17 @@ async function retake() {
 
       <div class="d-flex flex-wrap mt-4" style="gap: 10px">
         <v-btn variant="tonal" color="primary" to="/results">{{ t('Barcha natijalar', 'Все результаты') }}</v-btn>
-        <v-btn variant="text" prepend-icon="mdi-refresh" @click="confirmRetake = true">
-          {{ t('Qayta topshirish', 'Пройти заново') }}
-        </v-btn>
       </div>
+      <p class="text-caption text-medium-emphasis mt-3">
+        <v-icon icon="mdi-lock-outline" size="13" class="mr-1" />
+        {{
+          t(
+            'Test bir marta topshiriladi. Qayta topshirish kerak bo‘lsa psixologga murojaat qiling.',
+            'Тест проходится один раз. Если нужно пройти заново — обратитесь к психологу.',
+          )
+        }}
+      </p>
     </template>
-
-    <v-dialog v-model="confirmRetake" max-width="400">
-      <v-card class="surface-card pa-6" rounded="lg">
-        <div class="text-subtitle-1 font-weight-bold mb-2">{{ t('Qayta topshirish', 'Пройти заново') }}</div>
-        <p class="text-body-2 text-medium-emphasis mb-5">
-          {{ t('Joriy natija o‘chiriladi va testni boshidan topshirasiz.', 'Текущий результат удалится, тест начнётся заново.') }}
-        </p>
-        <div class="d-flex justify-end" style="gap: 8px">
-          <v-btn variant="text" @click="confirmRetake = false">{{ t('Bekor qilish', 'Отмена') }}</v-btn>
-          <v-btn color="primary" variant="flat" @click="retake">{{ t('Davom etish', 'Продолжить') }}</v-btn>
-        </div>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
