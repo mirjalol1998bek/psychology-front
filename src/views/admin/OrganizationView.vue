@@ -173,8 +173,8 @@ async function importAllGroups() {
   if (!selFacultyId.value || queueingFacultyGroups.value) return
   queueingFacultyGroups.value = true
   try {
-    await org.queueHemisFacultyGroups(selFacultyId.value)
-    notify('Fakultetning barcha guruhlari navbatga qo‘yildi — fon rejimida yuklanadi')
+    await org.queueHemisFacultyStudents(selFacultyId.value)
+    notify('Fakultet navbatga qo‘yildi — hozirgi guruh va talabalar fon rejimida yuklanadi')
     hemisDialog.value = false
   } catch {
     notify('Navbatga qo‘yib bo‘lmadi')

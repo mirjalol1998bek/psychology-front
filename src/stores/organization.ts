@@ -152,9 +152,9 @@ export const useOrganizationStore = defineStore('organization', {
     async hemisGroups(facultyId: string): Promise<HemisGroupOption[]> {
       return (await api.get(`/admin/hemis/faculties/${facultyId}/groups`)).data as HemisGroupOption[]
     },
-    /** Queue import of *every* HEMIS group of a faculty + their students (202, background). */
-    async queueHemisFacultyGroups(facultyId: string): Promise<void> {
-      await api.post(`/admin/hemis/faculties/${facultyId}/groups`, null)
+    /** Queue a background sync of a faculty's current groups + students (202). */
+    async queueHemisFacultyStudents(facultyId: string): Promise<void> {
+      await api.post(`/admin/hemis/faculties/${facultyId}/students`, null)
     },
     /** Import one HEMIS group + its current students. */
     async importHemisGroup(facultyId: string, groupExternalId: string): Promise<SyncCounts> {
