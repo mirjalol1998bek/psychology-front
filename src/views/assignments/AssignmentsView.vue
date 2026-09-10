@@ -58,9 +58,30 @@ async function load() {
 }
 load()
 
-async function remove(id: number) {
-  await api.delete(`/assignments/${id}`)
-  assignments.value = assignments.value.filter((a) => a.id !== id)
+const toDelete = ref<Row | null>(null)
+const deleting = ref(false)
+const toast = ref('')
+const toastOpen = ref(false)
+
+function notify(msg: string) {
+  toast.value = msg
+  toastOpen.value = true
+}
+
+async function confirmRemove() {
+  const row = toDelete.value
+  if (!row || deleting.value) return
+  deleting.value = true
+  try {
+    await api.delete(`/assignments/${row.id}`)
+    assignments.value = assignments.value.filter((a) => a.id !== row.id)
+    toDelete.value = null
+    notify('Biriktirish o‘chirildi')
+  } catch {
+    notify('O‘chirib bo‘lmadi — qaytadan urinib ko‘ring')
+  } finally {
+    deleting.value = false
+  }
 }
 
 const categoryFilter = ref<InstrumentType | 'all'>('all')
@@ -130,12 +151,28 @@ const filtered = computed(() =>
             </td>
             <td class="text-right">
               <v-btn :to="`/results/${INSTRUMENT_META[a.instrumentType].routeSegment}/${a.facultyId}/${a.groupId}`" icon="mdi-chart-box-outline" variant="text" size="small" color="secondary" />
-              <v-btn icon="mdi-delete-outline" variant="text" size="small" color="error" @click="remove(a.id)" />
+              <v-btn icon="mdi-delete-outline" variant="text" size="small" color="error" @click="toDelete = a" />
             </td>
           </tr>
         </tbody>
       </v-table>
       <v-empty-state v-if="!filtered.length" icon="mdi-clipboard-off-outline" title="Tayinlash topilmadi" density="compact" />
     </v-card>
+
+    <v-dialog :model-value="toDelete !== null" max-width="420" @update:model-value="toDelete = null">
+      <v-card class="surface-card pa-5" rounded="lg">
+        <div class="text-h6 font-weight-bold mb-2">Biriktirishni o‘chirasizmi?</div>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          <strong>{{ toDelete?.categoryName }}</strong> — <strong>{{ toDelete?.groupName }}</strong> guruhidan olib tashlanadi.
+          Talabalar allaqachon topshirgan bo‘lsa, ularning natijalari saqlanadi.
+        </p>
+        <div class="d-flex justify-end" style="gap: 8px">
+          <v-btn variant="text" @click="toDelete = null">Bekor qilish</v-btn>
+          <v-btn color="error" variant="flat" :loading="deleting" @click="confirmRemove">O‘chirish</v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar v-model="toastOpen" location="top end" timeout="2800">{{ toast }}</v-snackbar>
   </div>
 </template>
