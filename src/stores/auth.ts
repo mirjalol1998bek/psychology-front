@@ -1,9 +1,30 @@
 import { defineStore } from 'pinia'
 import type { AuthUser, HemisProfile, UserRole } from '@/types/domain'
 import { api, tokenStore } from '@/services/apiClient'
+import { useAppealsStore } from './appeals'
+import { usePassportStore } from './passport'
+import { useCalendarStore } from './calendar'
+import { useOrganizationStore } from './organization'
+import { resetNotifications } from '@/composables/useNotifications'
 
 const STORAGE_KEY = 'psy.auth.user'
 const IMPERSONATOR_KEY = 'psy.auth.impersonator'
+
+/**
+ * Every store above caches its last fetch behind a `loaded` flag ("the API
+ * already scopes the collection to the current user"). That's only true
+ * while the acting identity stays the same — impersonating a different
+ * student (or signing out) must throw the cache away, or the new identity's
+ * pages render the *previous* identity's data (e.g. another student's
+ * appeals) until something else forces a reload.
+ */
+function resetUserScopedStores() {
+  useAppealsStore().$reset()
+  usePassportStore().$reset()
+  useCalendarStore().$reset()
+  useOrganizationStore().$reset()
+  resetNotifications()
+}
 
 /** Maps the Symfony User payload (/api/users/about_me) to our AuthUser. */
 function mapBackendUser(u: Record<string, unknown>): AuthUser {
@@ -61,6 +82,7 @@ export const useAuthStore = defineStore('auth', {
           }))
         }
         tokenStore.set(data.accessToken, data.refreshToken)
+        resetUserScopedStores()
         return await this.fetchMe()
       } catch {
         return false
@@ -74,6 +96,7 @@ export const useAuthStore = defineStore('auth', {
       }
       this.user = { id: `view-${profile.hemisId}`, role: 'student', hemis: { ...profile } }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.user))
+      resetUserScopedStores()
     },
     /** Return from a student view to the parked admin account. */
     stopImpersonating() {
@@ -89,6 +112,7 @@ export const useAuthStore = defineStore('auth', {
       this.impersonator = null
       sessionStorage.removeItem(IMPERSONATOR_KEY)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.user))
+      resetUserScopedStores()
     },
     /** Real HEMIS OAuth2: hand off to the backend, which redirects to HEMIS. */
     startHemisLogin() {
@@ -102,6 +126,7 @@ export const useAuthStore = defineStore('auth', {
       this.isSigningIn = true
       try {
         tokenStore.set(access, refresh)
+        resetUserScopedStores()
         return await this.fetchMe()
       } finally {
         this.isSigningIn = false
@@ -128,6 +153,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         const { data } = await api.post('/users/auth', { email: email.trim(), password })
         tokenStore.set(data.accessToken, data.refreshToken)
+        resetUserScopedStores()
         return await this.fetchMe()
       } catch {
         return false
@@ -142,6 +168,7 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem(STORAGE_KEY)
       sessionStorage.removeItem(IMPERSONATOR_KEY)
       sessionStorage.removeItem('psy.auth.impersonator.tokens')
+      resetUserScopedStores()
     },
   },
 })

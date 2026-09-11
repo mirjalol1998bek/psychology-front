@@ -56,6 +56,17 @@ async function refresh() {
   }
 }
 
+/**
+ * Call when the acting identity changes (login, impersonation start/stop,
+ * sign-out) — `items`/`unreadCount` are module-level and otherwise keep
+ * showing the previous identity's notifications until the next 45s poll.
+ */
+export function resetNotifications() {
+  items.value = []
+  unreadCount.value = 0
+  refresh()
+}
+
 async function markRead() {
   if (unreadCount.value === 0) return
   try {

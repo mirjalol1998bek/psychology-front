@@ -77,7 +77,9 @@ export const useAppealsStore = defineStore('appeals', {
   getters: {
     ordered: (s) => [...s.appeals].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     openCount: (s) => s.appeals.filter((a) => a.status === 'open').length,
-    // The API already scopes the collection to the current student.
+    // The API scopes the collection to the current student (Appeal carries no
+    // student id to re-filter by client-side) — relies on the store being
+    // reset on every identity change; see `resetUserScopedStores` in auth.ts.
     forStudent: (s) => (_key: string) =>
       [...s.appeals].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   },

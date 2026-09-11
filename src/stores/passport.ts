@@ -99,7 +99,9 @@ function toBackend(p: PassportData): Record<string, unknown> {
 export const usePassportStore = defineStore('passport', {
   state: () => ({ data: null as PassportData | null, loaded: false, loading: false }),
   getters: {
-    // key kept for call-site compatibility; the API scopes to the current user.
+    // key kept for call-site compatibility; the API scopes to the current
+    // user — relies on the store being reset on every identity change, see
+    // `resetUserScopedStores` in auth.ts.
     get: (s) => (_studentKey: string): PassportData | null => s.data,
   },
   actions: {
