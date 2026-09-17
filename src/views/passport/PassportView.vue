@@ -123,8 +123,16 @@ const workStatusOpts = [
             </v-col>
             <v-col cols="12" sm="6">
               <v-text-field
-                :model-value="`${auth.user?.hemis.faculty} · ${auth.user?.hemis.group}`"
-                :label="t('passport.facultyGroup')"
+                :model-value="auth.user?.hemis.faculty"
+                :label="t('passport.faculty')"
+                readonly
+                variant="filled"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                :model-value="auth.user?.hemis.group"
+                :label="t('passport.group')"
                 readonly
                 variant="filled"
               />
