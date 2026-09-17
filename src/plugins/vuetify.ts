@@ -4,40 +4,42 @@ import '@mdi/font/css/materialdesignicons.css'
 import { createVuetify, type ThemeDefinition } from 'vuetify'
 
 /**
- * "Calm care" palette — a university psychology service, not a trading
- * dashboard. Warm off-white ground, a considered deep-teal primary, muted
- * supporting colours, solid cards with soft shadows. Light is the primary
- * experience; dark is a fully-designed calm counterpart (deep desaturated
- * green-black, never neon). The instrument colours (temperament / shape)
- * live in src/utils/instruments.ts and are tuned to sit inside this palette.
+ * "Warm bloom" palette — a university psychology service, not a trading
+ * dashboard, but not a muffled grey one either. Vivid emerald-teal + a warm
+ * terracotta/coral secondary (the "human warmth" counterpart to the calming
+ * teal), a genuinely warm cream ground instead of a cool grey one, solid
+ * cards with soft shadows. Light is the primary experience; dark is a fully-
+ * designed vivid-on-charcoal counterpart (never neon). The instrument
+ * colours (temperament / shape) live in src/utils/instruments.ts and are
+ * tuned to sit inside this palette.
  */
 const lightTheme: ThemeDefinition = {
   dark: false,
   colors: {
-    background: '#F4F6F4',
+    background: '#FBF7F1',
     surface: '#FFFFFF',
     'surface-bright': '#FFFFFF',
-    'surface-variant': '#E8EEEB',
-    'on-surface-variant': '#3C4A45',
-    primary: '#0E7C6B',
-    'primary-darken-1': '#0A5F52',
-    secondary: '#4B6D8C',
-    'secondary-darken-1': '#3A566F',
-    error: '#B4472E',
-    success: '#2F8F5B',
-    warning: '#B07321',
-    info: '#3E7CB1',
-    'on-background': '#182420',
-    'on-surface': '#182420',
+    'surface-variant': '#F2E9DD',
+    'on-surface-variant': '#4A4238',
+    primary: '#0FA189',
+    'primary-darken-1': '#0B7D6A',
+    secondary: '#E2703F',
+    'secondary-darken-1': '#C2582C',
+    error: '#C6402F',
+    success: '#1E9E6B',
+    warning: '#DB9A2B',
+    info: '#3D85C6',
+    'on-background': '#211E1A',
+    'on-surface': '#211E1A',
     'on-primary': '#FFFFFF',
     'on-secondary': '#FFFFFF',
   },
   variables: {
-    'border-color': '#182420',
+    'border-color': '#211E1A',
     'border-opacity': 0.09,
     'high-emphasis-opacity': 0.94,
     'medium-emphasis-opacity': 0.62,
-    'theme-kbd': '#182420',
+    'theme-kbd': '#211E1A',
     'hover-opacity': 0.05,
     'activated-opacity': 0.09,
   },
@@ -46,23 +48,23 @@ const lightTheme: ThemeDefinition = {
 const darkTheme: ThemeDefinition = {
   dark: true,
   colors: {
-    background: '#0E1613',
-    surface: '#15201C',
-    'surface-bright': '#1D2B26',
-    'surface-variant': '#26332E',
-    'on-surface-variant': '#B7C4BE',
-    primary: '#54B7A5',
-    'primary-darken-1': '#3E9C8B',
-    secondary: '#93B2CC',
-    'secondary-darken-1': '#7A9BB8',
-    error: '#E08D75',
-    success: '#63C08C',
-    warning: '#D9AE6B',
-    info: '#8FB8DC',
-    'on-background': '#E7ECE9',
-    'on-surface': '#E7ECE9',
-    'on-primary': '#04120F',
-    'on-secondary': '#04120F',
+    background: '#101815',
+    surface: '#182420',
+    'surface-bright': '#202E28',
+    'surface-variant': '#2B3931',
+    'on-surface-variant': '#C7D0C9',
+    primary: '#4FD3B8',
+    'primary-darken-1': '#34B69B',
+    secondary: '#F29A69',
+    'secondary-darken-1': '#DA7C46',
+    error: '#E8806D',
+    success: '#6BD1A0',
+    warning: '#E8C077',
+    info: '#8CC3F0',
+    'on-background': '#EFEDE7',
+    'on-surface': '#EFEDE7',
+    'on-primary': '#052821',
+    'on-secondary': '#2E1206',
   },
   variables: {
     'border-color': '#FFFFFF',

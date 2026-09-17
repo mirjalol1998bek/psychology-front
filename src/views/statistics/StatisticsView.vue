@@ -76,10 +76,10 @@ const statCards = computed(() => [
 ])
 
 function figureColor(name: string) {
-  return SHAPE_COLORS[name] ?? '#8892A6'
+  return SHAPE_COLORS[name] ?? '#8C8678'
 }
 function tempColor(name: string) {
-  return TEMPERAMENT_COLORS[name] ?? '#8892A6'
+  return TEMPERAMENT_COLORS[name] ?? '#8C8678'
 }
 function maxOf(list: { count: number }[]) {
   return Math.max(1, ...list.map((x) => x.count))
