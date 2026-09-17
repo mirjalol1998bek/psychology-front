@@ -31,14 +31,16 @@ export interface SlotInput {
   title: string
   date: string
   time: string
+  endTime?: string
   status: AppointmentSlotStatus
   room?: string
 }
 
 function toEvent(s: BackendSlot): CalEvent {
-  // Boshqa talabaning band sloti backend'da maxfiylik uchun student/title'siz
-  // qaytadi (AppointmentSlotCollectionProvider) — shu holatda generic "band"
-  // yorlig'i ko'rsatiladi, hech kimning ismi chiqmaydi.
+  // Boshqa talabaning band sloti va har qanday "bo'sh oraliq" backend'da
+  // maxfiylik uchun student/title'siz qaytadi (AppointmentSlotCollectionProvider)
+  // — shu holatda generic "band"/"bo'sh" yorlig'i ko'rsatiladi, psixologning
+  // shaxsiy yozuvi hech kimga chiqmaydi.
   const fallback = s.status === 'free' ? i18n.global.t('calendar.legendFree') : i18n.global.t('calendar.busySlot')
 
   return {
@@ -49,6 +51,7 @@ function toEvent(s: BackendSlot): CalEvent {
     // aylantiriladi (template'da); shu yerda tarjima qilinmaydi (data qatlami
     // tarjima matnini saqlamasligi kerak).
     time: s.startTime || '',
+    endTime: s.endTime || undefined,
     status: s.status,
   }
 }
@@ -58,6 +61,7 @@ function toBody(input: SlotInput): Record<string, unknown> {
     title: input.title || null,
     date: input.date,
     startTime: input.time || '09:00',
+    endTime: input.endTime || null,
     status: input.status,
     room: input.room || null,
   }

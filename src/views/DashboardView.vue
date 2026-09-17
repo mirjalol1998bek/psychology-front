@@ -38,10 +38,12 @@ const todaysAppointments = computed(
   () => calendarStore.events.filter((e) => e.date === todayKey && e.status === 'booked').length,
 )
 const freeSlots = computed(() => calendarStore.events.filter((e) => e.status === 'free').length)
-const nextAppointment = computed(() =>
-  [...calendarStore.events]
-    .filter((e) => e.date >= todayKey && e.status !== 'cancelled')
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0],
+/** Talaba uchun — psixolog kalendaridagi ixtiyoriy voqea emas, aynan shu
+ * talabaning o'ziga tasdiqlangan qabuli (murojaat orqali). */
+const myNextAppointment = computed(() =>
+  [...appealsStore.appeals]
+    .filter((a) => a.appointmentDate && a.appointmentDate >= todayKey)
+    .sort((a, b) => (a.appointmentDate! + (a.appointmentStartTime ?? '')).localeCompare(b.appointmentDate! + (b.appointmentStartTime ?? '')))[0],
 )
 
 const passportPct = computed(() => completeness(passportStore.get(auth.user?.hemis.hemisId ?? 'anon')))
@@ -97,8 +99,10 @@ const statTiles = computed(() =>
         },
         {
           label: t('dashboard.nearAppointment'),
-          value: nextAppointment.value ? formatDay(nextAppointment.value.date, { short: true }) : '—',
-          hint: nextAppointment.value ? nextAppointment.value.time : t('dashboard.notScheduled'),
+          value: myNextAppointment.value ? formatDay(myNextAppointment.value.appointmentDate!, { short: true }) : '—',
+          hint: myNextAppointment.value
+            ? `${myNextAppointment.value.appointmentStartTime}–${myNextAppointment.value.appointmentEndTime}`
+            : t('dashboard.notScheduled'),
           icon: 'mdi-calendar-heart',
           tint: 'rgb(var(--v-theme-secondary))',
         },
@@ -279,13 +283,15 @@ const topFaculties = [
         <v-col cols="12" lg="5">
           <v-card class="surface-card pa-5 h-100 d-flex flex-column" rounded="lg">
             <div class="text-subtitle-1 font-weight-bold mb-3">{{ t('dashboard.upcomingAppointment') }}</div>
-            <div v-if="nextAppointment" class="d-flex align-center mb-4" style="gap: 12px">
+            <div v-if="myNextAppointment" class="d-flex align-center mb-4" style="gap: 12px">
               <div class="icon-tile" style="--tint: rgb(var(--v-theme-secondary))">
                 <v-icon icon="mdi-calendar-heart" size="20" />
               </div>
               <div>
-                <div class="text-body-1 font-weight-bold">{{ formatUpcoming(nextAppointment) }}</div>
-                <div class="text-caption text-medium-emphasis">{{ nextAppointment.title }}</div>
+                <div class="text-body-1 font-weight-bold">
+                  {{ formatDay(myNextAppointment.appointmentDate!) }}, {{ myNextAppointment.appointmentStartTime }}–{{ myNextAppointment.appointmentEndTime }}
+                </div>
+                <div class="text-caption text-medium-emphasis">{{ t('dashboard.myAppointmentHint') }}</div>
               </div>
             </div>
             <div v-else class="text-body-2 text-medium-emphasis mb-4">{{ t('dashboard.noScheduledAppointment') }}</div>

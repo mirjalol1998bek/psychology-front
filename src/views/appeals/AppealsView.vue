@@ -135,7 +135,9 @@ async function confirmBook() {
     bookingAppeal.value = null
   } catch (e) {
     const status = (e as { response?: { status?: number } })?.response?.status
-    bookError.value = status === 409 ? t('appeals.staff.bookConflict') : t('appeals.staff.bookError')
+    if (status === 409) bookError.value = t('appeals.staff.bookConflict')
+    else if (status === 422) bookError.value = t('appeals.staff.bookNoAvailability')
+    else bookError.value = t('appeals.staff.bookError')
   } finally {
     booking.value = false
   }
@@ -196,7 +198,7 @@ watch(
           {{ t(topicMeta(a.topic).label) }}
         </v-chip>
         <v-chip v-if="a.wantsAppointment && a.appointmentDate" size="small" variant="tonal" color="success" prepend-icon="mdi-calendar-check">
-          {{ t('appeals.staff.bookedChip', { date: a.appointmentDate, start: a.appointmentStartTime, end: a.appointmentEndTime }) }}
+          {{ t('appeals.staff.bookedChip', { date: formatDay(a.appointmentDate, { short: true }), start: a.appointmentStartTime, end: a.appointmentEndTime }) }}
         </v-chip>
         <v-chip v-else-if="a.wantsAppointment" size="small" variant="tonal" color="secondary" prepend-icon="mdi-calendar-heart">
           {{ t('appeals.staff.appointmentRequested') }}
@@ -211,7 +213,7 @@ watch(
       <div v-if="a.wantsAppointment && !a.appointmentDate" class="d-flex align-center flex-wrap mb-4" style="gap: 10px">
         <span v-if="a.preferredDate" class="text-caption text-medium-emphasis">
           <v-icon icon="mdi-calendar-clock-outline" size="14" class="mr-1" />
-          {{ t('appeals.staff.preferredLabel', { date: a.preferredDate, time: a.preferredTime }) }}
+          {{ t('appeals.staff.preferredLabel', { date: formatDay(a.preferredDate, { short: true }), time: a.preferredTime }) }}
         </span>
         <v-btn size="small" color="secondary" variant="tonal" prepend-icon="mdi-calendar-check-outline" @click="openBook(a)">
           {{ t('appeals.staff.book') }}
@@ -417,7 +419,7 @@ watch(
           <p class="text-body-2 mb-0" style="white-space: pre-wrap">{{ a.message }}</p>
 
           <v-alert v-if="a.appointmentDate" type="success" variant="tonal" density="compact" class="mt-3" icon="mdi-calendar-check">
-            {{ t('appeals.appointmentConfirmed', { date: a.appointmentDate, start: a.appointmentStartTime, end: a.appointmentEndTime }) }}
+            {{ t('appeals.appointmentConfirmed', { date: formatDay(a.appointmentDate), start: a.appointmentStartTime, end: a.appointmentEndTime }) }}
           </v-alert>
 
           <div v-if="a.reply" class="reply-block mt-3">
@@ -428,7 +430,7 @@ watch(
           </div>
           <div v-else-if="a.wantsAppointment && a.preferredDate" class="text-caption text-warning font-weight-medium mt-2">
             <v-icon icon="mdi-clock-outline" size="14" class="mr-1" />
-            {{ t('appeals.appointmentPending', { date: a.preferredDate, time: a.preferredTime }) }}
+            {{ t('appeals.appointmentPending', { date: formatDay(a.preferredDate, { short: true }), time: a.preferredTime }) }}
           </div>
           <div v-else class="text-caption text-warning font-weight-medium mt-2">
             <v-icon icon="mdi-clock-outline" size="14" class="mr-1" />{{ t('appeals.awaitingReply') }}

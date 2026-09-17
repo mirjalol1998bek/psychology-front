@@ -6,6 +6,7 @@ export interface CalEvent {
   endDate?: string // YYYY-MM-DD (inclusive end, for multi-day events)
   title: string
   time: string
+  endTime?: string
   status: AppointmentSlotStatus
 }
 

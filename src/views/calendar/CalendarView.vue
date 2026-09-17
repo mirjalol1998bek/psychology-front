@@ -29,14 +29,24 @@ const upcoming = computed(() =>
     .slice(0, 4),
 )
 
-function formatUpcoming(e: CalEvent) {
-  return `${formatDay(e.date)}, ${e.time || t('calendar.allDay')}`
+function timeRange(e: CalEvent) {
+  if (!e.time) return t('calendar.allDay')
+  return e.endTime ? `${e.time}–${e.endTime}` : e.time
 }
 
+function formatUpcoming(e: CalEvent) {
+  return `${formatDay(e.date)}, ${timeRange(e)}`
+}
+
+function barLabel(e: CalEvent) {
+  return e.time ? `${e.title} · ${timeRange(e)}` : e.title
+}
+
+/** Talabaga psixologning ichki "bekor qilingan" holati ko'rsatilmaydi (backend ham qaytarmaydi). */
 const legend = computed<{ status: AppointmentSlotStatus; label: string }[]>(() => [
   { status: 'booked', label: t('calendar.legendBooked') },
   { status: 'free', label: t('calendar.legendFree') },
-  { status: 'cancelled', label: t('calendar.legendCancelled') },
+  ...(auth.isStaff ? [{ status: 'cancelled' as AppointmentSlotStatus, label: t('calendar.legendCancelled') }] : []),
 ])
 
 // ---------------------------------------------------------------------------
@@ -53,10 +63,11 @@ const defaultDate = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const form = ref<{ title: string; date: string; time: string; status: AppointmentSlotStatus }>({
+const form = ref<{ title: string; date: string; time: string; endTime: string; status: AppointmentSlotStatus }>({
   title: '',
   date: defaultDate(),
   time: '10:00',
+  endTime: '',
   status: 'booked',
 })
 const statusOptions = computed<{ title: string; value: AppointmentSlotStatus }[]>(() => [
@@ -64,12 +75,14 @@ const statusOptions = computed<{ title: string; value: AppointmentSlotStatus }[]
   { title: t('calendar.statusFree'), value: 'free' },
   { title: t('calendar.statusCancelled'), value: 'cancelled' },
 ])
+/** `free` (bo'sh oraliq) uchun tugash vaqti shart — backend ham talab qiladi. */
+const endTimeRequired = computed(() => form.value.status === 'free')
 
 /** Talaba faqat ko'radi — qo'shish/tahrirlash faqat xodim uchun. */
 function openCreate(dateKey?: string) {
   if (!auth.isStaff) return
   editingId.value = null
-  form.value = { title: '', date: dateKey ?? defaultDate(), time: '10:00', status: 'booked' }
+  form.value = { title: '', date: dateKey ?? defaultDate(), time: '10:00', endTime: '14:00', status: 'booked' }
   dialog.value = true
 }
 
@@ -80,6 +93,7 @@ function openEdit(ev: CalEvent) {
     title: ev.title,
     date: ev.date,
     time: ev.time,
+    endTime: ev.endTime ?? '',
     status: ev.status,
   }
   dialog.value = true
@@ -87,11 +101,13 @@ function openEdit(ev: CalEvent) {
 
 async function submitEvent() {
   if (!form.value.title.trim() || !form.value.date || busy.value) return
+  if (endTimeRequired.value && !form.value.endTime) return
   busy.value = true
   const payload = {
     title: form.value.title.trim(),
     date: form.value.date,
     time: form.value.time,
+    endTime: form.value.endTime || undefined,
     status: form.value.status,
   }
   try {
@@ -187,10 +203,10 @@ async function deleteEvent() {
                   gridRow: seg.lane + 1,
                   background: CAL_STATUS_META[seg.event.status].color,
                 }"
-                :title="`${seg.event.title} — ${seg.event.time || t('calendar.allDay')}`"
+                :title="`${seg.event.title} — ${timeRange(seg.event)}`"
                 @click.stop="openEdit(seg.event)"
               >
-                {{ seg.event.title }}
+                {{ barLabel(seg.event) }}
               </button>
             </div>
           </div>
@@ -230,6 +246,7 @@ async function deleteEvent() {
           <v-btn icon="mdi-close" variant="text" size="small" @click="dialog = false" />
         </div>
         <v-text-field v-model="form.title" :label="t('calendar.titleLabel')" density="comfortable" class="mb-1" autofocus />
+        <v-select v-model="form.status" :items="statusOptions" item-title="title" item-value="value" :label="t('calendar.statusLabel')" density="comfortable" class="mb-1" />
         <v-row dense>
           <v-col cols="6">
             <v-text-field v-model="form.date" type="date" :label="t('calendar.dateLabel')" density="comfortable" />
@@ -238,7 +255,14 @@ async function deleteEvent() {
             <v-text-field v-model="form.time" type="time" :label="t('calendar.timeLabel')" density="comfortable" />
           </v-col>
         </v-row>
-        <v-select v-model="form.status" :items="statusOptions" item-title="title" item-value="value" :label="t('calendar.statusLabel')" density="comfortable" />
+        <v-text-field
+          v-model="form.endTime"
+          type="time"
+          :label="t('calendar.endTimeLabel')"
+          :hint="endTimeRequired ? t('calendar.freeWindowHint') : undefined"
+          persistent-hint
+          density="comfortable"
+        />
         <div class="d-flex align-center mt-3" style="gap: 8px">
           <v-btn
             v-if="editingId"
@@ -252,7 +276,13 @@ async function deleteEvent() {
           </v-btn>
           <v-spacer />
           <v-btn variant="text" @click="dialog = false">{{ t('calendar.cancel') }}</v-btn>
-          <v-btn color="primary" variant="flat" :loading="busy" :disabled="!form.title.trim()" @click="submitEvent">
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="busy"
+            :disabled="!form.title.trim() || (endTimeRequired && !form.endTime)"
+            @click="submitEvent"
+          >
             {{ editingId ? t('calendar.save') : t('calendar.add') }}
           </v-btn>
         </div>
