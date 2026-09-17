@@ -22,6 +22,18 @@ store.load().then(() => {
   Object.assign(form, store.get(studentKey.value) ?? emptyPassport())
 })
 
+/** Anketa `birthDate`dan hisoblanadi — backendda saqlanmaydi. */
+const age = computed<number | null>(() => {
+  if (!form.birthDate) return null
+  const b = new Date(form.birthDate)
+  if (Number.isNaN(b.getTime())) return null
+  const now = new Date()
+  let years = now.getFullYear() - b.getFullYear()
+  const beforeBirthdayThisYear = now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())
+  if (beforeBirthdayThisYear) years--
+  return years >= 0 ? years : null
+})
+
 // Test-derived fields (read-only here — filled by the psychologist's export).
 const attempts = ref<StoredAttempt[]>([])
 getAttempts(studentKey.value).then((a) => (attempts.value = a))
@@ -48,13 +60,40 @@ async function submit() {
   }
 }
 
+const genderOpts = [
+  { value: 'male', label: 'passport.genderMale' },
+  { value: 'female', label: 'passport.genderFemale' },
+]
+const livingArrangementOpts = [
+  { value: 'with_family', label: 'passport.livingWithFamily' },
+  { value: 'dormitory', label: 'passport.livingDormitory' },
+  { value: 'rented', label: 'passport.livingRented' },
+  { value: 'with_relatives', label: 'passport.livingWithRelatives' },
+]
 const familyStatusOpts = [
   { value: 'single', label: 'passport.familyStatusSingle' },
   { value: 'married', label: 'passport.familyStatusMarried' },
 ]
-const envOpts = [
-  { value: 'calm', label: 'passport.envCalm' },
-  { value: 'problematic', label: 'passport.envProblematic' },
+const familyTypeOpts = [
+  { value: 'full', label: 'passport.familyTypeFull' },
+  { value: 'incomplete', label: 'passport.familyTypeIncomplete' },
+  { value: 'under_guardianship', label: 'passport.familyTypeUnderGuardianship' },
+  { value: 'lost_breadwinner', label: 'passport.familyTypeLostBreadwinner' },
+]
+const financialStatusOpts = [
+  { value: 'good', label: 'passport.financialGood' },
+  { value: 'average', label: 'passport.financialAverage' },
+  { value: 'difficult', label: 'passport.financialDifficult' },
+]
+const educationFormOpts = [
+  { value: 'budget', label: 'passport.educationBudget' },
+  { value: 'contract', label: 'passport.educationContract' },
+  { value: 'grant', label: 'passport.educationGrant' },
+]
+const workStatusOpts = [
+  { value: 'no', label: 'passport.workNo' },
+  { value: 'partial', label: 'passport.workPartial' },
+  { value: 'full_time', label: 'passport.workFullTime' },
 ]
 </script>
 
@@ -83,57 +122,107 @@ const envOpts = [
               />
             </v-col>
             <v-col cols="12" sm="6">
-              <v-text-field v-model="form.birthDate" type="date" :label="t('passport.birthDate')" />
-            </v-col>
-            <v-col cols="12" sm="6">
               <v-text-field
                 :model-value="`${auth.user?.hemis.faculty} · ${auth.user?.hemis.group}`"
-                :label="t('passport.facultyCourseGroup')"
+                :label="t('passport.facultyGroup')"
                 readonly
                 variant="filled"
               />
             </v-col>
             <v-col cols="12" sm="6">
-              <v-text-field v-model="form.phone" :label="t('passport.phone')" placeholder="+998 __ ___ __ __" />
-            </v-col>
-            <v-col cols="12">
               <v-text-field
-                v-model="form.currentAddress"
-                :label="t('passport.currentAddress')"
+                v-model="form.birthDate"
+                type="date"
+                :label="t('passport.birthDate')"
+                :hint="age !== null ? t('passport.age', { n: age }) : undefined"
+                persistent-hint
               />
             </v-col>
           </v-row>
+          <div class="text-caption font-weight-bold text-medium-emphasis mb-1 mt-2">{{ t('passport.gender') }}</div>
+          <v-radio-group v-model="form.gender" inline hide-details class="mb-1">
+            <v-radio v-for="o in genderOpts" :key="o.value" :value="o.value" :label="t(o.label)" />
+          </v-radio-group>
+
+          <v-divider class="my-5" />
+
+          <div class="text-subtitle-2 font-weight-bold text-uppercase text-medium-emphasis mb-3">
+            {{ t('passport.living') }}
+          </div>
+          <v-text-field v-model="form.permanentAddress" :label="t('passport.permanentAddress')" class="mb-1" />
+          <div class="text-caption font-weight-bold text-medium-emphasis mb-1">{{ t('passport.livingArrangement') }}</div>
+          <v-radio-group v-model="form.livingArrangement" inline hide-details class="mb-3">
+            <v-radio v-for="o in livingArrangementOpts" :key="o.value" :value="o.value" :label="t(o.label)" />
+          </v-radio-group>
+          <v-text-field
+            v-model="form.commuteMinutes"
+            type="number"
+            min="0"
+            :label="t('passport.commuteMinutes')"
+            style="max-width: 260px"
+          />
 
           <v-divider class="my-5" />
 
           <div class="text-subtitle-2 font-weight-bold text-uppercase text-medium-emphasis mb-3">
             {{ t('passport.family') }}
           </div>
-
           <div class="text-caption font-weight-bold text-medium-emphasis mb-1">{{ t('passport.familyStatus') }}</div>
           <v-radio-group v-model="form.familyStatus" inline hide-details class="mb-3">
             <v-radio v-for="o in familyStatusOpts" :key="o.value" :value="o.value" :label="t(o.label)" />
           </v-radio-group>
 
-          <div class="text-caption font-weight-bold text-medium-emphasis mb-1">
-            {{ t('passport.livingEnvironment') }}
-          </div>
-          <v-radio-group v-model="form.livingEnvironment" inline hide-details class="mb-3">
-            <v-radio v-for="o in envOpts" :key="o.value" :value="o.value" :label="t(o.label)" />
+          <v-select
+            v-model="form.familyType"
+            :items="familyTypeOpts.map((o) => ({ ...o, title: t(o.label) }))"
+            item-title="title"
+            item-value="value"
+            :label="t('passport.familyType')"
+            density="comfortable"
+            class="mb-1"
+          />
+          <v-row dense>
+            <v-col cols="6">
+              <v-text-field v-model="form.siblingsCount" type="number" min="0" :label="t('passport.siblingsCount')" />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field v-model="form.birthOrder" type="number" min="0" :label="t('passport.birthOrder')" />
+            </v-col>
+          </v-row>
+          <v-text-field v-model="form.fatherInfo" :label="t('passport.fatherInfo')" class="mb-1" />
+          <v-text-field v-model="form.motherInfo" :label="t('passport.motherInfo')" class="mb-1" />
+
+          <div class="text-caption font-weight-bold text-medium-emphasis mb-1">{{ t('passport.financialStatus') }}</div>
+          <v-radio-group v-model="form.financialStatus" inline hide-details class="mb-1">
+            <v-radio v-for="o in financialStatusOpts" :key="o.value" :value="o.value" :label="t(o.label)" />
           </v-radio-group>
 
-          <v-textarea
-            v-model="form.parentsInfo"
-            :label="t('passport.parentsInfo')"
-            rows="3"
-            auto-grow
-          />
-          <v-textarea
-            v-model="form.tutorInfo"
-            :label="t('passport.tutorInfo')"
-            rows="2"
-            auto-grow
-          />
+          <v-divider class="my-5" />
+
+          <div class="text-subtitle-2 font-weight-bold text-uppercase text-medium-emphasis mb-3">
+            {{ t('passport.education') }}
+          </div>
+          <div class="text-caption font-weight-bold text-medium-emphasis mb-1">{{ t('passport.educationForm') }}</div>
+          <v-radio-group v-model="form.educationForm" inline hide-details class="mb-3">
+            <v-radio v-for="o in educationFormOpts" :key="o.value" :value="o.value" :label="t(o.label)" />
+          </v-radio-group>
+
+          <div class="text-caption font-weight-bold text-medium-emphasis mb-1">{{ t('passport.workStatus') }}</div>
+          <v-radio-group v-model="form.workStatus" inline hide-details class="mb-3">
+            <v-radio v-for="o in workStatusOpts" :key="o.value" :value="o.value" :label="t(o.label)" />
+          </v-radio-group>
+
+          <v-text-field v-model="form.priorEducation" :label="t('passport.priorEducation')" class="mb-1" />
+          <v-row dense>
+            <v-col cols="6">
+              <v-text-field v-model="form.gpaScore" :label="t('passport.gpaScore')" />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field v-model="form.languageLevel" :label="t('passport.languageLevel')" />
+            </v-col>
+          </v-row>
+          <v-textarea v-model="form.extracurricular" :label="t('passport.extracurricular')" rows="2" auto-grow class="mb-1" />
+          <v-textarea v-model="form.leisureActivity" :label="t('passport.leisureActivity')" rows="2" auto-grow />
 
           <v-divider class="my-5" />
 
@@ -141,13 +230,22 @@ const envOpts = [
             {{ t('passport.additional') }}
           </div>
           <v-textarea
-            v-model="form.talents"
-            :label="t('passport.talents')"
+            v-model="form.healthLimitations"
+            :label="`${t('passport.healthLimitations')} ${t('passport.optional')}`"
             rows="2"
             auto-grow
+            class="mb-3"
           />
 
-          <v-btn color="primary" size="large" class="mt-2" :loading="saving" @click="submit">{{ t('common.save') }}</v-btn>
+          <div class="text-caption font-weight-bold text-medium-emphasis mb-1">{{ t('passport.priorPsychologistVisit') }}</div>
+          <v-radio-group v-model="form.priorPsychologistVisit" inline hide-details class="mb-3">
+            <v-radio :value="true" :label="t('passport.yes')" />
+            <v-radio :value="false" :label="t('passport.no')" />
+          </v-radio-group>
+
+          <v-textarea v-model="form.currentConcern" :label="t('passport.currentConcern')" rows="3" auto-grow />
+
+          <v-btn color="primary" size="large" class="mt-4" :loading="saving" @click="submit">{{ t('common.save') }}</v-btn>
           <v-expand-transition>
             <v-alert v-if="saved" type="success" variant="tonal" density="compact" class="mt-3">
               {{ t('passport.saved') }}

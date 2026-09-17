@@ -73,48 +73,105 @@ function exportResults() {
   downloadXlsx(fname('natijalar'), 'Natijalar', headers, data)
 }
 
-// "Ijtimoiy-psixologik portret" — har bir maydon alohida ustunda, shundagina
+// "Ijtimoiy-psixologik anketa" — har bir maydon alohida ustunda, shundagina
 // Excelda saralash/filtrlash ishlaydi.
-const FAMILY: Record<string, string> = { married: 'Uylangan / turmushga chiqqan', single: 'Uylanmagan / turmushga chiqmagan' }
-const ENV: Record<string, string> = { calm: 'Tinch', problematic: 'Muammoli' }
+const GENDER: Record<string, string> = { male: 'Erkak', female: 'Ayol' }
+const LIVING: Record<string, string> = {
+  with_family: 'Oila bilan',
+  dormitory: 'Talabalar turar joyida',
+  rented: 'Ijarada',
+  with_relatives: 'Qarindoshlarnikida',
+}
+const FAMILY: Record<string, string> = { married: 'Turmush qurgan', single: 'Turmush qurmagan' }
+const FAMILY_TYPE: Record<string, string> = {
+  full: 'To‘liq',
+  incomplete: 'To‘liqsiz',
+  under_guardianship: 'Vasiylikda',
+  lost_breadwinner: 'Boquvchisini yo‘qotgan',
+}
+const FINANCIAL: Record<string, string> = { good: 'Yaxshi', average: 'O‘rtacha', difficult: 'Qiyin' }
+const EDUCATION_FORM: Record<string, string> = { budget: 'Byudjet', contract: 'To‘lov-kontrakt', grant: 'Grant' }
+const WORK_STATUS: Record<string, string> = { no: 'Yo‘q', partial: 'Qisman', full_time: 'Doimiy' }
+
+function ageFrom(birthDate: string): string {
+  if (!birthDate) return ''
+  const b = new Date(birthDate)
+  if (Number.isNaN(b.getTime())) return ''
+  const now = new Date()
+  let years = now.getFullYear() - b.getFullYear()
+  if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) years--
+  return years >= 0 ? String(years) : ''
+}
 
 function exportPassport() {
   const headers = [
     'T/R',
+    'Shaxsiy kod',
     'F.I.SH',
-    'Tug‘ilgan sana',
     'Fakultet',
     'Guruh',
-    'Hozirgi turar joyi',
-    'Telefon',
-    'Oilaviy ahvoli',
-    'Alohida qobiliyat va iqtidori',
+    'Tug‘ilgan sana',
+    'Yoshi',
+    'Jinsi',
+    'Doimiy yashash manzili',
+    'Hozir qayerda yashaydi',
+    'Yo‘lda ketadigan vaqt (daqiqa)',
+    'Oilaviy holati',
+    'Oila tipi',
+    'Farzandlar soni',
+    'Nechanchi farzand',
+    'Otasining ma’lumoti va kasbi',
+    'Onasining ma’lumoti va kasbi',
+    'Moddiy ahvoli',
+    'Ta’lim shakli',
+    'Ishlaydimi',
+    'Universitetgacha tugatgan muassasa',
+    'O‘rtacha bahosi',
+    'Chet tili darajasi',
+    'To‘garak / faoliyat',
+    'Bo‘sh vaqt',
+    'Sog‘liq cheklovlari',
+    'Ilgari psixologga murojaat',
+    'Hozirgi tashvishi',
     'Temperament tipi',
     'Xarakteri (psixogeometrik)',
-    'Oilaviy yashash muhiti',
-    'Ota-onasi (F.I.SH., tel, ish joyi)',
-    'Biriktirilgan tyutor (F.I.SH., tel)',
   ]
   const data = rows.value.map((r, i) => {
     const p: PassportData | null = r.passport
     return [
       i + 1,
+      r.personalCode ?? '',
       r.fullName,
-      p?.birthDate ?? '',
       faculty.value?.name ?? '',
       group.value?.name ?? '',
-      p?.currentAddress ?? '',
-      p?.phone ?? '',
+      p?.birthDate ?? '',
+      p?.birthDate ? ageFrom(p.birthDate) : '',
+      p?.gender ? GENDER[p.gender] : '',
+      p?.permanentAddress ?? '',
+      p?.livingArrangement ? LIVING[p.livingArrangement] : '',
+      p?.commuteMinutes ?? '',
       p?.familyStatus ? FAMILY[p.familyStatus] : '',
-      p?.talents ?? '',
+      p?.familyType ? FAMILY_TYPE[p.familyType] : '',
+      p?.siblingsCount ?? '',
+      p?.birthOrder ?? '',
+      p?.fatherInfo ?? '',
+      p?.motherInfo ?? '',
+      p?.financialStatus ? FINANCIAL[p.financialStatus] : '',
+      p?.educationForm ? EDUCATION_FORM[p.educationForm] : '',
+      p?.workStatus ? WORK_STATUS[p.workStatus] : '',
+      p?.priorEducation ?? '',
+      p?.gpaScore ?? '',
+      p?.languageLevel ?? '',
+      p?.extracurricular ?? '',
+      p?.leisureActivity ?? '',
+      p?.healthLimitations ?? '',
+      p?.priorPsychologistVisit === true ? 'Ha' : p?.priorPsychologistVisit === false ? 'Yo‘q' : '',
+      p?.currentConcern ?? '',
       r.temperament ?? '',
       r.figure ?? '',
-      p?.livingEnvironment ? ENV[p.livingEnvironment] : '',
-      p?.parentsInfo ?? '',
-      p?.tutorInfo ?? '',
     ]
   })
-  downloadXlsx(fname('pasport'), 'Ijtimoiy-psixologik pasport', headers, data)
+  downloadXlsx(fname('anketa'), 'Ijtimoiy-psixologik anketa', headers, data)
 }
 </script>
 
@@ -129,7 +186,7 @@ function exportPassport() {
       </div>
       <div class="d-flex flex-wrap" style="gap: 8px">
         <v-btn variant="tonal" color="secondary" prepend-icon="mdi-card-account-details-outline" :disabled="!rows.length" @click="exportPassport">
-          Pasport (Excel)
+          Anketa (Excel)
         </v-btn>
         <v-btn variant="tonal" color="success" prepend-icon="mdi-microsoft-excel" :disabled="!rows.length" @click="exportResults">
           Natijalar (Excel)

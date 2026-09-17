@@ -25,6 +25,8 @@ export interface GroupRow {
   temperament: string | null
   figure: string | null
   passport: PassportData | null
+  /** Psixolog beradi — `PassportData`ning bir qismi emas (talaba yozmaydi). */
+  personalCode: string | null
 }
 
 async function resultRows(groupId: string, instrument: InstrumentType, lang: StudyLanguage): Promise<ApiResultRow[]> {
@@ -38,27 +40,56 @@ async function resultRows(groupId: string, instrument: InstrumentType, lang: Stu
 
 interface ApiPassport {
   studentId?: number
+  personalCode?: string | null
   birthDate?: string | null
-  currentAddress?: string | null
-  phone?: string | null
+  gender?: PassportData['gender'] | null
+  permanentAddress?: string | null
+  livingArrangement?: PassportData['livingArrangement'] | null
+  commuteMinutes?: number | null
   familyStatus?: PassportData['familyStatus'] | null
-  livingEnvironment?: PassportData['livingEnvironment'] | null
-  talents?: string | null
-  parentsInfo?: string | null
-  tutorInfo?: string | null
+  familyType?: PassportData['familyType'] | null
+  siblingsCount?: number | null
+  birthOrder?: number | null
+  fatherInfo?: string | null
+  motherInfo?: string | null
+  financialStatus?: PassportData['financialStatus'] | null
+  educationForm?: PassportData['educationForm'] | null
+  workStatus?: PassportData['workStatus'] | null
+  priorEducation?: string | null
+  gpaScore?: string | null
+  languageLevel?: string | null
+  extracurricular?: string | null
+  leisureActivity?: string | null
+  healthLimitations?: string | null
+  priorPsychologistVisit?: boolean | null
+  currentConcern?: string | null
   updatedAt?: string | null
 }
 
 function toPassport(p: ApiPassport): PassportData {
   return {
     birthDate: (p.birthDate ?? '').slice(0, 10),
-    currentAddress: p.currentAddress ?? '',
-    phone: p.phone ?? '',
+    gender: p.gender ?? '',
+    permanentAddress: p.permanentAddress ?? '',
+    livingArrangement: p.livingArrangement ?? '',
+    commuteMinutes: p.commuteMinutes != null ? String(p.commuteMinutes) : '',
     familyStatus: p.familyStatus ?? '',
-    livingEnvironment: p.livingEnvironment ?? '',
-    talents: p.talents ?? '',
-    parentsInfo: p.parentsInfo ?? '',
-    tutorInfo: p.tutorInfo ?? '',
+    familyType: p.familyType ?? '',
+    siblingsCount: p.siblingsCount != null ? String(p.siblingsCount) : '',
+    birthOrder: p.birthOrder != null ? String(p.birthOrder) : '',
+    fatherInfo: p.fatherInfo ?? '',
+    motherInfo: p.motherInfo ?? '',
+    financialStatus: p.financialStatus ?? '',
+    educationForm: p.educationForm ?? '',
+    workStatus: p.workStatus ?? '',
+    priorEducation: p.priorEducation ?? '',
+    gpaScore: p.gpaScore ?? '',
+    languageLevel: p.languageLevel ?? '',
+    extracurricular: p.extracurricular ?? '',
+    leisureActivity: p.leisureActivity ?? '',
+    healthLimitations: p.healthLimitations ?? '',
+    priorPsychologistVisit: p.priorPsychologistVisit ?? null,
+    currentConcern: p.currentConcern ?? '',
     updatedAt: p.updatedAt ?? '',
   }
 }
@@ -74,14 +105,18 @@ export async function fetchGroupOverview(groupId: string, lang: StudyLanguage): 
   ])
 
   const figureBy = new Map(figure.map((r) => [r.studentId, r]))
-  const passportBy = new Map(passports.filter((p) => p.studentId != null).map((p) => [p.studentId as number, toPassport(p)]))
+  const passportBy = new Map(passports.filter((p) => p.studentId != null).map((p) => [p.studentId as number, p]))
 
-  return temperament.map((t) => ({
-    studentId: t.studentId,
-    hemisId: t.hemisId,
-    fullName: t.fullName,
-    temperament: t.resultKey || null,
-    figure: figureBy.get(t.studentId)?.resultKey || null,
-    passport: passportBy.get(t.studentId) ?? null,
-  }))
+  return temperament.map((t) => {
+    const rawPassport = passportBy.get(t.studentId)
+    return {
+      studentId: t.studentId,
+      hemisId: t.hemisId,
+      fullName: t.fullName,
+      temperament: t.resultKey || null,
+      figure: figureBy.get(t.studentId)?.resultKey || null,
+      passport: rawPassport ? toPassport(rawPassport) : null,
+      personalCode: rawPassport?.personalCode ?? null,
+    }
+  })
 }
