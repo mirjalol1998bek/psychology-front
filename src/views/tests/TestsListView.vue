@@ -12,8 +12,18 @@ import type { StoredAttempt } from '@/types/assessment'
 const auth = useAuthStore()
 const { t } = useI18n()
 
-interface QuizRow {
+interface QuizVariant {
   id: number
+  studyLanguage: string
+  isActive: boolean
+  questionCount: number
+}
+
+/** Bir metodika (Category) — bir yoki bir nechta til varianti (Quiz) bilan.
+ * Temperament tabiatan 2 ALOHIDA metodika (uz/ru algoritmi farqli) — shu
+ * sababli u ikki alohida qatorga ega bo'ladi; qolgan hammasi bitta qatorda,
+ * til variantlari "Amallar"da yonma-yon ko'rinadi. */
+interface CategoryRow {
   categoryId: number
   instrumentType: InstrumentType
   title: string
@@ -21,55 +31,82 @@ interface QuizRow {
   timeLimitMinutes: number
   isActive: boolean
   questionCount: number
+  variants: QuizVariant[]
 }
 
-const quizzes = ref<QuizRow[]>([])
+const categoryRows = ref<CategoryRow[]>([])
 
 interface BackendQuiz {
   id: number
   title: string
   description?: string | null
+  studyLanguage: string
   timeLimitMinutes?: number
   isActive?: boolean
   questionCount?: number
-  category?: { id?: number; instrumentType?: string } | null
+  category?: { id?: number; name?: string; instrumentType?: string } | null
 }
 
 async function loadStaff() {
-  quizzes.value = members<BackendQuiz>((await api.get('/quizzes')).data).map((q) => ({
-    id: q.id,
-    categoryId: q.category?.id ?? 0,
-    instrumentType: instrumentForAlgo(q.category?.instrumentType),
-    title: q.title,
-    description: q.description ?? '',
-    timeLimitMinutes: q.timeLimitMinutes ?? 0,
-    isActive: !!q.isActive,
-    questionCount: q.questionCount ?? 0,
-  }))
+  const quizzes = members<BackendQuiz>((await api.get('/quizzes')).data)
+  const byCategory = new Map<number, CategoryRow>()
+
+  for (const q of quizzes) {
+    const categoryId = q.category?.id ?? 0
+    const row = byCategory.get(categoryId)
+    const variant: QuizVariant = {
+      id: q.id,
+      studyLanguage: q.studyLanguage,
+      isActive: !!q.isActive,
+      questionCount: q.questionCount ?? 0,
+    }
+
+    if (row) {
+      row.variants.push(variant)
+      row.questionCount += variant.questionCount
+      row.isActive = row.isActive || variant.isActive
+    } else {
+      byCategory.set(categoryId, {
+        categoryId,
+        instrumentType: instrumentForAlgo(q.category?.instrumentType),
+        title: q.category?.name ?? q.title,
+        description: q.description ?? '',
+        timeLimitMinutes: q.timeLimitMinutes ?? 0,
+        isActive: variant.isActive,
+        questionCount: variant.questionCount,
+        variants: [variant],
+      })
+    }
+  }
+
+  categoryRows.value = [...byCategory.values()]
 }
 if (auth.isStaff) loadStaff()
 
-async function removeQuiz(id: number) {
-  await api.delete(`/quizzes/${id}`)
-  quizzes.value = quizzes.value.filter((q) => q.id !== id)
+async function removeQuiz(categoryId: number, quizId: number) {
+  await api.delete(`/quizzes/${quizId}`)
+  const row = categoryRows.value.find((r) => r.categoryId === categoryId)
+  if (!row) return
+  row.variants = row.variants.filter((v) => v.id !== quizId)
+  if (row.variants.length === 0) categoryRows.value = categoryRows.value.filter((r) => r.categoryId !== categoryId)
 }
 
 const categoryFilter = ref<InstrumentType | 'all'>('all')
 const search = ref('')
 
 const filtered = computed(() =>
-  quizzes.value.filter((q) => {
-    if (categoryFilter.value !== 'all' && q.instrumentType !== categoryFilter.value) return false
-    if (search.value && !q.title.toLowerCase().includes(search.value.toLowerCase())) return false
+  categoryRows.value.filter((r) => {
+    if (categoryFilter.value !== 'all' && r.instrumentType !== categoryFilter.value) return false
+    if (search.value && !r.title.toLowerCase().includes(search.value.toLowerCase())) return false
     return true
   }),
 )
 
 const stats = computed(() => [
-  { label: 'Jami testlar', value: quizzes.value.length, icon: 'mdi-clipboard-text-outline', tint: 'rgb(var(--v-theme-primary))' },
-  { label: 'Faol testlar', value: quizzes.value.filter((q) => q.isActive).length, icon: 'mdi-check-circle-outline', tint: 'rgb(var(--v-theme-success))' },
-  { label: 'Kategoriyalar', value: new Set(quizzes.value.map((q) => q.categoryId)).size, icon: 'mdi-shape-outline', tint: 'rgb(var(--v-theme-secondary))' },
-  { label: 'Jami savollar', value: quizzes.value.reduce((s, q) => s + q.questionCount, 0), icon: 'mdi-help-circle-outline', tint: 'rgb(var(--v-theme-warning))' },
+  { label: 'Jami testlar', value: categoryRows.value.length, icon: 'mdi-clipboard-text-outline', tint: 'rgb(var(--v-theme-primary))' },
+  { label: 'Faol testlar', value: categoryRows.value.filter((r) => r.isActive).length, icon: 'mdi-check-circle-outline', tint: 'rgb(var(--v-theme-success))' },
+  { label: 'Til variantlari', value: categoryRows.value.reduce((s, r) => s + r.variants.length, 0), icon: 'mdi-translate', tint: 'rgb(var(--v-theme-secondary))' },
+  { label: 'Jami savollar', value: categoryRows.value.reduce((s, r) => s + r.questionCount, 0), icon: 'mdi-help-circle-outline', tint: 'rgb(var(--v-theme-warning))' },
 ])
 
 // Student-facing: real quiz catalogue + this student's attempts.
@@ -165,22 +202,32 @@ const visibleInstruments = computed(() =>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="q in filtered" :key="q.id">
+          <tr v-for="r in filtered" :key="r.categoryId">
             <td class="py-3">
-              <div class="font-weight-bold">{{ q.title }}</div>
-              <div class="text-caption text-medium-emphasis" style="max-width: 320px">{{ q.description }}</div>
+              <div class="font-weight-bold">{{ r.title }}</div>
+              <div class="text-caption text-medium-emphasis" style="max-width: 320px">{{ r.description }}</div>
             </td>
-            <td><v-chip size="small" variant="tonal" color="secondary">{{ INSTRUMENT_META[q.instrumentType].label }}</v-chip></td>
-            <td>{{ q.questionCount }}</td>
-            <td>{{ q.timeLimitMinutes }} daqiqa</td>
+            <td><v-chip size="small" variant="tonal" color="secondary">{{ INSTRUMENT_META[r.instrumentType].label }}</v-chip></td>
             <td>
-              <v-chip size="small" variant="tonal" :color="q.isActive ? 'success' : undefined">
-                {{ q.isActive ? 'Faol' : 'Nofaol' }}
+              <span v-if="r.variants.length > 1" class="text-caption">
+                {{ r.variants.map((v) => `${v.questionCount} (${v.studyLanguage})`).join(' · ') }}
+              </span>
+              <span v-else>{{ r.questionCount }}</span>
+            </td>
+            <td>{{ r.timeLimitMinutes }} daqiqa</td>
+            <td>
+              <v-chip size="small" variant="tonal" :color="r.isActive ? 'success' : undefined">
+                {{ r.isActive ? 'Faol' : 'Nofaol' }}
               </v-chip>
             </td>
             <td class="text-right">
-              <v-btn :to="`/tests/${q.id}`" icon="mdi-pencil-outline" variant="text" size="small" color="primary" />
-              <v-btn v-if="auth.isAdmin" icon="mdi-delete-outline" variant="text" size="small" color="error" @click="removeQuiz(q.id)" />
+              <div class="d-flex justify-end align-center flex-wrap" style="gap: 2px">
+                <div v-for="v in r.variants" :key="v.id" class="d-flex align-center">
+                  <span v-if="r.variants.length > 1" class="text-caption text-medium-emphasis text-uppercase mr-1">{{ v.studyLanguage }}</span>
+                  <v-btn :to="`/tests/${v.id}`" icon="mdi-pencil-outline" variant="text" size="small" color="primary" />
+                  <v-btn v-if="auth.isAdmin" icon="mdi-delete-outline" variant="text" size="small" color="error" @click="removeQuiz(r.categoryId, v.id)" />
+                </div>
+              </div>
             </td>
           </tr>
         </tbody>
