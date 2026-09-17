@@ -53,7 +53,7 @@ export interface FigureChoiceQuiz {
  *  the questions flagged as such) and maps the total to a range. */
 export interface ScaleChoiceQuiz {
   id: string
-  instrumentType: 'SCORE_RANGE_BASED'
+  instrumentType: 'SCORE_RANGE_BASED' | 'SUBSCALE_BASED'
   format: 'scale_choice'
   language: StudyLanguage
   title: string
@@ -76,13 +76,24 @@ export type AttemptStatus = 'in_progress' | 'submitted'
  *  figure_choice:    `selected` → chosen figure index */
 export type AnswerMap = Record<string, number>
 
+export interface BreakdownItem {
+  label: string
+  value: number
+  /** Subshkala darajasi/talqini (SUBSCALE_BASED) — boshqa asboblarda yo'q. */
+  resultKey?: string
+  title?: string
+  description?: string
+}
+
 export interface AttemptResult {
   /** "Sangvinik" / "Doira" — the label the badge/table pipeline expects. */
   label: string
   /** Full free-text interpretation the student reads afterwards. */
   description: string
+  /** Overall numeric score (SCORE_RANGE_BASED / SUBSCALE_BASED); undefined otherwise. */
+  score?: number | null
   /** Per-category counts (temperament); empty for a single figure choice. */
-  breakdown: { label: string; value: number }[]
+  breakdown: BreakdownItem[]
 }
 
 export interface StoredAttempt {

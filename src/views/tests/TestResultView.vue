@@ -30,14 +30,16 @@ const result = computed(() => attempt.value?.result ?? null)
 const accent = computed(() => colorFor(instrument, result.value?.label))
 const isRanking = instrument === 'RANKING_BASED'
 
-// Score-scale (Zung) results come back as a single `{label:'score', value}`
-// item — show it as one number, not a lone 100%-wide bar.
-const scaleScore = computed(() => {
-  const only = result.value?.breakdown
-  if (only?.length === 1 && only[0].label === 'score') return only[0].value
-  return null
+// Score-scale (Zung / IPM-20) results carry the overall total in `result.score`.
+const scaleScore = computed(() => result.value?.score ?? null)
+// Zung's breakdown is a single redundant `{label:'score', value}` item (same
+// number already shown above as scaleScore) — hide it. Subshkalali (IPM-20)
+// breakdown has one item per subshkala and is always shown.
+const chartBreakdown = computed(() => {
+  const b = result.value?.breakdown ?? []
+  if (b.length === 1 && b[0].label === 'score') return []
+  return b
 })
-const chartBreakdown = computed(() => (scaleScore.value === null ? (result.value?.breakdown ?? []) : []))
 const maxBreakdown = computed(() => Math.max(1, ...chartBreakdown.value.map((b) => b.value)))
 
 const submittedAt = computed(() => formatDay(attempt.value?.submittedAt, { year: true }))
@@ -88,7 +90,7 @@ const submittedAt = computed(() => formatDay(attempt.value?.submittedAt, { year:
         <div v-for="b in chartBreakdown" :key="b.label" class="mb-3">
           <div class="d-flex justify-space-between text-body-2 mb-1">
             <span :class="{ 'font-weight-bold': b.label === result.label }">{{ b.label }}</span>
-            <span class="text-medium-emphasis">{{ b.value }}</span>
+            <span class="text-medium-emphasis">{{ b.value }}{{ b.title ? ` · ${b.title}` : '' }}</span>
           </div>
           <v-progress-linear
             :model-value="(b.value / maxBreakdown) * 100"
@@ -97,6 +99,7 @@ const submittedAt = computed(() => formatDay(attempt.value?.submittedAt, { year:
             :color="b.label === result.label ? 'primary' : 'surface-variant'"
             bg-color="surface-variant"
           />
+          <p v-if="b.description" class="text-caption text-medium-emphasis mt-1 mb-0">{{ b.description }}</p>
         </div>
       </v-card>
 

@@ -1,5 +1,5 @@
 import type { InstrumentType, StudyLanguage } from '@/types/domain'
-import type { AnswerMap, AttemptResult, RunnableQuiz, StoredAttempt } from '@/types/assessment'
+import type { AnswerMap, AttemptResult, BreakdownItem, RunnableQuiz, StoredAttempt } from '@/types/assessment'
 import { api } from '@/services/apiClient'
 import {
   fetchBackendQuiz,
@@ -26,7 +26,7 @@ interface BackendResult {
   label: string
   description: string
   score: number | null
-  breakdown: { label: string; value: number }[]
+  breakdown: BreakdownItem[]
 }
 interface BackendAttempt {
   id: number
@@ -41,7 +41,7 @@ interface BackendAttempt {
 
 function toResult(r: BackendResult | null | undefined): AttemptResult | undefined {
   if (!r) return undefined
-  return { label: r.label, description: r.description, breakdown: r.breakdown ?? [] }
+  return { label: r.label, description: r.description, score: r.score, breakdown: r.breakdown ?? [] }
 }
 
 function toStoredAttempt(a: BackendAttempt): StoredAttempt {

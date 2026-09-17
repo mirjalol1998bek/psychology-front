@@ -16,6 +16,7 @@ const categoryCards: { instrument: InstrumentType; quizCount: number }[] = [
   { instrument: 'FREQUENCY_BASED', quizCount: 1 },
   { instrument: 'RANKING_BASED', quizCount: 1 },
   { instrument: 'SCORE_RANGE_BASED', quizCount: 1 },
+  { instrument: 'SUBSCALE_BASED', quizCount: 1 },
 ]
 
 const modalOpen = ref(false)

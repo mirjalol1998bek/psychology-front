@@ -20,7 +20,7 @@
  *     badge/icon at all
  * See src/utils/instruments.ts for the color/icon/render-mode tables.
  */
-export type InstrumentType = 'FREQUENCY_BASED' | 'RANKING_BASED' | 'SCORE_RANGE_BASED'
+export type InstrumentType = 'FREQUENCY_BASED' | 'RANKING_BASED' | 'SCORE_RANGE_BASED' | 'SUBSCALE_BASED'
 
 export type StudyLanguage = 'uz' | 'ru'
 

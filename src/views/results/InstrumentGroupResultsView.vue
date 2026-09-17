@@ -42,8 +42,10 @@ const allRows = ref<Row[]>([])
 
 const filterOptions = computed(() => (instrument.value === 'FREQUENCY_BASED' ? TEMPERAMENT_OPTIONS : SHAPE_OPTIONS))
 
+const isFreetext = computed(() => instrument.value === 'SCORE_RANGE_BASED' || instrument.value === 'SUBSCALE_BASED')
+
 function valueOf(r: Row): string | null {
-  if (instrument.value === 'SCORE_RANGE_BASED') return r.label || null
+  if (isFreetext.value) return r.label || null
   return r.resultKey || null
 }
 
@@ -75,7 +77,7 @@ const rows = computed(() =>
   allRows.value.filter((r) => {
     if (search.value && !r.fullName.toLowerCase().includes(search.value.toLowerCase())) return false
     const v = valueOf(r)
-    if (instrument.value === 'SCORE_RANGE_BASED') {
+    if (isFreetext.value) {
       if (conclusionFilter.value === 'has' && !v) return false
       if (conclusionFilter.value === 'none' && v) return false
     } else if (valueFilter.value && v !== valueFilter.value) return false
@@ -170,7 +172,7 @@ async function confirmAction() {
 
       <v-expand-transition>
         <v-row v-if="showFilters" class="mb-2">
-          <v-col v-if="instrument !== 'SCORE_RANGE_BASED'" cols="12" sm="6" md="4">
+          <v-col v-if="!isFreetext" cols="12" sm="6" md="4">
             <v-select v-model="valueFilter" :items="filterOptions" :label="meta.label" clearable hide-details density="comfortable" />
           </v-col>
           <v-col v-else cols="12" sm="6" md="4">

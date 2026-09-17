@@ -28,6 +28,7 @@ export default {
     FREQUENCY_BASED: 'Temperament',
     RANKING_BASED: 'Psixogeometrik',
     SCORE_RANGE_BASED: 'Nevrasteniya',
+    SUBSCALE_BASED: 'IPM-20',
   },
   months: {
     long: [
@@ -144,6 +145,7 @@ export default {
       FREQUENCY_BASED: 'Ustuvor javoblar bo‘yicha temperament turini aniqlaydi',
       RANKING_BASED: 'Figuralarni afzallik tartibida saralash asosida',
       SCORE_RANGE_BASED: 'Ball yig‘indisiga qarab erkin xulosa beradi',
+      SUBSCALE_BASED: 'Universitetga moslashuvni 4 yo‘nalish bo‘yicha baholaydi',
     },
   },
   result: {

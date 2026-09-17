@@ -27,6 +27,7 @@ const categoryCards: { instrument: InstrumentType; tint: string }[] = [
   { instrument: 'FREQUENCY_BASED', tint: colorFor('FREQUENCY_BASED', 'Sangvinik') },
   { instrument: 'RANKING_BASED', tint: colorFor('RANKING_BASED', 'Doira') },
   { instrument: 'SCORE_RANGE_BASED', tint: 'rgb(var(--v-theme-secondary))' },
+  { instrument: 'SUBSCALE_BASED', tint: 'rgb(var(--v-theme-warning))' },
 ]
 
 function openInstrument(instrument: InstrumentType) {

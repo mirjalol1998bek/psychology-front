@@ -20,6 +20,7 @@ const ALGO_TO_INSTRUMENT: Record<string, InstrumentType> = {
   TEMPERAMENT_CHOICE: 'FREQUENCY_BASED',
   FIGURE_CHOICE: 'RANKING_BASED',
   SCORE_SCALE: 'SCORE_RANGE_BASED',
+  SCORE_SCALE_SUBSCALE: 'SUBSCALE_BASED',
 }
 export function instrumentForAlgo(algo: string | undefined): InstrumentType {
   return ALGO_TO_INSTRUMENT[algo ?? ''] ?? 'FREQUENCY_BASED'
@@ -103,6 +104,7 @@ export function pickCategory(
     )
   }
   if (instrument === 'RANKING_BASED') return categories.find((c) => c.instrumentType === 'FIGURE_CHOICE')
+  if (instrument === 'SUBSCALE_BASED') return categories.find((c) => c.instrumentType === 'SCORE_SCALE_SUBSCALE')
   return categories.find((c) => c.instrumentType === 'SCORE_SCALE')
 }
 
@@ -114,7 +116,7 @@ export async function listInstruments(language: StudyLanguage): Promise<QuizSumm
     api.get('/quizzes').then((r) => members<{ category: { id: number }; studyLanguage: string; questionCount: number }>(r.data)),
   ])
   const openCategoryIds = new Set(assignments.map((a) => a.category?.id))
-  const order: InstrumentType[] = ['FREQUENCY_BASED', 'RANKING_BASED', 'SCORE_RANGE_BASED']
+  const order: InstrumentType[] = ['FREQUENCY_BASED', 'RANKING_BASED', 'SCORE_RANGE_BASED', 'SUBSCALE_BASED']
 
   return order.map((instrument) => {
     const cat = pickCategory(categories, instrument, language)
@@ -218,7 +220,7 @@ export function toRunnableQuiz(bq: BackendQuiz, language: StudyLanguage): { quiz
     }
   }
 
-  if (algo === 'SCORE_SCALE') {
+  if (algo === 'SCORE_SCALE' || algo === 'SCORE_SCALE_SUBSCALE') {
     const questions = sortedQuestions.map((q, i) => {
       const opts = sortOpts(q.options)
       items[`q${i}`] = { questionId: q.id, optionIds: opts.map((o) => o.id) }
@@ -227,7 +229,7 @@ export function toRunnableQuiz(bq: BackendQuiz, language: StudyLanguage): { quiz
     const scale = sortOpts(sortedQuestions[0]?.options ?? []).map((o) => o.text)
     const quiz: ScaleChoiceQuiz = {
       id: `${bq.id}`,
-      instrumentType: 'SCORE_RANGE_BASED',
+      instrumentType: algo === 'SCORE_SCALE_SUBSCALE' ? 'SUBSCALE_BASED' : 'SCORE_RANGE_BASED',
       format: 'scale_choice',
       language,
       title: bq.title,
@@ -266,7 +268,8 @@ export function isRenderableAlgo(algo: string): boolean {
     algo === 'TEMPERAMENT_STATEMENTS' ||
     algo === 'TEMPERAMENT_CHOICE' ||
     algo === 'FIGURE_CHOICE' ||
-    algo === 'SCORE_SCALE'
+    algo === 'SCORE_SCALE' ||
+    algo === 'SCORE_SCALE_SUBSCALE'
   )
 }
 

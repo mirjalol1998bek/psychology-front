@@ -18,6 +18,7 @@ export const INSTRUMENT_META: Record<
   FREQUENCY_BASED: { label: 'Temperament', renderMode: 'badge', icon: 'mdi-account-heart-outline', routeSegment: 'temperament' },
   RANKING_BASED: { label: 'Psixogeometrik', renderMode: 'icon-badge', icon: 'mdi-shape-outline', routeSegment: 'psixogeometrik' },
   SCORE_RANGE_BASED: { label: 'Nevrasteniya', renderMode: 'freetext', icon: 'mdi-gauge', routeSegment: 'nevrasteniya' },
+  SUBSCALE_BASED: { label: 'IPM-20', renderMode: 'freetext', icon: 'mdi-compass-outline', routeSegment: 'moslashuv' },
 }
 
 /** Metodika nomi joriy interfeys tiliga qarab (`instrument.*` locale kaliti). */

@@ -28,6 +28,7 @@ export default {
     FREQUENCY_BASED: 'Темперамент',
     RANKING_BASED: 'Психогеометрия',
     SCORE_RANGE_BASED: 'Неврастения',
+    SUBSCALE_BASED: 'ОСПА-20',
   },
   months: {
     long: [
@@ -144,6 +145,7 @@ export default {
       FREQUENCY_BASED: 'Определяет тип темперамента по преобладающим ответам',
       RANKING_BASED: 'На основе ранжирования фигур по предпочтению',
       SCORE_RANGE_BASED: 'Свободное заключение по сумме баллов',
+      SUBSCALE_BASED: 'Оценивает адаптацию к университету по 4 направлениям',
     },
   },
   result: {
