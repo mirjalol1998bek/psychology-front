@@ -83,8 +83,19 @@ async function loadStaff() {
 }
 if (auth.isStaff) loadStaff()
 
+const deleteError = ref('')
+const deleteErrorOpen = ref(false)
+
 async function removeQuiz(categoryId: number, quizId: number) {
-  await api.delete(`/quizzes/${quizId}`)
+  if (!confirm('Bu test variantini o‘chirishni tasdiqlaysizmi?')) return
+  try {
+    await api.delete(`/quizzes/${quizId}`)
+  } catch (e) {
+    const data = (e as { response?: { data?: { detail?: string } } })?.response?.data
+    deleteError.value = data?.detail || 'Testni o‘chirib bo‘lmadi.'
+    deleteErrorOpen.value = true
+    return
+  }
   const row = categoryRows.value.find((r) => r.categoryId === categoryId)
   if (!row) return
   row.variants = row.variants.filter((v) => v.id !== quizId)
@@ -234,6 +245,8 @@ const visibleInstruments = computed(() =>
       </v-table>
       <v-empty-state v-if="!filtered.length" icon="mdi-clipboard-text-off-outline" title="Test topilmadi" density="comfortable" />
     </v-card>
+
+    <v-snackbar v-model="deleteErrorOpen" location="top end" color="error" timeout="4000">{{ deleteError }}</v-snackbar>
   </div>
 
   <!-- Student: take / view tests -->
