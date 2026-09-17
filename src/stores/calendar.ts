@@ -3,6 +3,7 @@ import type { CalEvent } from '@/mocks/calendar'
 import type { AppointmentSlotStatus } from '@/types/domain'
 import { api } from '@/services/apiClient'
 import { members } from '@/services/quizService'
+import { i18n } from '@/i18n'
 
 /**
  * Psychologist appointment calendar, backed by the API:
@@ -35,11 +36,19 @@ export interface SlotInput {
 }
 
 function toEvent(s: BackendSlot): CalEvent {
+  // Boshqa talabaning band sloti backend'da maxfiylik uchun student/title'siz
+  // qaytadi (AppointmentSlotCollectionProvider) — shu holatda generic "band"
+  // yorlig'i ko'rsatiladi, hech kimning ismi chiqmaydi.
+  const fallback = s.status === 'free' ? i18n.global.t('calendar.legendFree') : i18n.global.t('calendar.busySlot')
+
   return {
     id: String(s.id),
     date: (s.date ?? '').slice(0, 10),
-    title: s.title || s.student?.fullName || (s.status === 'free' ? 'Bo‘sh slot' : 'Qabul'),
-    time: s.startTime || 'Kun bo‘yi',
+    title: s.title || s.student?.fullName || fallback,
+    // Bo'sh string — "aniq vaqt yo'q" — ko'rsatishda t('calendar.allDay')ga
+    // aylantiriladi (template'da); shu yerda tarjima qilinmaydi (data qatlami
+    // tarjima matnini saqlamasligi kerak).
+    time: s.startTime || '',
     status: s.status,
   }
 }
@@ -48,7 +57,7 @@ function toBody(input: SlotInput): Record<string, unknown> {
   return {
     title: input.title || null,
     date: input.date,
-    startTime: input.time && input.time !== 'Kun bo‘yi' ? input.time : '09:00',
+    startTime: input.time || '09:00',
     status: input.status,
     room: input.room || null,
   }

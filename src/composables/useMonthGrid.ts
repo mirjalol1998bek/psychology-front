@@ -1,10 +1,16 @@
 import { ref, computed, type Ref } from 'vue'
+import { i18n } from '@/i18n'
 
 export const WEEKDAYS = ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan', 'Yak']
+/** @deprecated joriy tilga mos emas — `monthLabel` `months.long` locale kalitidan foydalanadi. */
 export const MONTH_NAMES = [
   'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
   'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
 ]
+
+function capitalized(word: string): string {
+  return word.length ? word.charAt(0).toUpperCase() + word.slice(1) : word
+}
 
 export interface DayCell<E> {
   date: Date
@@ -28,7 +34,11 @@ function isSameDay(a: Date, b: Date) {
 export function useMonthGrid<E extends { date: string; endDate?: string }>(events: E[], today: Date) {
   const cursor: Ref<Date> = ref(new Date(today.getFullYear(), today.getMonth(), 1))
 
-  const monthLabel = computed(() => `${MONTH_NAMES[cursor.value.getMonth()]} ${cursor.value.getFullYear()}`)
+  const monthLabel = computed(() => {
+    const months = i18n.global.tm('months.long') as unknown as string[]
+    const name = capitalized(months[cursor.value.getMonth()] ?? '')
+    return `${name} ${cursor.value.getFullYear()}`
+  })
 
   const weeks = computed<DayCell<E>[][]>(() => {
     const year = cursor.value.getFullYear()

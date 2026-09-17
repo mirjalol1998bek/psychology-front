@@ -54,13 +54,23 @@ const fmt = (iso: string) => formatDay(iso, { short: true, time: true })
 const studentKey = computed(() => auth.user?.hemis.hemisId ?? 'anon')
 const myAppeals = computed(() => store.forStudent(studentKey.value))
 
-const form = ref<{ topic: AppealTopic; message: string; mode: AppealMode; wantsAppointment: boolean }>({
+const form = ref<{
+  topic: AppealTopic
+  message: string
+  mode: AppealMode
+  wantsAppointment: boolean
+  preferredDate: string
+  preferredTime: string
+}>({
   topic: 'question',
   message: '',
   mode: 'named',
   wantsAppointment: false,
+  preferredDate: '',
+  preferredTime: '',
 })
 const sent = ref(false)
+const wantsAppointment = computed(() => form.value.wantsAppointment || form.value.topic === 'appointment')
 
 async function submitAppeal() {
   if (!form.value.message.trim() || sending.value) return
@@ -70,9 +80,11 @@ async function submitAppeal() {
       mode: form.value.mode,
       topic: form.value.topic,
       message: form.value.message,
-      wantsAppointment: form.value.wantsAppointment || form.value.topic === 'appointment',
+      wantsAppointment: wantsAppointment.value,
+      preferredDate: wantsAppointment.value ? form.value.preferredDate || undefined : undefined,
+      preferredTime: wantsAppointment.value ? form.value.preferredTime || undefined : undefined,
     })
-    form.value = { topic: 'question', message: '', mode: 'named', wantsAppointment: false }
+    form.value = { topic: 'question', message: '', mode: 'named', wantsAppointment: false, preferredDate: '', preferredTime: '' }
     sent.value = true
     setTimeout(() => (sent.value = false), 2500)
   } finally {
@@ -97,6 +109,35 @@ async function sendReply(a: Appeal) {
     refreshNotifications()
   } finally {
     replying.value = null
+  }
+}
+
+// --- Qabulni tasdiqlash (2 soatlik AppointmentSlot yaratadi) --------------
+const bookingAppeal = ref<Appeal | null>(null)
+const bookForm = ref({ date: '', startTime: '' })
+const booking = ref(false)
+const bookError = ref('')
+
+function openBook(a: Appeal) {
+  bookingAppeal.value = a
+  bookForm.value = { date: a.preferredDate || '', startTime: a.preferredTime || '' }
+  bookError.value = ''
+}
+
+async function confirmBook() {
+  const a = bookingAppeal.value
+  if (!a || !bookForm.value.date || !bookForm.value.startTime || booking.value) return
+  booking.value = true
+  bookError.value = ''
+  try {
+    await store.bookAppointment(a.id, bookForm.value.date, bookForm.value.startTime)
+    refreshNotifications()
+    bookingAppeal.value = null
+  } catch (e) {
+    const status = (e as { response?: { status?: number } })?.response?.status
+    bookError.value = status === 409 ? t('appeals.staff.bookConflict') : t('appeals.staff.bookError')
+  } finally {
+    booking.value = false
   }
 }
 
@@ -154,7 +195,10 @@ watch(
         <v-chip size="small" variant="tonal" :prepend-icon="topicMeta(a.topic).icon">
           {{ t(topicMeta(a.topic).label) }}
         </v-chip>
-        <v-chip v-if="a.wantsAppointment" size="small" variant="tonal" color="secondary" prepend-icon="mdi-calendar-heart">
+        <v-chip v-if="a.wantsAppointment && a.appointmentDate" size="small" variant="tonal" color="success" prepend-icon="mdi-calendar-check">
+          {{ t('appeals.staff.bookedChip', { date: a.appointmentDate, start: a.appointmentStartTime, end: a.appointmentEndTime }) }}
+        </v-chip>
+        <v-chip v-else-if="a.wantsAppointment" size="small" variant="tonal" color="secondary" prepend-icon="mdi-calendar-heart">
           {{ t('appeals.staff.appointmentRequested') }}
         </v-chip>
         <v-chip size="small" :color="a.status === 'answered' ? 'success' : 'warning'" variant="tonal">
@@ -163,6 +207,16 @@ watch(
       </div>
 
       <p class="text-body-2 mb-4" style="white-space: pre-wrap">{{ a.message }}</p>
+
+      <div v-if="a.wantsAppointment && !a.appointmentDate" class="d-flex align-center flex-wrap mb-4" style="gap: 10px">
+        <span v-if="a.preferredDate" class="text-caption text-medium-emphasis">
+          <v-icon icon="mdi-calendar-clock-outline" size="14" class="mr-1" />
+          {{ t('appeals.staff.preferredLabel', { date: a.preferredDate, time: a.preferredTime }) }}
+        </span>
+        <v-btn size="small" color="secondary" variant="tonal" prepend-icon="mdi-calendar-check-outline" @click="openBook(a)">
+          {{ t('appeals.staff.book') }}
+        </v-btn>
+      </div>
 
       <div v-if="a.reply" class="reply-block">
         <div class="text-caption font-weight-bold text-primary mb-1">
@@ -181,9 +235,6 @@ watch(
           class="mb-2"
         />
         <div class="d-flex justify-end" style="gap: 8px">
-          <v-btn v-if="a.wantsAppointment" variant="tonal" color="secondary" size="small" to="/calendar" prepend-icon="mdi-calendar-plus">
-            {{ t('appeals.staff.calendar') }}
-          </v-btn>
           <v-btn
             color="primary"
             size="small"
@@ -203,6 +254,40 @@ watch(
       :title="t('appeals.staff.emptyTitle')"
       :text="t('appeals.staff.emptyText')"
     />
+
+    <v-dialog :model-value="bookingAppeal !== null" max-width="420" @update:model-value="bookingAppeal = null">
+      <v-card v-if="bookingAppeal" class="surface-card pa-6" rounded="lg">
+        <div class="d-flex align-center justify-space-between mb-4">
+          <span class="text-subtitle-1 font-weight-bold">{{ t('appeals.staff.bookDialogTitle') }}</span>
+          <v-btn icon="mdi-close" variant="text" size="small" @click="bookingAppeal = null" />
+        </div>
+        <div class="text-body-2 font-weight-bold mb-1">
+          {{ bookingAppeal.mode === 'anonymous' ? t('appeals.staff.anonStudent') : bookingAppeal.studentName }}
+        </div>
+        <v-row dense class="mt-1">
+          <v-col cols="6">
+            <v-text-field v-model="bookForm.date" type="date" :label="t('appeals.staff.bookDateLabel')" density="comfortable" autofocus />
+          </v-col>
+          <v-col cols="6">
+            <v-text-field v-model="bookForm.startTime" type="time" :label="t('appeals.staff.bookTimeLabel')" density="comfortable" />
+          </v-col>
+        </v-row>
+        <p class="text-caption text-medium-emphasis mb-3">{{ t('appeals.staff.bookDurationHint') }}</p>
+        <v-alert v-if="bookError" type="error" variant="tonal" density="compact" class="mb-3">{{ bookError }}</v-alert>
+        <div class="d-flex justify-end" style="gap: 8px">
+          <v-btn variant="text" @click="bookingAppeal = null">{{ t('common.cancel') }}</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="booking"
+            :disabled="!bookForm.date || !bookForm.startTime"
+            @click="confirmBook"
+          >
+            {{ t('appeals.staff.bookConfirm') }}
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
   </div>
 
   <!-- ============================ STUDENT ============================ -->
@@ -251,6 +336,26 @@ watch(
             hide-details
             class="mb-2"
           />
+
+          <v-expand-transition>
+            <div v-if="wantsAppointment" class="mb-4">
+              <v-row dense>
+                <v-col cols="6">
+                  <v-text-field v-model="form.preferredDate" type="date" :label="t('appeals.preferredDate')" density="compact" hide-details />
+                </v-col>
+                <v-col cols="6">
+                  <v-text-field v-model="form.preferredTime" type="time" :label="t('appeals.preferredTime')" density="compact" hide-details />
+                </v-col>
+              </v-row>
+              <p class="text-caption text-medium-emphasis mt-2 mb-0 d-flex" style="gap: 6px">
+                <v-icon icon="mdi-information-outline" size="14" style="margin-top: 2px" />
+                <span>
+                  {{ t('appeals.preferredHint') }}
+                  <router-link to="/calendar" class="text-primary font-weight-medium">{{ t('appeals.viewCalendar') }}</router-link>
+                </span>
+              </p>
+            </div>
+          </v-expand-transition>
 
           <div class="surface-sunken pa-3 mb-4" style="border-radius: var(--radius-sm)">
             <v-radio-group v-model="form.mode" hide-details density="compact">
@@ -311,11 +416,19 @@ watch(
           </div>
           <p class="text-body-2 mb-0" style="white-space: pre-wrap">{{ a.message }}</p>
 
+          <v-alert v-if="a.appointmentDate" type="success" variant="tonal" density="compact" class="mt-3" icon="mdi-calendar-check">
+            {{ t('appeals.appointmentConfirmed', { date: a.appointmentDate, start: a.appointmentStartTime, end: a.appointmentEndTime }) }}
+          </v-alert>
+
           <div v-if="a.reply" class="reply-block mt-3">
             <div class="text-caption font-weight-bold text-primary mb-1">
               <v-icon icon="mdi-reply" size="14" class="mr-1" />{{ a.repliedBy }}
             </div>
             <p class="text-body-2 mb-0" style="white-space: pre-wrap">{{ a.reply }}</p>
+          </div>
+          <div v-else-if="a.wantsAppointment && a.preferredDate" class="text-caption text-warning font-weight-medium mt-2">
+            <v-icon icon="mdi-clock-outline" size="14" class="mr-1" />
+            {{ t('appeals.appointmentPending', { date: a.preferredDate, time: a.preferredTime }) }}
           </div>
           <div v-else class="text-caption text-warning font-weight-medium mt-2">
             <v-icon icon="mdi-clock-outline" size="14" class="mr-1" />{{ t('appeals.awaitingReply') }}

@@ -5,8 +5,9 @@ import { members } from '@/services/quizService'
 /**
  * Student → psychologist appeals ("murojaat"), backed by the API.
  *   GET  /api/appeals              — student: own; staff: all
- *   POST /api/appeals              — {mode, topic, message, wantsAppointment}
+ *   POST /api/appeals              — {mode, topic, message, wantsAppointment, preferredDate?, preferredTime?}
  *   POST /api/appeals/{id}/reply   — {reply}   (ROLE_PSYCHOLOGIST)
+ *   POST /api/appeals/{id}/book    — {date, startTime}   (ROLE_PSYCHOLOGIST) — 2 soatlik AppointmentSlot yaratadi
  *
  * `mode: 'anonymous'` — the backend still stores the student link (to route the
  * reply) but never exposes the name/group; `senderName`/`senderGroup` come back
@@ -31,6 +32,13 @@ export interface Appeal {
   repliedBy?: string
   repliedAt?: string
   status: AppealStatus
+  /** Talaba so'ragan vaqt (hali belgilanmagan bo'lsa). */
+  preferredDate?: string
+  preferredTime?: string
+  /** Psixolog "Qabul qilish" bilan tasdiqlagan haqiqiy vaqt (2 soatlik). */
+  appointmentDate?: string
+  appointmentStartTime?: string
+  appointmentEndTime?: string
 }
 
 interface BackendAppeal {
@@ -46,6 +54,11 @@ interface BackendAppeal {
   senderName?: string | null
   senderGroup?: string | null
   repliedByName?: string | null
+  preferredDate?: string | null
+  preferredTime?: string | null
+  appointmentDate?: string | null
+  appointmentStartTime?: string | null
+  appointmentEndTime?: string | null
 }
 
 function mapAppeal(b: BackendAppeal): Appeal {
@@ -62,6 +75,11 @@ function mapAppeal(b: BackendAppeal): Appeal {
     repliedBy: b.repliedByName ?? (b.reply ? 'Psixolog' : undefined),
     repliedAt: b.repliedAt ?? undefined,
     status: b.status,
+    preferredDate: b.preferredDate ? b.preferredDate.slice(0, 10) : undefined,
+    preferredTime: b.preferredTime ?? undefined,
+    appointmentDate: b.appointmentDate ?? undefined,
+    appointmentStartTime: b.appointmentStartTime ?? undefined,
+    appointmentEndTime: b.appointmentEndTime ?? undefined,
   }
 }
 
@@ -70,6 +88,8 @@ export interface AppealInput {
   topic: AppealTopic
   message: string
   wantsAppointment: boolean
+  preferredDate?: string
+  preferredTime?: string
 }
 
 export const useAppealsStore = defineStore('appeals', {
@@ -105,6 +125,11 @@ export const useAppealsStore = defineStore('appeals', {
       const idx = this.appeals.findIndex((x) => x.id === id)
       if (idx >= 0) this.appeals[idx] = mapAppeal(updated)
       else this.appeals.push(mapAppeal(updated))
+    },
+    /** Qabulni tasdiqlaydi — 2 soatlik AppointmentSlot yaratadi (409 = vaqt band). */
+    async bookAppointment(id: string, date: string, startTime: string) {
+      await api.post(`/appeals/${id}/book`, { date, startTime })
+      await this.load(true)
     },
   },
 })

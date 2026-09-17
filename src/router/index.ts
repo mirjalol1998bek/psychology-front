@@ -52,8 +52,9 @@ const router = createRouter({
         { path: 'results/:instrument', name: 'results-instrument', component: () => import('@/views/results/InstrumentPickerView.vue'), meta: { roles: STAFF } },
         { path: 'results/:instrument/:facultyId/:groupId', name: 'results-instrument-group', component: () => import('@/views/results/InstrumentGroupResultsView.vue'), meta: { roles: STAFF } },
 
-        // Qabul kalendari: faqat xodim (psixolog/admin) boshqaradi — talabaga kerak emas.
-        { path: 'calendar', name: 'calendar', component: () => import('@/views/calendar/CalendarView.vue'), meta: { roles: STAFF } },
+        // Qabul kalendari: xodim (psixolog/admin) boshqaradi; talaba faqat
+        // ko'radi (bo'sh/band) — qabulga yozilish uchun murojaat qiladi.
+        { path: 'calendar', name: 'calendar', component: () => import('@/views/calendar/CalendarView.vue') },
 
         // Murojaatlar: talaba yozadi, psixolog/admin javob beradi — hamma uchun.
         { path: 'appeals', name: 'appeals', component: () => import('@/views/appeals/AppealsView.vue') },

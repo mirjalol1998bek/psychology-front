@@ -29,6 +29,7 @@ export function useNavItems() {
     if (!auth.isStaff) {
       items.push({ title: t('nav.passport'), icon: 'mdi-card-account-details-outline', to: '/passport', keywords: 'pasport паспорт' })
       items.push({ title: t('nav.appeals'), icon: 'mdi-message-text-outline', to: '/appeals', keywords: 'murojaat savol обращение' })
+      items.push({ title: t('nav.calendar'), icon: 'mdi-calendar-heart', to: '/calendar', keywords: 'qabul bo\'sh band kalendar приём календарь' })
     }
 
     return items
