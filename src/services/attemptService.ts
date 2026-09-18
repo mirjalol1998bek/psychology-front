@@ -68,6 +68,22 @@ export async function getAttempt(_studentKey: string, instrument: InstrumentType
   return all.find((a) => a.instrumentType === instrument) ?? null
 }
 
+export interface QuizAttemptRow {
+  id: number
+  studentName: string
+  status: 'not_started' | 'in_progress' | 'submitted' | 'reviewed'
+}
+
+/** Xodim — bitta test (Quiz) variantini kim topshirgani/boshlagani (Testni
+ * o'chirishdan oldin ularni tozalash uchun — faqultet/guruh bo'yicha
+ * qidirishga hojat qolmaydi). */
+export async function getAttemptsForQuiz(quizId: number): Promise<QuizAttemptRow[]> {
+  const raw = members<{ id: number; student?: { fullName?: string } | null; status: QuizAttemptRow['status'] }>(
+    (await api.get('/attempts', { params: { quiz: `/api/quizzes/${quizId}` } })).data,
+  )
+  return raw.map((a) => ({ id: a.id, studentName: a.student?.fullName ?? '—', status: a.status }))
+}
+
 // --- take-test lifecycle ---------------------------------------------------
 
 export type StartTestResult =

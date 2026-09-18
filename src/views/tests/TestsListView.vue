@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { INSTRUMENT_META, instrumentLabel } from '@/utils/instruments'
 import { listInstruments, members, instrumentForAlgo } from '@/services/quizService'
-import { getAttempts } from '@/services/attemptService'
+import { getAttempts, getAttemptsForQuiz, deleteAttempt, type QuizAttemptRow } from '@/services/attemptService'
 import { api } from '@/services/apiClient'
 import type { InstrumentType, StudyLanguage } from '@/types/domain'
 import type { StoredAttempt } from '@/types/assessment'
@@ -86,20 +86,93 @@ if (auth.isStaff) loadStaff()
 const deleteError = ref('')
 const deleteErrorOpen = ref(false)
 
+// --- test o'chirishga to'sqinlik qilgan urinishlarni ko'rsatish/tozalash ---
+// Fakultet/guruhni birma-bir tekshirib "kim topshirgan" qidirish o'rniga —
+// backend `?quiz=` filtri orqali to'g'ridan-to'g'ri shu test bo'yicha
+// urinishlar ro'yxatini olib, shu yerning o'zida o'chirish imkonini beradi.
+const attemptDialogOpen = ref(false)
+const attemptDialogCategoryId = ref<number | null>(null)
+const attemptDialogQuizId = ref<number | null>(null)
+const attemptRows = ref<QuizAttemptRow[]>([])
+const attemptRowsLoading = ref(false)
+const attemptRowBusy = ref<number | null>(null)
+const bulkBusy = ref(false)
+
+function removeQuizFromList(categoryId: number, quizId: number) {
+  const row = categoryRows.value.find((r) => r.categoryId === categoryId)
+  if (!row) return
+  row.variants = row.variants.filter((v) => v.id !== quizId)
+  if (row.variants.length === 0) categoryRows.value = categoryRows.value.filter((r) => r.categoryId !== categoryId)
+}
+
 async function removeQuiz(categoryId: number, quizId: number) {
   if (!confirm('Bu test variantini o‘chirishni tasdiqlaysizmi?')) return
   try {
     await api.delete(`/quizzes/${quizId}`)
   } catch (e) {
+    const status = (e as { response?: { status?: number } })?.response?.status
+    if (status === 409) {
+      attemptDialogCategoryId.value = categoryId
+      attemptDialogQuizId.value = quizId
+      attemptDialogOpen.value = true
+      attemptRowsLoading.value = true
+      try {
+        attemptRows.value = await getAttemptsForQuiz(quizId)
+      } finally {
+        attemptRowsLoading.value = false
+      }
+      return
+    }
     const data = (e as { response?: { data?: { detail?: string } } })?.response?.data
     deleteError.value = data?.detail || 'Testni o‘chirib bo‘lmadi.'
     deleteErrorOpen.value = true
     return
   }
-  const row = categoryRows.value.find((r) => r.categoryId === categoryId)
-  if (!row) return
-  row.variants = row.variants.filter((v) => v.id !== quizId)
-  if (row.variants.length === 0) categoryRows.value = categoryRows.value.filter((r) => r.categoryId !== categoryId)
+  removeQuizFromList(categoryId, quizId)
+}
+
+async function removeAttemptRow(id: number) {
+  attemptRowBusy.value = id
+  try {
+    await deleteAttempt(id)
+    attemptRows.value = attemptRows.value.filter((a) => a.id !== id)
+  } finally {
+    attemptRowBusy.value = null
+  }
+}
+
+async function removeAllAttempts() {
+  bulkBusy.value = true
+  try {
+    for (const a of [...attemptRows.value]) {
+      await deleteAttempt(a.id)
+      attemptRows.value = attemptRows.value.filter((x) => x.id !== a.id)
+    }
+  } finally {
+    bulkBusy.value = false
+  }
+}
+
+const ATTEMPT_STATUS_LABEL: Record<QuizAttemptRow['status'], string> = {
+  not_started: 'Boshlanmagan',
+  in_progress: 'Jarayonda',
+  submitted: 'Topshirilgan',
+  reviewed: 'Ko‘rib chiqilgan',
+}
+
+async function finishQuizDelete() {
+  if (attemptDialogQuizId.value == null || attemptDialogCategoryId.value == null) return
+  bulkBusy.value = true
+  try {
+    await api.delete(`/quizzes/${attemptDialogQuizId.value}`)
+    removeQuizFromList(attemptDialogCategoryId.value, attemptDialogQuizId.value)
+    attemptDialogOpen.value = false
+  } catch {
+    deleteError.value = 'Testni o‘chirib bo‘lmadi.'
+    deleteErrorOpen.value = true
+  } finally {
+    bulkBusy.value = false
+  }
 }
 
 const categoryFilter = ref<InstrumentType | 'all'>('all')
@@ -247,6 +320,66 @@ const visibleInstruments = computed(() =>
     </v-card>
 
     <v-snackbar v-model="deleteErrorOpen" location="top end" color="error" timeout="4000">{{ deleteError }}</v-snackbar>
+
+    <v-dialog v-model="attemptDialogOpen" max-width="480">
+      <v-card class="surface-card pa-6" rounded="lg">
+        <div class="d-flex align-center justify-space-between mb-2">
+          <span class="text-subtitle-1 font-weight-bold">Test allaqachon topshirilgan</span>
+          <v-btn icon="mdi-close" variant="text" size="small" @click="attemptDialogOpen = false" />
+        </div>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          Bu testni o‘chirish uchun avval quyidagi talabalarning urinishlarini o‘chiring —
+          fakultet/guruhni qidirishga hojat yo‘q, ro‘yxat shu testga tegishli barcha urinishlarni ko‘rsatadi.
+        </p>
+
+        <div v-if="attemptRowsLoading" class="d-flex justify-center py-6">
+          <v-progress-circular indeterminate color="primary" />
+        </div>
+        <template v-else>
+          <div v-if="!attemptRows.length" class="text-center py-4">
+            <v-icon icon="mdi-check-circle-outline" color="success" size="32" class="mb-2" />
+            <p class="text-body-2 mb-0">Barcha urinishlar o‘chirildi — testni endi o‘chirish mumkin.</p>
+          </div>
+          <div v-else style="max-height: 320px; overflow-y: auto">
+            <div
+              v-for="a in attemptRows"
+              :key="a.id"
+              class="d-flex align-center justify-space-between py-2"
+              style="border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.7))"
+            >
+              <div>
+                <div class="text-body-2 font-weight-medium">{{ a.studentName }}</div>
+                <div class="text-caption text-medium-emphasis">{{ ATTEMPT_STATUS_LABEL[a.status] }}</div>
+              </div>
+              <v-btn
+                icon="mdi-delete-outline"
+                variant="text"
+                size="small"
+                color="error"
+                :loading="attemptRowBusy === a.id"
+                @click="removeAttemptRow(a.id)"
+              />
+            </div>
+          </div>
+        </template>
+
+        <div class="d-flex justify-end mt-5" style="gap: 8px">
+          <v-btn variant="text" @click="attemptDialogOpen = false">Yopish</v-btn>
+          <v-btn
+            v-if="attemptRows.length"
+            variant="tonal"
+            color="error"
+            :loading="bulkBusy"
+            @click="removeAllAttempts"
+          >
+            Hammasini o‘chirish
+          </v-btn>
+          <v-btn v-else color="primary" variant="flat" :loading="bulkBusy" @click="finishQuizDelete">
+            Testni o‘chirish
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
   </div>
 
   <!-- Student: take / view tests -->
