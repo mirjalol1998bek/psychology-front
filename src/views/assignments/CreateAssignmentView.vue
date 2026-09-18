@@ -12,12 +12,10 @@ const LANG_LABEL: Record<StudyLanguage, string> = { uz: 'O‘zbek', ru: 'Rus' }
 const org = useOrganizationStore()
 org.load()
 
-const categoryCards: { instrument: InstrumentType; quizCount: number }[] = [
-  { instrument: 'FREQUENCY_BASED', quizCount: 1 },
-  { instrument: 'RANKING_BASED', quizCount: 1 },
-  { instrument: 'SCORE_RANGE_BASED', quizCount: 1 },
-  { instrument: 'SUBSCALE_BASED', quizCount: 1 },
-]
+const categoryCards = (Object.keys(INSTRUMENT_META) as InstrumentType[]).map((instrument) => ({
+  instrument,
+  quizCount: 1,
+}))
 
 const modalOpen = ref(false)
 const activeInstrument = ref<InstrumentType | null>(null)

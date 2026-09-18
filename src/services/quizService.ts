@@ -6,9 +6,10 @@ import { api } from '@/services/apiClient'
 /**
  * Quiz catalogue — now backed by the Symfony/API-Platform backend.
  *
- * The frontend classifies instruments into 3 render modes (InstrumentType);
- * the backend models each methodology as a `Category` with one of 4 scoring
- * algorithms (`instrumentType`). This module maps between them and turns a
+ * The frontend classifies instruments into a handful of render modes
+ * (InstrumentType); the backend models each methodology as a `Category` with
+ * its own scoring algorithm (`instrumentType`, see ALGO_TO_INSTRUMENT below
+ * for the current mapping). This module maps between them and turns a
  * backend Quiz (questions + options with ids) into the `RunnableQuiz` shape
  * the take-test flow renders, plus a `QuizRef` that lets attemptService
  * translate the index-based AnswerMap back into `{questionId, optionIds}`.
@@ -21,10 +22,23 @@ const ALGO_TO_INSTRUMENT: Record<string, InstrumentType> = {
   FIGURE_CHOICE: 'RANKING_BASED',
   SCORE_SCALE: 'SCORE_RANGE_BASED',
   SCORE_SCALE_SUBSCALE: 'SUBSCALE_BASED',
+  SCORE_SCALE_MOTIVATION: 'MOTIVATION_BASED',
+  SCORE_SCALE_EMOTIONAL: 'RESILIENCE_BASED',
 }
 export function instrumentForAlgo(algo: string | undefined): InstrumentType {
   return ALGO_TO_INSTRUMENT[algo ?? ''] ?? 'FREQUENCY_BASED'
 }
+
+// Reverse lookup for instruments backed by exactly one algo (everything
+// except FREQUENCY_BASED, which has two — TEMPERAMENT_STATEMENTS/CHOICE).
+const INSTRUMENT_TO_ALGO: Partial<Record<InstrumentType, string>> = Object.fromEntries(
+  Object.entries(ALGO_TO_INSTRUMENT)
+    .filter(([, instrument]) => instrument !== 'FREQUENCY_BASED')
+    .map(([algo, instrument]) => [instrument, algo]),
+)
+
+// Score-scale algorithms all render as a scale_choice quiz (see toRunnableQuiz).
+const SCALE_ALGOS = ['SCORE_SCALE', 'SCORE_SCALE_SUBSCALE', 'SCORE_SCALE_MOTIVATION', 'SCORE_SCALE_EMOTIONAL']
 
 export interface BackendCategory {
   id: number
@@ -103,9 +117,7 @@ export function pickCategory(
       categories.find((c) => c.instrumentType === 'TEMPERAMENT_CHOICE')
     )
   }
-  if (instrument === 'RANKING_BASED') return categories.find((c) => c.instrumentType === 'FIGURE_CHOICE')
-  if (instrument === 'SUBSCALE_BASED') return categories.find((c) => c.instrumentType === 'SCORE_SCALE_SUBSCALE')
-  return categories.find((c) => c.instrumentType === 'SCORE_SCALE')
+  return categories.find((c) => c.instrumentType === INSTRUMENT_TO_ALGO[instrument])
 }
 
 /** Instruments a student sees, with `available` reflecting an open assignment. */
@@ -116,7 +128,7 @@ export async function listInstruments(language: StudyLanguage): Promise<QuizSumm
     api.get('/quizzes').then((r) => members<{ category: { id: number }; studyLanguage: string; questionCount: number }>(r.data)),
   ])
   const openCategoryIds = new Set(assignments.map((a) => a.category?.id))
-  const order: InstrumentType[] = ['FREQUENCY_BASED', 'RANKING_BASED', 'SCORE_RANGE_BASED', 'SUBSCALE_BASED']
+  const order = Object.keys(INSTRUMENT_META) as InstrumentType[]
 
   return order.map((instrument) => {
     const cat = pickCategory(categories, instrument, language)
@@ -220,7 +232,7 @@ export function toRunnableQuiz(bq: BackendQuiz, language: StudyLanguage): { quiz
     }
   }
 
-  if (algo === 'SCORE_SCALE' || algo === 'SCORE_SCALE_SUBSCALE') {
+  if (SCALE_ALGOS.includes(algo)) {
     const questions = sortedQuestions.map((q, i) => {
       const opts = sortOpts(q.options)
       items[`q${i}`] = { questionId: q.id, optionIds: opts.map((o) => o.id) }
@@ -229,7 +241,7 @@ export function toRunnableQuiz(bq: BackendQuiz, language: StudyLanguage): { quiz
     const scale = sortOpts(sortedQuestions[0]?.options ?? []).map((o) => o.text)
     const quiz: ScaleChoiceQuiz = {
       id: `${bq.id}`,
-      instrumentType: algo === 'SCORE_SCALE_SUBSCALE' ? 'SUBSCALE_BASED' : 'SCORE_RANGE_BASED',
+      instrumentType: ALGO_TO_INSTRUMENT[algo] as ScaleChoiceQuiz['instrumentType'],
       format: 'scale_choice',
       language,
       title: bq.title,
@@ -264,13 +276,7 @@ export function toRunnableQuiz(bq: BackendQuiz, language: StudyLanguage): { quiz
 
 /** True when the frontend can render this backend algorithm today. */
 export function isRenderableAlgo(algo: string): boolean {
-  return (
-    algo === 'TEMPERAMENT_STATEMENTS' ||
-    algo === 'TEMPERAMENT_CHOICE' ||
-    algo === 'FIGURE_CHOICE' ||
-    algo === 'SCORE_SCALE' ||
-    algo === 'SCORE_SCALE_SUBSCALE'
-  )
+  return algo in ALGO_TO_INSTRUMENT
 }
 
 export function clearQuizCache() {

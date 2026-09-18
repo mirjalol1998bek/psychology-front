@@ -18,9 +18,20 @@
  *     click for a large icon + description
  *   - SCORE_RANGE_BASED(Nevrasteniya)  → free-text "xulosa" paragraph, no
  *     badge/icon at all
+ *   - SUBSCALE_BASED   (IPM-20, OKM-20,
+ *     RESILIENCE_BASED EHS-20)         → free-text "xulosa" + per-subshkala
+ *                                         breakdown chart (same renderMode as
+ *                                         SCORE_RANGE_BASED, distinguished
+ *                                         only so each gets its own Category)
  * See src/utils/instruments.ts for the color/icon/render-mode tables.
  */
-export type InstrumentType = 'FREQUENCY_BASED' | 'RANKING_BASED' | 'SCORE_RANGE_BASED' | 'SUBSCALE_BASED'
+export type InstrumentType =
+  | 'FREQUENCY_BASED'
+  | 'RANKING_BASED'
+  | 'SCORE_RANGE_BASED'
+  | 'SUBSCALE_BASED'
+  | 'MOTIVATION_BASED'
+  | 'RESILIENCE_BASED'
 
 export type StudyLanguage = 'uz' | 'ru'
 

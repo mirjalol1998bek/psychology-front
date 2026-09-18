@@ -53,7 +53,7 @@ export interface FigureChoiceQuiz {
  *  the questions flagged as such) and maps the total to a range. */
 export interface ScaleChoiceQuiz {
   id: string
-  instrumentType: 'SCORE_RANGE_BASED' | 'SUBSCALE_BASED'
+  instrumentType: 'SCORE_RANGE_BASED' | 'SUBSCALE_BASED' | 'MOTIVATION_BASED' | 'RESILIENCE_BASED'
   format: 'scale_choice'
   language: StudyLanguage
   title: string

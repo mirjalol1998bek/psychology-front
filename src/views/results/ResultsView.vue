@@ -4,9 +4,9 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { INSTRUMENT_META, instrumentLabel, colorFor } from '@/utils/instruments'
+import type { InstrumentType } from '@/types/domain'
 import { getAttempts } from '@/services/attemptService'
 import { formatDay } from '@/utils/datetime'
-import type { InstrumentType } from '@/types/domain'
 import type { StoredAttempt } from '@/types/assessment'
 
 const { t } = useI18n()
@@ -23,12 +23,10 @@ if (!auth.isStaff) {
 }
 const formatDate = (iso?: string) => formatDay(iso, { year: true })
 
-const categoryCards: { instrument: InstrumentType; tint: string }[] = [
-  { instrument: 'FREQUENCY_BASED', tint: colorFor('FREQUENCY_BASED', 'Sangvinik') },
-  { instrument: 'RANKING_BASED', tint: colorFor('RANKING_BASED', 'Doira') },
-  { instrument: 'SCORE_RANGE_BASED', tint: 'rgb(var(--v-theme-secondary))' },
-  { instrument: 'SUBSCALE_BASED', tint: 'rgb(var(--v-theme-warning))' },
-]
+const categoryCards = (Object.keys(INSTRUMENT_META) as InstrumentType[]).map((instrument) => ({
+  instrument,
+  tint: INSTRUMENT_META[instrument].tint,
+}))
 
 function openInstrument(instrument: InstrumentType) {
   router.push(`/results/${INSTRUMENT_META[instrument].routeSegment}`)

@@ -29,6 +29,8 @@ export default {
     RANKING_BASED: 'Психогеометрия',
     SCORE_RANGE_BASED: 'Неврастения',
     SUBSCALE_BASED: 'ОСПА-20',
+    MOTIVATION_BASED: 'ОУПМ-20',
+    RESILIENCE_BASED: 'ЭСС-20',
   },
   months: {
     long: [
@@ -146,6 +148,8 @@ export default {
       RANKING_BASED: 'На основе ранжирования фигур по предпочтению',
       SCORE_RANGE_BASED: 'Свободное заключение по сумме баллов',
       SUBSCALE_BASED: 'Оценивает адаптацию к университету по 4 направлениям',
+      MOTIVATION_BASED: 'Оценивает уровень учебно-профессиональной мотивации по направлениям',
+      RESILIENCE_BASED: 'Оценивает эмоциональное состояние и стрессоустойчивость по 3 направлениям',
     },
   },
   result: {

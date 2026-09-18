@@ -42,7 +42,7 @@ const allRows = ref<Row[]>([])
 
 const filterOptions = computed(() => (instrument.value === 'FREQUENCY_BASED' ? TEMPERAMENT_OPTIONS : SHAPE_OPTIONS))
 
-const isFreetext = computed(() => instrument.value === 'SCORE_RANGE_BASED' || instrument.value === 'SUBSCALE_BASED')
+const isFreetext = computed(() => meta.value.renderMode === 'freetext')
 
 function valueOf(r: Row): string | null {
   if (isFreetext.value) return r.label || null

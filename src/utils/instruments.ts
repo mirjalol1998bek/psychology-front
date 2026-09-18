@@ -13,12 +13,50 @@ export type ResultRenderMode = 'badge' | 'icon-badge' | 'freetext'
 
 export const INSTRUMENT_META: Record<
   InstrumentType,
-  { label: string; renderMode: ResultRenderMode; icon: string; routeSegment: string }
+  { label: string; renderMode: ResultRenderMode; icon: string; routeSegment: string; tint: string }
 > = {
-  FREQUENCY_BASED: { label: 'Temperament', renderMode: 'badge', icon: 'mdi-account-heart-outline', routeSegment: 'temperament' },
-  RANKING_BASED: { label: 'Psixogeometrik', renderMode: 'icon-badge', icon: 'mdi-shape-outline', routeSegment: 'psixogeometrik' },
-  SCORE_RANGE_BASED: { label: 'Nevrasteniya', renderMode: 'freetext', icon: 'mdi-gauge', routeSegment: 'nevrasteniya' },
-  SUBSCALE_BASED: { label: 'IPM-20', renderMode: 'freetext', icon: 'mdi-compass-outline', routeSegment: 'moslashuv' },
+  FREQUENCY_BASED: {
+    label: 'Temperament',
+    renderMode: 'badge',
+    icon: 'mdi-account-heart-outline',
+    routeSegment: 'temperament',
+    tint: '#1E9E6B',
+  },
+  RANKING_BASED: {
+    label: 'Psixogeometrik',
+    renderMode: 'icon-badge',
+    icon: 'mdi-shape-outline',
+    routeSegment: 'psixogeometrik',
+    tint: '#0FA189',
+  },
+  SCORE_RANGE_BASED: {
+    label: 'Nevrasteniya',
+    renderMode: 'freetext',
+    icon: 'mdi-gauge',
+    routeSegment: 'nevrasteniya',
+    tint: 'rgb(var(--v-theme-secondary))',
+  },
+  SUBSCALE_BASED: {
+    label: 'IPM-20',
+    renderMode: 'freetext',
+    icon: 'mdi-compass-outline',
+    routeSegment: 'moslashuv',
+    tint: 'rgb(var(--v-theme-warning))',
+  },
+  MOTIVATION_BASED: {
+    label: 'OKM-20',
+    renderMode: 'freetext',
+    icon: 'mdi-target',
+    routeSegment: 'motivatsiya',
+    tint: 'rgb(var(--v-theme-info))',
+  },
+  RESILIENCE_BASED: {
+    label: 'EHS-20',
+    renderMode: 'freetext',
+    icon: 'mdi-heart-pulse',
+    routeSegment: 'emotsional',
+    tint: 'rgb(var(--v-theme-success))',
+  },
 }
 
 /** Metodika nomi joriy interfeys tiliga qarab (`instrument.*` locale kaliti). */
