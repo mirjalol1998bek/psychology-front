@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { INSTRUMENT_META, instrumentLabel } from '@/utils/instruments'
@@ -178,6 +178,22 @@ async function finishQuizDelete() {
 const categoryFilter = ref<InstrumentType | 'all'>('all')
 const search = ref('')
 
+/** Faqat hozir haqiqatan mavjud (kamida bitta quiz'i bor) metodikalar
+ * uchun filtr chipi ko'rinadi — o'chirilgan/bo'shab qolgan kategoriya
+ * "ko'rinmas test" chipiga aylanib qolmasligi uchun. */
+const availableInstrumentTypes = computed(() => {
+  const seen = new Set<InstrumentType>()
+  for (const r of categoryRows.value) seen.add(r.instrumentType)
+  return (Object.keys(INSTRUMENT_META) as InstrumentType[]).filter((k) => seen.has(k))
+})
+
+/** Tanlangan filtr chipi o'chirilgan bo'lsa (masalan shu metodikaning
+ * so'nggi til varianti o'chirilganda) — "Barchasi"ga qaytaramiz, aks holda
+ * jadval bo'sh ko'rinib, hech qanday chip tanlanmagandek qolib ketardi. */
+watch(availableInstrumentTypes, (types) => {
+  if (categoryFilter.value !== 'all' && !types.includes(categoryFilter.value)) categoryFilter.value = 'all'
+})
+
 const filtered = computed(() =>
   categoryRows.value.filter((r) => {
     if (categoryFilter.value !== 'all' && r.instrumentType !== categoryFilter.value) return false
@@ -249,13 +265,13 @@ const visibleInstruments = computed(() =>
         Barchasi
       </v-chip>
       <v-chip
-        v-for="[key, meta] in Object.entries(INSTRUMENT_META)"
+        v-for="key in availableInstrumentTypes"
         :key="key"
         :variant="categoryFilter === key ? 'flat' : 'tonal'"
         :color="categoryFilter === key ? 'primary' : undefined"
-        @click="categoryFilter = key as InstrumentType"
+        @click="categoryFilter = key"
       >
-        {{ meta.label }}
+        {{ INSTRUMENT_META[key].label }}
       </v-chip>
       <v-spacer />
       <v-text-field
