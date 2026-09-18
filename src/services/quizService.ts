@@ -124,7 +124,9 @@ export async function listInstruments(language: StudyLanguage): Promise<QuizSumm
   const [categories, assignments, quizzes] = await Promise.all([
     loadCategories(),
     api.get('/assignments').then((r) => members<{ category: { id: number } }>(r.data)),
-    api.get('/quizzes').then((r) => members<{ category: { id: number }; studyLanguage: string; questionCount: number }>(r.data)),
+    api
+      .get('/quizzes')
+      .then((r) => members<{ category: { id: number }; studyLanguage: string; questionCount: number; title: string }>(r.data)),
   ])
   const openCategoryIds = new Set(assignments.map((a) => a.category?.id))
   const order = Object.keys(INSTRUMENT_META) as InstrumentType[]
@@ -138,7 +140,7 @@ export async function listInstruments(language: StudyLanguage): Promise<QuizSumm
     return {
       instrumentType: instrument,
       categoryId: cat?.id,
-      title: cat?.name ?? INSTRUMENT_META[instrument].label,
+      title: quiz?.title ?? cat?.name ?? INSTRUMENT_META[instrument].label,
       description: cat?.description ?? '',
       itemCount: quiz?.questionCount ?? 0,
       available: !!cat && openCategoryIds.has(cat.id) && isRenderableAlgo(cat.instrumentType),
