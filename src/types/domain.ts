@@ -8,27 +8,23 @@
  * with a modern UI, it does not reinvent the model.
  *
  * `instrumentType` (a frontend-only classification layered on top of the
- * three named categories the backend already has — Temperament,
- * Psixogeometrik, Nevrasteniya) drives which RESULT rendering mode a
- * category uses, since the existing app renders each one completely
- * differently:
+ * named categories the backend already has — Temperament, Psixogeometrik,
+ * IPM-20, OKM-20, EHS-20) drives which RESULT rendering mode a category
+ * uses, since the existing app renders each one completely differently:
  *   - FREQUENCY_BASED  (Temperament)   → colored badge, click for a large
  *     gradient icon + full description
  *   - RANKING_BASED    (Psixogeometrik)→ small gradient shape icon inline,
  *     click for a large icon + description
- *   - SCORE_RANGE_BASED(Nevrasteniya)  → free-text "xulosa" paragraph, no
- *     badge/icon at all
- *   - SUBSCALE_BASED   (IPM-20, OKM-20,
- *     RESILIENCE_BASED EHS-20)         → free-text "xulosa" + per-subshkala
- *                                         breakdown chart (same renderMode as
- *                                         SCORE_RANGE_BASED, distinguished
- *                                         only so each gets its own Category)
+ *   - SUBSCALE_BASED   (IPM-20), MOTIVATION_BASED (OKM-20),
+ *     RESILIENCE_BASED (EHS-20)        → free-text "xulosa" + per-subshkala
+ *                                         breakdown chart (same renderMode,
+ *                                         distinguished only so each gets
+ *                                         its own Category)
  * See src/utils/instruments.ts for the color/icon/render-mode tables.
  */
 export type InstrumentType =
   | 'FREQUENCY_BASED'
   | 'RANKING_BASED'
-  | 'SCORE_RANGE_BASED'
   | 'SUBSCALE_BASED'
   | 'MOTIVATION_BASED'
   | 'RESILIENCE_BASED'
@@ -148,33 +144,6 @@ export interface AttemptDto {
   submittedAt?: string
 }
 
-// ---------------------------------------------------------------------------
-// Results — three render modes, one per instrument (see file header)
-// ---------------------------------------------------------------------------
-export interface ResultSummaryDto {
-  attemptId: string
-  instrumentType: InstrumentType
-  /** e.g. "Sangvinik" (temperament), "Doira" (psixogeometrik) — unused for nevrasteniya. */
-  label?: string
-  /** Nevrasteniya's free-text conclusion; also used as the long description behind a badge/icon. */
-  description: string
-}
-
-/** One row of a group's instrument results table (TZ-era "guruh-malumotlari" screens). */
-export interface GroupResultRowDto {
-  student: StudentDto
-  /** Temperament: "Xolerik" | "Sangvinik" | "Flegmatik" | "Melanxolik" | null */
-  temperament?: string | null
-  /** Psixogeometrik: "Kvadrat" | "Uchburchak" | "To'g'ri to'rtburchak" | "Doira" | "Zigzag" | null */
-  geometricFigure?: string | null
-  /** Nevrasteniya: free-text conclusion, or null if not taken yet. */
-  conclusion?: string | null
-}
-
-export interface GroupResultsDto {
-  group: { id: string; name: string; facultyName: string }
-  data: GroupResultRowDto[]
-}
 
 // ---------------------------------------------------------------------------
 // Faculty-wide statistics (TZ §6 / real /admin/result/fakulty shape)

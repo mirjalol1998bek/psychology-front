@@ -48,12 +48,12 @@ export interface FigureChoiceQuiz {
   figures: { key: FigureKey; label: string; icon: string }[]
 }
 
-/** Score scale (e.g. Zung SDS) — every question uses the same ordered scale
+/** Score scale (e.g. IPM-20) — every question uses the same ordered scale
  *  of frequency options; the backend sums the option scores (reverse-scoring
  *  the questions flagged as such) and maps the total to a range. */
 export interface ScaleChoiceQuiz {
   id: string
-  instrumentType: 'SCORE_RANGE_BASED' | 'SUBSCALE_BASED' | 'MOTIVATION_BASED' | 'RESILIENCE_BASED'
+  instrumentType: 'SUBSCALE_BASED' | 'MOTIVATION_BASED' | 'RESILIENCE_BASED'
   format: 'scale_choice'
   language: StudyLanguage
   title: string
@@ -90,7 +90,7 @@ export interface AttemptResult {
   label: string
   /** Full free-text interpretation the student reads afterwards. */
   description: string
-  /** Overall numeric score (SCORE_RANGE_BASED / SUBSCALE_BASED); undefined otherwise. */
+  /** Overall numeric score (SUBSCALE_BASED / MOTIVATION_BASED / RESILIENCE_BASED); undefined otherwise. */
   score?: number | null
   /** Per-category counts (temperament); empty for a single figure choice. */
   breakdown: BreakdownItem[]

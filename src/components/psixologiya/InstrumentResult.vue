@@ -5,7 +5,7 @@ import { INSTRUMENT_META, colorFor, SHAPE_ICONS } from '@/utils/instruments'
 
 const props = defineProps<{
   instrument: InstrumentType
-  /** temperament type / geometric figure name / nevrasteniya conclusion — whichever applies */
+  /** temperament type / geometric figure name / freetext conclusion — whichever applies */
   value: string | null | undefined
   description?: string
 }>()

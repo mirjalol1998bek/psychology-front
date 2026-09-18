@@ -30,11 +30,12 @@ const result = computed(() => attempt.value?.result ?? null)
 const accent = computed(() => colorFor(instrument, result.value?.label))
 const isRanking = instrument === 'RANKING_BASED'
 
-// Score-scale (Zung / IPM-20) results carry the overall total in `result.score`.
+// Score-scale (IPM-20 / OKM-20 / EHS-20) results carry the overall total in `result.score`.
 const scaleScore = computed(() => result.value?.score ?? null)
-// Zung's breakdown is a single redundant `{label:'score', value}` item (same
-// number already shown above as scaleScore) — hide it. Subshkalali (IPM-20)
-// breakdown has one item per subshkala and is always shown.
+// A subscaleless score-scale result's breakdown is a single redundant
+// `{label:'score', value}` item (same number already shown above as
+// scaleScore) — hide it. Subshkalali breakdown has one item per subshkala
+// and is always shown.
 const chartBreakdown = computed(() => {
   const b = result.value?.breakdown ?? []
   if (b.length === 1 && b[0].label === 'score') return []

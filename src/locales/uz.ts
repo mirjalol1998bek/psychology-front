@@ -27,7 +27,6 @@ export default {
   instrument: {
     FREQUENCY_BASED: 'Temperament',
     RANKING_BASED: 'Psixogeometrik',
-    SCORE_RANGE_BASED: 'Nevrasteniya',
     SUBSCALE_BASED: 'IPM-20',
     MOTIVATION_BASED: 'OKM-20',
     RESILIENCE_BASED: 'EHS-20',
@@ -146,7 +145,6 @@ export default {
     cardDesc: {
       FREQUENCY_BASED: 'Ustuvor javoblar bo‘yicha temperament turini aniqlaydi',
       RANKING_BASED: 'Figuralarni afzallik tartibida saralash asosida',
-      SCORE_RANGE_BASED: 'Ball yig‘indisiga qarab erkin xulosa beradi',
       SUBSCALE_BASED: 'Universitetga moslashuvni 4 yo‘nalish bo‘yicha baholaydi',
       MOTIVATION_BASED: 'O‘quv-kasbiy motivatsiya darajasini yo‘nalishlar bo‘yicha baholaydi',
       RESILIENCE_BASED: 'Emotsional holat va stressga chidamlilikni 3 yo‘nalish bo‘yicha baholaydi',

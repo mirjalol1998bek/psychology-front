@@ -285,7 +285,7 @@ async function submit() {
         </v-btn>
       </template>
 
-      <!-- ============ score scale (Zung SDS, …) ============ -->
+      <!-- ============ score scale (IPM-20, OKM-20, EHS-20, …) ============ -->
       <template v-else-if="scaleQuiz">
         <v-card
           v-for="(q, qi) in scaleQuiz.questions"

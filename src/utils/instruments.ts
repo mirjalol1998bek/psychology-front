@@ -29,13 +29,6 @@ export const INSTRUMENT_META: Record<
     routeSegment: 'psixogeometrik',
     tint: '#0FA189',
   },
-  SCORE_RANGE_BASED: {
-    label: 'Nevrasteniya',
-    renderMode: 'freetext',
-    icon: 'mdi-gauge',
-    routeSegment: 'nevrasteniya',
-    tint: 'rgb(var(--v-theme-secondary))',
-  },
   SUBSCALE_BASED: {
     label: 'IPM-20',
     renderMode: 'freetext',
