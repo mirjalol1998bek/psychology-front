@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { TEMPERAMENT_COLORS, SHAPE_COLORS, SHAPE_ICONS } from '@/utils/instruments'
+import { TEMPERAMENT_COLORS, SHAPE_COLORS, SHAPE_ICONS, INSTRUMENT_META, instrumentLabel } from '@/utils/instruments'
+import { instrumentForAlgo, isRenderableAlgo } from '@/services/quizService'
 import { api } from '@/services/apiClient'
 
 interface Pair {
   key: string
   count: number
+}
+interface ScaleStat {
+  algo: string
+  withResult: number
+  withoutResult: number
 }
 interface FacultyStat {
   id: number
@@ -14,11 +20,24 @@ interface FacultyStat {
   withResults: number
   figures: Pair[]
   temperaments: Pair[]
-  scale: { withResult: number; withoutResult: number }
+  scales: ScaleStat[]
 }
 interface Overview {
   totals: { students: number; withResults: number }
   faculties: FacultyStat[]
+}
+
+/** Backend algo (masalan SCORE_SCALE_EMOTIONAL) → shu metodikaning ko'rinadigan
+ *  nomi. Frontendga hali ulanmagan algo bo'lsa (yangi metodika bor, lekin
+ *  hali INSTRUMENT_META'da yo'q) — noto'g'ri nom ko'rsatmaslik uchun xom
+ *  algo qatorining o'zi ko'rsatiladi. */
+function scaleLabel(algo: string): string {
+  return isRenderableAlgo(algo) ? instrumentLabel(instrumentForAlgo(algo)) : algo
+}
+function scaleMeta(algo: string) {
+  return isRenderableAlgo(algo)
+    ? INSTRUMENT_META[instrumentForAlgo(algo)]
+    : { icon: 'mdi-gauge', tint: 'rgb(var(--v-theme-secondary))' }
 }
 
 const data = ref<Overview>({ totals: { students: 0, withResults: 0 }, faculties: [] })
@@ -42,13 +61,16 @@ const totals = computed(() => {
 
   const figureMap = new Map<string, number>()
   const tempMap = new Map<string, number>()
-  let withNevrasthenia = 0
-  let withoutNevrasthenia = 0
+  const scaleMap = new Map<string, { withResult: number; withoutResult: number }>()
   data.value.faculties.forEach((f) => {
     f.figures.forEach((g) => figureMap.set(g.key, (figureMap.get(g.key) ?? 0) + g.count))
     f.temperaments.forEach((t) => tempMap.set(t.key, (tempMap.get(t.key) ?? 0) + t.count))
-    withNevrasthenia += f.scale.withResult
-    withoutNevrasthenia += f.scale.withoutResult
+    f.scales.forEach((s) => {
+      const cur = scaleMap.get(s.algo) ?? { withResult: 0, withoutResult: 0 }
+      cur.withResult += s.withResult
+      cur.withoutResult += s.withoutResult
+      scaleMap.set(s.algo, cur)
+    })
   })
 
   return {
@@ -58,8 +80,7 @@ const totals = computed(() => {
     pct,
     figures: Array.from(figureMap, ([name, count]) => ({ name, count })),
     temperaments: Array.from(tempMap, ([name, count]) => ({ name, count })),
-    withNevrasthenia,
-    withoutNevrasthenia,
+    scales: Array.from(scaleMap, ([algo, v]) => ({ algo, ...v })),
   }
 })
 
@@ -139,14 +160,17 @@ function maxOf(list: { count: number }[]) {
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="4">
+      <v-col v-for="s in totals.scales" :key="s.algo" cols="12" sm="6" md="4">
         <v-card class="surface-card pa-5 h-100" rounded="lg">
-          <div class="text-subtitle-1 font-weight-bold mb-4">Ball shkalalari (universitet bo‘yicha)</div>
+          <div class="d-flex align-center mb-4" style="gap: 10px">
+            <div class="icon-tile" :style="{ '--tint': scaleMeta(s.algo).tint }"><v-icon :icon="scaleMeta(s.algo).icon" size="18" /></div>
+            <div class="text-subtitle-1 font-weight-bold">{{ scaleLabel(s.algo) }} (universitet bo‘yicha)</div>
+          </div>
           <div class="d-flex align-center justify-space-between mb-3">
-            <v-chip color="success" variant="tonal" prepend-icon="mdi-check">{{ totals.withNevrasthenia }} ta natija bor</v-chip>
+            <v-chip color="success" variant="tonal" prepend-icon="mdi-check">{{ s.withResult }} ta natija bor</v-chip>
           </div>
           <div class="d-flex align-center justify-space-between">
-            <v-chip color="warning" variant="tonal" prepend-icon="mdi-close">{{ totals.withoutNevrasthenia }} ta natija yo‘q</v-chip>
+            <v-chip color="warning" variant="tonal" prepend-icon="mdi-close">{{ s.withoutResult }} ta natija yo‘q</v-chip>
           </div>
         </v-card>
       </v-col>
@@ -166,7 +190,7 @@ function maxOf(list: { count: number }[]) {
         <div v-if="openFaculties[f.id]" class="px-4 pb-4">
           <v-divider opacity="0.1" class="mb-4" />
           <v-row>
-            <v-col cols="12" md="6">
+            <v-col cols="12" md="4">
               <div class="text-caption text-medium-emphasis text-uppercase mb-2">Psixogeometrik</div>
               <div v-for="g in f.figures" :key="g.key" class="mb-2">
                 <div class="d-flex justify-space-between text-caption mb-1"><span>{{ g.key }}</span><span>{{ g.count }}</span></div>
@@ -174,13 +198,21 @@ function maxOf(list: { count: number }[]) {
               </div>
               <div v-if="!f.figures.length" class="text-caption text-medium-emphasis">—</div>
             </v-col>
-            <v-col cols="12" md="6">
+            <v-col cols="12" md="4">
               <div class="text-caption text-medium-emphasis text-uppercase mb-2">Temperament</div>
               <div v-for="t in f.temperaments" :key="t.key" class="mb-2">
                 <div class="d-flex justify-space-between text-caption mb-1"><span>{{ t.key }}</span><span>{{ t.count }}</span></div>
                 <v-progress-linear :model-value="(t.count / maxOf(f.temperaments)) * 100" height="5" rounded :color="tempColor(t.key)" bg-color="surface-variant" />
               </div>
               <div v-if="!f.temperaments.length" class="text-caption text-medium-emphasis">—</div>
+            </v-col>
+            <v-col cols="12" md="4">
+              <div class="text-caption text-medium-emphasis text-uppercase mb-2">Ball shkalalari</div>
+              <div v-for="s in f.scales" :key="s.algo" class="d-flex justify-space-between text-caption mb-2">
+                <span>{{ scaleLabel(s.algo) }}</span>
+                <span>{{ s.withResult }}</span>
+              </div>
+              <div v-if="!f.scales.length" class="text-caption text-medium-emphasis">—</div>
             </v-col>
           </v-row>
         </div>
