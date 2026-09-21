@@ -76,6 +76,7 @@ const choiceQuiz = computed(() => (quiz.value?.format === 'single_choice' ? quiz
 const figureQuiz = computed(() => (quiz.value?.format === 'figure_choice' ? quiz.value : null))
 const scaleQuiz = computed(() => (quiz.value?.format === 'scale_choice' ? quiz.value : null))
 const rankingQuiz = computed(() => (quiz.value?.format === 'ranking_list' ? quiz.value : null))
+const dualSliderQuiz = computed(() => (quiz.value?.format === 'dual_slider' ? quiz.value : null))
 
 // --- agree_statements ---------------------------------------------------
 const currentBlock = computed(() => agreeQuiz.value?.blocks[blockIndex.value] ?? null)
@@ -131,6 +132,25 @@ function moveRank(pos: number, direction: -1 | 1) {
   ;[arr[pos], arr[target]] = [arr[target], arr[pos]]
   rankOrder.value = arr
   syncRankAnswers()
+}
+
+// --- dual_slider (Dembo–Rubinshteyn) -----------------------------------
+// Each line needs BOTH a "current state" (ob) and "desired level" (dd)
+// marker, 0-100 each. Pre-fill 50 so the slider always has a visible
+// position (a resumed draft's saved values are left untouched).
+watch(
+  dualSliderQuiz,
+  (q) => {
+    if (!q) return
+    q.items.forEach((_it, i) => {
+      if (answers.value[`q${i}_ob`] === undefined) answers.value[`q${i}_ob`] = 50
+      if (answers.value[`q${i}_dd`] === undefined) answers.value[`q${i}_dd`] = 50
+    })
+  },
+  { immediate: true },
+)
+function setSlider(i: number, kind: 'ob' | 'dd', value: number) {
+  answers.value[`q${i}_${kind}`] = value
 }
 
 // --- figure_choice --------------------------------------------------
@@ -389,6 +409,60 @@ async function submit() {
                 <v-icon icon="mdi-chevron-down" size="20" />
               </button>
             </div>
+          </div>
+        </v-card>
+
+        <v-btn color="primary" size="large" block class="mt-2" :loading="submitting" :disabled="!canSubmit" @click="submit">
+          {{ t('takeTest.finish') }}
+        </v-btn>
+      </template>
+
+      <!-- ============ dual slider (Dembo–Rubinshteyn) ============ -->
+      <template v-else-if="dualSliderQuiz">
+        <p class="text-caption text-medium-emphasis mb-3">{{ t('takeTest.sliderHint') }}</p>
+        <v-card
+          v-for="(it, i) in dualSliderQuiz.items"
+          :key="i"
+          class="surface-card pa-4 pa-md-5 mb-3"
+          rounded="lg"
+        >
+          <div class="d-flex align-start mb-4" style="gap: 10px">
+            <span class="stmt-num">{{ i + 1 }}</span>
+            <span class="text-body-1 font-weight-medium">{{ it.text }}</span>
+          </div>
+
+          <div class="mb-5">
+            <div class="d-flex justify-space-between text-caption text-medium-emphasis mb-1">
+              <span>✕ {{ t('takeTest.currentLevel') }}</span>
+              <span class="font-weight-bold text-primary">{{ answers[`q${i}_ob`] }}</span>
+            </div>
+            <v-slider
+              :model-value="answers[`q${i}_ob`]"
+              min="0"
+              max="100"
+              step="1"
+              color="primary"
+              track-color="surface-variant"
+              hide-details
+              @update:model-value="(v: number) => setSlider(i, 'ob', v)"
+            />
+          </div>
+
+          <div>
+            <div class="d-flex justify-space-between text-caption text-medium-emphasis mb-1">
+              <span>— {{ t('takeTest.desiredLevel') }}</span>
+              <span class="font-weight-bold text-secondary">{{ answers[`q${i}_dd`] }}</span>
+            </div>
+            <v-slider
+              :model-value="answers[`q${i}_dd`]"
+              min="0"
+              max="100"
+              step="1"
+              color="secondary"
+              track-color="surface-variant"
+              hide-details
+              @update:model-value="(v: number) => setSlider(i, 'dd', v)"
+            />
           </div>
         </v-card>
 

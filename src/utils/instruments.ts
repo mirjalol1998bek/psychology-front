@@ -71,6 +71,13 @@ export const INSTRUMENT_META: Record<
     routeSegment: 'qadriyatlar',
     tint: '#B08D57',
   },
+  SELF_ESTEEM_BASED: {
+    label: 'Dembo–Rubinshteyn',
+    renderMode: 'freetext',
+    icon: 'mdi-ruler',
+    routeSegment: 'ozini-baholash',
+    tint: '#D9738C',
+  },
 }
 
 /** Metodika nomi joriy interfeys tiliga qarab (`instrument.*` locale kaliti). */

@@ -33,7 +33,7 @@ interface BackendAttempt {
   status: 'not_started' | 'in_progress' | 'submitted' | 'reviewed'
   quiz?: { id: number; category?: { instrumentType?: string } }
   result?: BackendResult | null
-  answers?: { questionId: number; selectedOptionIds: number[] }[]
+  answers?: { questionId: number; selectedOptionIds: number[]; textValue?: string | null }[]
   createdAt?: string
   updatedAt?: string
   submittedAt?: string | null
@@ -157,8 +157,8 @@ function encodeAnswers(
   quiz: RunnableQuiz,
   answers: AnswerMap,
   ref: QuizRef,
-): { questionId: number; optionIds: number[] }[] {
-  const out: { questionId: number; optionIds: number[] }[] = []
+): { questionId: number; optionIds: number[]; text?: string }[] {
+  const out: { questionId: number; optionIds: number[]; text?: string }[] = []
   const push = (key: string, value: number | undefined) => {
     if (value === undefined) return
     const item = ref.items[key]
@@ -172,13 +172,27 @@ function encodeAnswers(
     quiz.questions.forEach((_q, i) => push(`q${i}`, answers[`q${i}`]))
   } else if (quiz.format === 'ranking_list') {
     quiz.items.forEach((_it, i) => push(`q${i}`, answers[`q${i}`]))
+  } else if (quiz.format === 'dual_slider') {
+    // No options exist for this algo — the two 0-100 markers go straight
+    // into `text` as JSON (see DemboRubinsteinScorer on the backend).
+    quiz.items.forEach((_it, i) => {
+      const item = ref.items[`q${i}`]
+      const ob = answers[`q${i}_ob`]
+      const dd = answers[`q${i}_dd`]
+      if (item && ob !== undefined && dd !== undefined) {
+        out.push({ questionId: item.questionId, optionIds: [], text: JSON.stringify({ ob, dd }) })
+      }
+    })
   } else {
     push('selected', answers.selected)
   }
   return out
 }
 
-function decodeAnswers(ref: QuizRef, backendAnswers: { questionId: number; selectedOptionIds: number[] }[]): AnswerMap {
+function decodeAnswers(
+  ref: QuizRef,
+  backendAnswers: { questionId: number; selectedOptionIds: number[]; textValue?: string | null }[],
+): AnswerMap {
   const byQuestion: Record<number, { key: string; optionIds: number[] }> = {}
   for (const [key, item] of Object.entries(ref.items)) byQuestion[item.questionId] = { key, optionIds: item.optionIds }
 
@@ -186,6 +200,17 @@ function decodeAnswers(ref: QuizRef, backendAnswers: { questionId: number; selec
   for (const a of backendAnswers) {
     const entry = byQuestion[a.questionId]
     if (!entry) continue
+    if (entry.optionIds.length === 0 && a.textValue) {
+      // dual_slider — {"ob":n,"dd":n} JSON, no options exist for this algo.
+      try {
+        const parsed = JSON.parse(a.textValue) as { ob?: unknown; dd?: unknown }
+        if (typeof parsed.ob === 'number') map[`${entry.key}_ob`] = parsed.ob
+        if (typeof parsed.dd === 'number') map[`${entry.key}_dd`] = parsed.dd
+      } catch {
+        // ignore malformed draft data
+      }
+      continue
+    }
     const idx = entry.optionIds.indexOf(a.selectedOptionIds[0])
     if (idx >= 0) map[entry.key] = idx
   }

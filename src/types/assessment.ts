@@ -78,12 +78,28 @@ export interface RankingListQuiz {
   items: { text: string }[]
 }
 
+/** Dembo–Rubinshteyn scales — for each line the student places TWO
+ *  independent 0-100 markers: `ob` (their current self-assessment) and
+ *  `dd` (their desired/aspiration level). Unlike a range slider these are
+ *  NOT constrained ob ≤ dd — a negative gap (dd < ob) is itself a
+ *  meaningful clinical signal the backend interprets separately. */
+export interface DualSliderQuiz {
+  id: string
+  instrumentType: 'SELF_ESTEEM_BASED'
+  format: 'dual_slider'
+  language: StudyLanguage
+  title: string
+  description: string
+  items: { text: string }[]
+}
+
 export type RunnableQuiz =
   | AgreeStatementsQuiz
   | SingleChoiceQuiz
   | FigureChoiceQuiz
   | ScaleChoiceQuiz
   | RankingListQuiz
+  | DualSliderQuiz
 
 // ---------------------------------------------------------------------------
 // Attempts
@@ -94,7 +110,8 @@ export type AttemptStatus = 'in_progress' | 'submitted'
 /** agree_statements: `${blockKey}:${index}` → 0 | 1
  *  single_choice / scale_choice: `q${index}` → chosen option index
  *  figure_choice:    `selected` → chosen figure index
- *  ranking_list:     `q${index}` → 0-based position the item was placed at */
+ *  ranking_list:     `q${index}` → 0-based position the item was placed at
+ *  dual_slider:       `q${index}_ob` / `q${index}_dd` → each 0-100 */
 export type AnswerMap = Record<string, number>
 
 export interface BreakdownItem {

@@ -1,5 +1,12 @@
 import type { InstrumentType, StudyLanguage } from '@/types/domain'
-import type { FigureKey, RankingListQuiz, RunnableQuiz, ScaleChoiceQuiz, TemperamentKey } from '@/types/assessment'
+import type {
+  DualSliderQuiz,
+  FigureKey,
+  RankingListQuiz,
+  RunnableQuiz,
+  ScaleChoiceQuiz,
+  TemperamentKey,
+} from '@/types/assessment'
 import { INSTRUMENT_META } from '@/utils/instruments'
 import { api } from '@/services/apiClient'
 
@@ -26,6 +33,7 @@ const ALGO_TO_INSTRUMENT: Record<string, InstrumentType> = {
   SCORE_SCALE_COMMUNICATION: 'COMMUNICATION_BASED',
   SCORE_SCALE_RISK: 'RISK_BASED',
   SCORE_SCALE_VALUES: 'VALUES_BASED',
+  DEMBO_RUBINSTEIN: 'SELF_ESTEEM_BASED',
 }
 export function instrumentForAlgo(algo: string | undefined): InstrumentType {
   return ALGO_TO_INSTRUMENT[algo ?? ''] ?? 'FREQUENCY_BASED'
@@ -256,6 +264,26 @@ export function toRunnableQuiz(bq: BackendQuiz, language: StudyLanguage): { quiz
       title: bq.title,
       description: bq.description ?? '',
       items: items16,
+    }
+    return { quiz, ref }
+  }
+
+  if (algo === 'DEMBO_RUBINSTEIN') {
+    // No AnswerOption rows exist for this algo — the answer is two raw
+    // 0-100 numbers stored as JSON text, not a chosen option (see
+    // attemptService.ts's `dual_slider` branch of encodeAnswers()).
+    const sliderItems = sortedQuestions.map((q, i) => {
+      items[`q${i}`] = { questionId: q.id, optionIds: [] }
+      return { text: q.text }
+    })
+    const quiz: DualSliderQuiz = {
+      id: `${bq.id}`,
+      instrumentType: 'SELF_ESTEEM_BASED',
+      format: 'dual_slider',
+      language,
+      title: bq.title,
+      description: bq.description ?? '',
+      items: sliderItems,
     }
     return { quiz, ref }
   }
