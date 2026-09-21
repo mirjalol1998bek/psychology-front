@@ -29,6 +29,7 @@ const toastColor = ref<'success' | 'error'>('success')
 const roleOptions = [
   { title: 'Psixolog', value: 'ROLE_PSYCHOLOGIST' },
   { title: 'Administrator', value: 'ROLE_ADMIN' },
+  { title: 'Tyutor', value: 'ROLE_TUTOR' },
 ]
 const chosenRole = ref<Record<number, string>>({})
 
