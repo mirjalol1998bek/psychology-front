@@ -32,6 +32,7 @@ export default {
     RESILIENCE_BASED: 'EHS-20',
     COMMUNICATION_BASED: 'KSM-20',
     RISK_BASED: 'XO-20',
+    VALUES_BASED: 'QY-16',
   },
   months: {
     long: [
@@ -137,6 +138,9 @@ export default {
     previous: 'Oldingi',
     nextBlock: 'Keyingi blok',
     pickOneFigure: 'Eng yoqadigan bitta figurani tanlang.',
+    rankingHint: 'Ro‘yxatni siz uchun eng muhimidan eng kam muhimigacha tartibga soling — o‘qlar bilan ko‘chiring.',
+    moveUp: 'Yuqoriga ko‘chirish',
+    moveDown: 'Pastga ko‘chirish',
     notAssigned: 'Bu metodika hozircha sizning guruhingizga biriktirilmagan.',
     notConfigured: 'Bu metodika hali platformaga ulanmagan.',
     back: 'Ortga',
@@ -152,6 +156,7 @@ export default {
       RESILIENCE_BASED: 'Emotsional holat va stressga chidamlilikni 3 yo‘nalish bo‘yicha baholaydi',
       COMMUNICATION_BASED: 'Kommunikativ xususiyatlarni 4 yo‘nalish bo‘yicha baholaydi',
       RISK_BASED: 'Ijtimoiy-psixologik xatar omillarini 5 yo‘nalish bo‘yicha skrining qiladi',
+      VALUES_BASED: 'Hayotiy qadriyatlar ierarxiyasini 4 blok bo‘yicha aniqlaydi',
     },
   },
   result: {

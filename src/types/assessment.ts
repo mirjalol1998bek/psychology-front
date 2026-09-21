@@ -63,7 +63,27 @@ export interface ScaleChoiceQuiz {
   questions: { text: string }[]
 }
 
-export type RunnableQuiz = AgreeStatementsQuiz | SingleChoiceQuiz | FigureChoiceQuiz | ScaleChoiceQuiz
+/** Value/priority ranking (QY-16) — the student orders ALL items from most
+ *  to least important (a full permutation, not a single pick per question).
+ *  Each item is backed by its own backend Question, whose options are the
+ *  possible positions (1..N) — the chosen position becomes that question's
+ *  answer index once the student finishes reordering. */
+export interface RankingListQuiz {
+  id: string
+  instrumentType: 'VALUES_BASED'
+  format: 'ranking_list'
+  language: StudyLanguage
+  title: string
+  description: string
+  items: { text: string }[]
+}
+
+export type RunnableQuiz =
+  | AgreeStatementsQuiz
+  | SingleChoiceQuiz
+  | FigureChoiceQuiz
+  | ScaleChoiceQuiz
+  | RankingListQuiz
 
 // ---------------------------------------------------------------------------
 // Attempts
@@ -73,7 +93,8 @@ export type AttemptStatus = 'in_progress' | 'submitted'
 
 /** agree_statements: `${blockKey}:${index}` → 0 | 1
  *  single_choice / scale_choice: `q${index}` → chosen option index
- *  figure_choice:    `selected` → chosen figure index */
+ *  figure_choice:    `selected` → chosen figure index
+ *  ranking_list:     `q${index}` → 0-based position the item was placed at */
 export type AnswerMap = Record<string, number>
 
 export interface BreakdownItem {
@@ -90,7 +111,8 @@ export interface AttemptResult {
   label: string
   /** Full free-text interpretation the student reads afterwards. */
   description: string
-  /** Overall numeric score (SUBSCALE_BASED / MOTIVATION_BASED / RESILIENCE_BASED); undefined otherwise. */
+  /** Overall numeric score; `null` for instruments with no single overall
+   *  score (COMMUNICATION_BASED, VALUES_BASED — see `breakdown` instead). */
   score?: number | null
   /** Per-category counts (temperament); empty for a single figure choice. */
   breakdown: BreakdownItem[]

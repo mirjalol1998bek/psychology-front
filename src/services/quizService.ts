@@ -1,5 +1,5 @@
 import type { InstrumentType, StudyLanguage } from '@/types/domain'
-import type { FigureKey, RunnableQuiz, ScaleChoiceQuiz, TemperamentKey } from '@/types/assessment'
+import type { FigureKey, RankingListQuiz, RunnableQuiz, ScaleChoiceQuiz, TemperamentKey } from '@/types/assessment'
 import { INSTRUMENT_META } from '@/utils/instruments'
 import { api } from '@/services/apiClient'
 
@@ -25,6 +25,7 @@ const ALGO_TO_INSTRUMENT: Record<string, InstrumentType> = {
   SCORE_SCALE_EMOTIONAL: 'RESILIENCE_BASED',
   SCORE_SCALE_COMMUNICATION: 'COMMUNICATION_BASED',
   SCORE_SCALE_RISK: 'RISK_BASED',
+  SCORE_SCALE_VALUES: 'VALUES_BASED',
 }
 export function instrumentForAlgo(algo: string | undefined): InstrumentType {
   return ALGO_TO_INSTRUMENT[algo ?? ''] ?? 'FREQUENCY_BASED'
@@ -239,6 +240,24 @@ export function toRunnableQuiz(bq: BackendQuiz, language: StudyLanguage): { quiz
       },
       ref,
     }
+  }
+
+  if (algo === 'SCORE_SCALE_VALUES') {
+    const items16 = sortedQuestions.map((q, i) => {
+      const opts = sortOpts(q.options)
+      items[`q${i}`] = { questionId: q.id, optionIds: opts.map((o) => o.id) }
+      return { text: q.text }
+    })
+    const quiz: RankingListQuiz = {
+      id: `${bq.id}`,
+      instrumentType: 'VALUES_BASED',
+      format: 'ranking_list',
+      language,
+      title: bq.title,
+      description: bq.description ?? '',
+      items: items16,
+    }
+    return { quiz, ref }
   }
 
   if (SCALE_ALGOS.includes(algo)) {

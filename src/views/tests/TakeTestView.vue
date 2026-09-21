@@ -75,6 +75,7 @@ const agreeQuiz = computed(() => (quiz.value?.format === 'agree_statements' ? qu
 const choiceQuiz = computed(() => (quiz.value?.format === 'single_choice' ? quiz.value : null))
 const figureQuiz = computed(() => (quiz.value?.format === 'figure_choice' ? quiz.value : null))
 const scaleQuiz = computed(() => (quiz.value?.format === 'scale_choice' ? quiz.value : null))
+const rankingQuiz = computed(() => (quiz.value?.format === 'ranking_list' ? quiz.value : null))
 
 // --- agree_statements ---------------------------------------------------
 const currentBlock = computed(() => agreeQuiz.value?.blocks[blockIndex.value] ?? null)
@@ -90,6 +91,46 @@ function setAgree(key: string, i: number, value: 0 | 1) {
 // --- single_choice / scale_choice ------------------------------------
 function setChoice(qi: number, oi: number) {
   answers.value[`q${qi}`] = oi
+}
+
+// --- ranking_list (QY-16) ---------------------------------------------
+// `rankOrder[pos]` = original item index currently sitting at that position
+// (pos 0 = most important). Reordering just swaps entries here, then
+// `syncRankAnswers()` writes each item's chosen position into `answers`
+// (`q${itemIndex}` → pos) — the same index-based shape `scale_choice` uses.
+const rankOrder = ref<number[]>([])
+function syncRankAnswers() {
+  rankOrder.value.forEach((itemIndex, pos) => {
+    answers.value[`q${itemIndex}`] = pos
+  })
+}
+watch(
+  rankingQuiz,
+  (q) => {
+    if (!q || rankOrder.value.length) return
+    const n = q.items.length
+    const fromDraft = new Array<number>(n)
+    let complete = true
+    for (let i = 0; i < n; i++) {
+      const pos = answers.value[`q${i}`]
+      if (pos === undefined || pos < 0 || pos >= n) {
+        complete = false
+        break
+      }
+      fromDraft[pos] = i
+    }
+    rankOrder.value = complete ? fromDraft : Array.from({ length: n }, (_v, i) => i)
+    syncRankAnswers()
+  },
+  { immediate: true },
+)
+function moveRank(pos: number, direction: -1 | 1) {
+  const target = pos + direction
+  if (target < 0 || target >= rankOrder.value.length) return
+  const arr = [...rankOrder.value]
+  ;[arr[pos], arr[target]] = [arr[target], arr[pos]]
+  rankOrder.value = arr
+  syncRankAnswers()
 }
 
 // --- figure_choice --------------------------------------------------
@@ -321,6 +362,41 @@ async function submit() {
         </v-btn>
       </template>
 
+      <!-- ============ ranking list (QY-16) ============ -->
+      <template v-else-if="rankingQuiz">
+        <p class="text-caption text-medium-emphasis mb-3">{{ t('takeTest.rankingHint') }}</p>
+        <v-card class="surface-card overflow-hidden mb-4" rounded="lg">
+          <div v-for="(itemIndex, pos) in rankOrder" :key="itemIndex" class="stmt-row">
+            <span class="stmt-num">{{ pos + 1 }}</span>
+            <span class="stmt-text text-body-2">{{ rankingQuiz.items[itemIndex].text }}</span>
+            <div class="rank-controls">
+              <button
+                type="button"
+                class="rank-btn"
+                :disabled="pos === 0"
+                :aria-label="t('takeTest.moveUp')"
+                @click="moveRank(pos, -1)"
+              >
+                <v-icon icon="mdi-chevron-up" size="20" />
+              </button>
+              <button
+                type="button"
+                class="rank-btn"
+                :disabled="pos === rankOrder.length - 1"
+                :aria-label="t('takeTest.moveDown')"
+                @click="moveRank(pos, 1)"
+              >
+                <v-icon icon="mdi-chevron-down" size="20" />
+              </button>
+            </div>
+          </div>
+        </v-card>
+
+        <v-btn color="primary" size="large" block class="mt-2" :loading="submitting" :disabled="!canSubmit" @click="submit">
+          {{ t('takeTest.finish') }}
+        </v-btn>
+      </template>
+
       <!-- ============ figure choice ============ -->
       <template v-else-if="figureQuiz">
         <v-row>
@@ -389,6 +465,34 @@ async function submit() {
 .stmt-text {
   flex-grow: 1;
   min-width: 0;
+}
+
+/* --- ranking list (QY-16) --- */
+.rank-controls {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.rank-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: rgb(var(--v-theme-on-surface-variant));
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.12s var(--ease), color 0.12s var(--ease);
+}
+.rank-btn:hover:not(:disabled) {
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
+}
+.rank-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
 }
 
 .yn-group {

@@ -64,6 +64,13 @@ export const INSTRUMENT_META: Record<
     routeSegment: 'xatar',
     tint: '#7C6FDB',
   },
+  VALUES_BASED: {
+    label: 'QY-16',
+    renderMode: 'freetext',
+    icon: 'mdi-format-list-numbered',
+    routeSegment: 'qadriyatlar',
+    tint: '#B08D57',
+  },
 }
 
 /** Metodika nomi joriy interfeys tiliga qarab (`instrument.*` locale kaliti). */

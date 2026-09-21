@@ -170,6 +170,8 @@ function encodeAnswers(
     for (const b of quiz.blocks) b.statements.forEach((_s, i) => push(`${b.key}:${i}`, answers[`${b.key}:${i}`]))
   } else if (quiz.format === 'single_choice' || quiz.format === 'scale_choice') {
     quiz.questions.forEach((_q, i) => push(`q${i}`, answers[`q${i}`]))
+  } else if (quiz.format === 'ranking_list') {
+    quiz.items.forEach((_it, i) => push(`q${i}`, answers[`q${i}`]))
   } else {
     push('selected', answers.selected)
   }

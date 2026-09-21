@@ -9,21 +9,23 @@
  *
  * `instrumentType` (a frontend-only classification layered on top of the
  * named categories the backend already has — Temperament, Psixogeometrik,
- * IPM-20, OKM-20, EHS-20, KSM-20, XO-20) drives which RESULT rendering mode
- * a category uses, since the existing app renders each one completely
- * differently:
+ * IPM-20, OKM-20, EHS-20, KSM-20, XO-20, QY-16) drives which RESULT
+ * rendering mode a category uses, since the existing app renders each one
+ * completely differently:
  *   - FREQUENCY_BASED  (Temperament)   → colored badge, click for a large
  *     gradient icon + full description
  *   - RANKING_BASED    (Psixogeometrik)→ small gradient shape icon inline,
  *     click for a large icon + description
  *   - SUBSCALE_BASED   (IPM-20), MOTIVATION_BASED (OKM-20),
  *     RESILIENCE_BASED (EHS-20), COMMUNICATION_BASED (KSM-20),
- *     RISK_BASED (XO-20)               → free-text "xulosa" + per-subshkala
- *                                         breakdown chart (same renderMode,
- *                                         distinguished only so each gets
- *                                         its own Category). COMMUNICATION_
- *                                         BASED has no overall score — see
- *                                         `AttemptResult.score` note below.
+ *     RISK_BASED (XO-20), VALUES_BASED (QY-16) → free-text "xulosa" +
+ *                                         per-subshkala breakdown chart
+ *                                         (same renderMode, distinguished
+ *                                         only so each gets its own
+ *                                         Category). COMMUNICATION_BASED
+ *                                         va VALUES_BASED umumiy ballga ega
+ *                                         emas — see `AttemptResult.score`
+ *                                         note below.
  * See src/utils/instruments.ts for the color/icon/render-mode tables.
  */
 export type InstrumentType =
@@ -34,6 +36,7 @@ export type InstrumentType =
   | 'RESILIENCE_BASED'
   | 'COMMUNICATION_BASED'
   | 'RISK_BASED'
+  | 'VALUES_BASED'
 
 export type StudyLanguage = 'uz' | 'ru'
 
