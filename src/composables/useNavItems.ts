@@ -20,13 +20,22 @@ export function useNavItems() {
   const auth = useAuthStore()
 
   const mainNav = computed<NavItem[]>(() => {
+    // Tyutor test topshirmaydi va natijalarga kirmaydi (kelishilgan) — o'ziga
+    // xos, ancha torroq menyu: faqat bosh sahifa + o'z guruhi.
+    if (auth.isTutor) {
+      return [
+        { title: t('nav.dashboard'), icon: 'mdi-view-dashboard-outline', to: '/', keywords: 'bosh asosiy главная' },
+        { title: 'Mening guruhim', icon: 'mdi-account-group-outline', to: '/tutor/students', keywords: 'tyutor guruh talaba kuzatuv' },
+      ]
+    }
+
     const items: NavItem[] = [
       { title: t('nav.dashboard'), icon: 'mdi-view-dashboard-outline', to: '/', keywords: 'bosh asosiy главная' },
       { title: t('nav.tests'), icon: 'mdi-clipboard-text-outline', to: '/tests', keywords: 'metodika sinov so\'rovnoma тест' },
       { title: t('nav.results'), icon: 'mdi-chart-box-outline', to: '/results', keywords: 'natija ball результат' },
     ]
 
-    if (!auth.isStaff) {
+    if (auth.user?.role === 'student') {
       items.push({ title: t('nav.passport'), icon: 'mdi-card-account-details-outline', to: '/passport', keywords: 'pasport паспорт' })
       items.push({ title: t('nav.appeals'), icon: 'mdi-message-text-outline', to: '/appeals', keywords: 'murojaat savol обращение' })
       items.push({ title: t('nav.calendar'), icon: 'mdi-calendar-heart', to: '/calendar', keywords: 'qabul bo\'sh band kalendar приём календарь' })
@@ -47,6 +56,7 @@ export function useNavItems() {
       { title: t('nav.assign'), icon: 'mdi-clipboard-plus-outline', to: '/assignments/create', keywords: 'biriktirish tayinlash yangi назначить' },
       { title: t('nav.assignments'), icon: 'mdi-clipboard-check-outline', to: '/assignments', keywords: 'biriktirilgan guruh назначения' },
       { title: t('nav.statistics'), icon: 'mdi-chart-timeline-variant', to: '/statistics', keywords: 'hisobot qamrov статистика' },
+      { title: 'Kuzatuv kartalari', icon: 'mdi-clipboard-alert-outline', to: '/observation-cards', keywords: 'kuzatuv tyutor ekspert xavf' },
     ]
 
     if (auth.isAdmin) {

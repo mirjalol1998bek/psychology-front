@@ -42,7 +42,7 @@ export type InstrumentType =
 
 export type StudyLanguage = 'uz' | 'ru'
 
-export type UserRole = 'student' | 'psychologist' | 'admin'
+export type UserRole = 'student' | 'tutor' | 'psychologist' | 'admin'
 
 export interface HemisProfile {
   hemisId: string

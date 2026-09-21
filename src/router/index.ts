@@ -75,6 +75,13 @@ const router = createRouter({
 
         // Admin-only: approve/reject HEMIS access requests.
         { path: 'admin/access-requests', name: 'admin-access-requests', component: () => import('@/views/admin/AccessRequestsView.vue'), meta: { roles: ADMIN } },
+
+        // Tyutor: faqat o'ziga biriktirilgan guruhlar talabalari + 10-metodika (kuzatuv kartasi).
+        { path: 'tutor/students', name: 'tutor-students', component: () => import('@/views/tutor/TutorStudentsView.vue'), meta: { roles: ['tutor'] } },
+        { path: 'tutor/students/:id/observation-card', name: 'observation-card-fill', component: () => import('@/views/tutor/ObservationCardFormView.vue'), meta: { roles: ['tutor'] } },
+
+        // Kuzatuv kartalari ro'yxati: psixolog/admin — talaba emas, tyutor emas.
+        { path: 'observation-cards', name: 'observation-cards', component: () => import('@/views/observation-cards/ObservationCardsView.vue'), meta: { roles: STAFF } },
       ],
     },
     {

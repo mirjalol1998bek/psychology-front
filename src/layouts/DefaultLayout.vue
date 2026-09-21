@@ -27,9 +27,12 @@ const drawer = ref(!mobile.value)
 
 const roleLabel = computed(
   () =>
-    ({ student: t('role.student'), psychologist: t('role.psychologist'), admin: t('role.admin') })[
-      auth.user?.role ?? 'student'
-    ],
+    ({
+      student: t('role.student'),
+      tutor: t('role.tutor'),
+      psychologist: t('role.psychologist'),
+      admin: t('role.admin'),
+    })[auth.user?.role ?? 'student'],
 )
 
 const currentTitle = computed(() => {

@@ -21,6 +21,7 @@ export default {
   },
   role: {
     student: 'Студент',
+    tutor: 'Тьютор',
     psychologist: 'Психолог',
     admin: 'Администратор',
   },

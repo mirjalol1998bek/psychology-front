@@ -33,7 +33,9 @@ function mapBackendUser(u: Record<string, unknown>): AuthUser {
     ? 'admin'
     : roles.includes('ROLE_PSYCHOLOGIST')
       ? 'psychologist'
-      : 'student'
+      : roles.includes('ROLE_TUTOR')
+        ? 'tutor'
+        : 'student'
   const group = u.studyGroup as { name?: string; faculty?: { name?: string } } | null
   const faculty = u.faculty as { name?: string } | null
   return {
@@ -62,6 +64,7 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => state.user !== null,
     isStaff: (state) => state.user?.role === 'psychologist' || state.user?.role === 'admin',
     isAdmin: (state) => state.user?.role === 'admin',
+    isTutor: (state) => state.user?.role === 'tutor',
     isImpersonating: (state) => state.impersonator !== null,
   },
   actions: {
