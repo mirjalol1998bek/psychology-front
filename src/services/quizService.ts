@@ -23,6 +23,8 @@ const ALGO_TO_INSTRUMENT: Record<string, InstrumentType> = {
   SCORE_SCALE_SUBSCALE: 'SUBSCALE_BASED',
   SCORE_SCALE_MOTIVATION: 'MOTIVATION_BASED',
   SCORE_SCALE_EMOTIONAL: 'RESILIENCE_BASED',
+  SCORE_SCALE_COMMUNICATION: 'COMMUNICATION_BASED',
+  SCORE_SCALE_RISK: 'RISK_BASED',
 }
 export function instrumentForAlgo(algo: string | undefined): InstrumentType {
   return ALGO_TO_INSTRUMENT[algo ?? ''] ?? 'FREQUENCY_BASED'
@@ -37,7 +39,13 @@ const INSTRUMENT_TO_ALGO: Partial<Record<InstrumentType, string>> = Object.fromE
 )
 
 // Score-scale algorithms all render as a scale_choice quiz (see toRunnableQuiz).
-const SCALE_ALGOS = ['SCORE_SCALE_SUBSCALE', 'SCORE_SCALE_MOTIVATION', 'SCORE_SCALE_EMOTIONAL']
+const SCALE_ALGOS = [
+  'SCORE_SCALE_SUBSCALE',
+  'SCORE_SCALE_MOTIVATION',
+  'SCORE_SCALE_EMOTIONAL',
+  'SCORE_SCALE_COMMUNICATION',
+  'SCORE_SCALE_RISK',
+]
 
 export interface BackendCategory {
   id: number

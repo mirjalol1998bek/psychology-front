@@ -30,6 +30,8 @@ export default {
     SUBSCALE_BASED: 'IPM-20',
     MOTIVATION_BASED: 'OKM-20',
     RESILIENCE_BASED: 'EHS-20',
+    COMMUNICATION_BASED: 'KSM-20',
+    RISK_BASED: 'XO-20',
   },
   months: {
     long: [
@@ -148,6 +150,8 @@ export default {
       SUBSCALE_BASED: 'Universitetga moslashuvni 4 yo‘nalish bo‘yicha baholaydi',
       MOTIVATION_BASED: 'O‘quv-kasbiy motivatsiya darajasini yo‘nalishlar bo‘yicha baholaydi',
       RESILIENCE_BASED: 'Emotsional holat va stressga chidamlilikni 3 yo‘nalish bo‘yicha baholaydi',
+      COMMUNICATION_BASED: 'Kommunikativ xususiyatlarni 4 yo‘nalish bo‘yicha baholaydi',
+      RISK_BASED: 'Ijtimoiy-psixologik xatar omillarini 5 yo‘nalish bo‘yicha skrining qiladi',
     },
   },
   result: {

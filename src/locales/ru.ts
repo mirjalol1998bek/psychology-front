@@ -30,6 +30,8 @@ export default {
     SUBSCALE_BASED: 'ОСПА-20',
     MOTIVATION_BASED: 'ОУПМ-20',
     RESILIENCE_BASED: 'ЭСС-20',
+    COMMUNICATION_BASED: 'КСМ-20',
+    RISK_BASED: 'ФР-20',
   },
   months: {
     long: [
@@ -148,6 +150,8 @@ export default {
       SUBSCALE_BASED: 'Оценивает адаптацию к университету по 4 направлениям',
       MOTIVATION_BASED: 'Оценивает уровень учебно-профессиональной мотивации по направлениям',
       RESILIENCE_BASED: 'Оценивает эмоциональное состояние и стрессоустойчивость по 3 направлениям',
+      COMMUNICATION_BASED: 'Оценивает коммуникативные особенности по 4 направлениям',
+      RISK_BASED: 'Скрининг социально-психологических факторов риска по 5 направлениям',
     },
   },
   result: {

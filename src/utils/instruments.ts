@@ -50,6 +50,20 @@ export const INSTRUMENT_META: Record<
     routeSegment: 'emotsional',
     tint: 'rgb(var(--v-theme-success))',
   },
+  COMMUNICATION_BASED: {
+    label: 'KSM-20',
+    renderMode: 'freetext',
+    icon: 'mdi-account-voice',
+    routeSegment: 'kommunikativ',
+    tint: 'rgb(var(--v-theme-secondary))',
+  },
+  RISK_BASED: {
+    label: 'XO-20',
+    renderMode: 'freetext',
+    icon: 'mdi-shield-alert-outline',
+    routeSegment: 'xatar',
+    tint: '#7C6FDB',
+  },
 }
 
 /** Metodika nomi joriy interfeys tiliga qarab (`instrument.*` locale kaliti). */
