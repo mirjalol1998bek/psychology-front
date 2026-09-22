@@ -24,14 +24,43 @@ const calendarStore = useCalendarStore()
 const appealsStore = useAppealsStore()
 const passportStore = usePassportStore()
 
-appealsStore.load()
-calendarStore.load()
-if (!auth.isStaff) passportStore.load()
+if (auth.isTutor) {
+  // Tyutor — murojaat/kalendar/pasport unga aloqasi yo'q, faqat o'z
+  // guruhi ro'yxati kerak.
+} else {
+  appealsStore.load()
+  calendarStore.load()
+  if (auth.user?.role === 'student') passportStore.load()
+}
 
 const assignmentCount = ref(0)
 if (auth.isStaff) {
   api.get('/assignments').then((r) => (assignmentCount.value = members(r.data).length)).catch(() => {})
 }
+
+// --- Tyutor: o'z guruhi talabalari + kuzatuv kartasi holati -------------
+interface TutorStudentRow {
+  id: number
+  hasObservationCard: boolean
+  studyGroup: { id: number; name: string } | null
+}
+const tutorStudents = ref<TutorStudentRow[]>([])
+if (auth.isTutor) {
+  api.get<TutorStudentRow[]>('/tutor/students').then((r) => (tutorStudents.value = r.data)).catch(() => {})
+}
+const tutorGroups = computed(() => {
+  const byId = new Map<number, { id: number; name: string; total: number; filled: number }>()
+  for (const s of tutorStudents.value) {
+    if (!s.studyGroup) continue
+    const g = byId.get(s.studyGroup.id) ?? { id: s.studyGroup.id, name: s.studyGroup.name, total: 0, filled: 0 }
+    g.total++
+    if (s.hasObservationCard) g.filled++
+    byId.set(s.studyGroup.id, g)
+  }
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name))
+})
+const tutorFilledCount = computed(() => tutorStudents.value.filter((s) => s.hasObservationCard).length)
+const tutorPendingCount = computed(() => tutorStudents.value.length - tutorFilledCount.value)
 
 const todayKey = new Date().toISOString().slice(0, 10)
 const todaysAppointments = computed(
@@ -51,7 +80,7 @@ const passportPct = computed(() => completeness(passportStore.get(auth.user?.hem
 // Student's real quiz catalogue + attempts.
 const instruments = ref<Awaited<ReturnType<typeof listInstruments>>>([])
 const attempts = ref<StoredAttempt[]>([])
-if (!auth.isStaff) {
+if (auth.user?.role === 'student') {
   const lang = (auth.user?.hemis.studyLanguage ?? 'uz') as StudyLanguage
   Promise.all([listInstruments(lang), getAttempts(auth.user?.hemis.hemisId ?? 'anon')]).then(([qs, at]) => {
     instruments.value = qs
@@ -70,12 +99,21 @@ const nextTest = computed(() =>
 )
 
 const firstName = computed(() => auth.user?.hemis.fullName.split(' ')[0] ?? '')
-const subline = computed(() =>
-  auth.isStaff ? auth.user?.hemis.faculty : `${auth.user?.hemis.faculty} · ${auth.user?.hemis.group}`,
-)
+const subline = computed(() => {
+  if (auth.isTutor) return `${tutorGroups.value.length} ta guruh · ${tutorStudents.value.length} ta talaba`
+  return auth.isStaff ? auth.user?.hemis.faculty : `${auth.user?.hemis.faculty} · ${auth.user?.hemis.group}`
+})
 
-const statTiles = computed(() =>
-  auth.isStaff
+const statTiles = computed(() => {
+  if (auth.isTutor) {
+    return [
+      { label: 'Mening guruhlarim', value: String(tutorGroups.value.length), hint: 'Biriktirilgan', icon: 'mdi-account-group-outline', tint: 'rgb(var(--v-theme-primary))', to: '/tutor/students' },
+      { label: 'Talabalar', value: String(tutorStudents.value.length), hint: 'Jami', icon: 'mdi-account-multiple-outline', tint: 'rgb(var(--v-theme-secondary))', to: '/tutor/students' },
+      { label: 'Kuzatuv kartasi to‘ldirilgan', value: String(tutorFilledCount.value), hint: '10-metodika', icon: 'mdi-clipboard-check-outline', tint: 'rgb(var(--v-theme-success))', to: '/tutor/students' },
+      { label: 'Hali to‘ldirilmagan', value: String(tutorPendingCount.value), hint: 'Kutilmoqda', icon: 'mdi-clipboard-text-outline', tint: 'rgb(var(--v-theme-warning))', to: '/tutor/students' },
+    ]
+  }
+  return auth.isStaff
     ? [
         { label: 'Biriktirilgan testlar', value: String(assignmentCount.value), hint: 'Guruhlarga', icon: 'mdi-clipboard-text-outline', tint: 'rgb(var(--v-theme-primary))', to: '/assignments' },
         { label: 'Faol murojaatlar', value: String(appealsStore.openCount), hint: 'Javob kutmoqda', icon: 'mdi-message-text-outline', tint: 'rgb(var(--v-theme-error))', to: '/appeals' },
@@ -114,8 +152,8 @@ const statTiles = computed(() =>
           tint: 'rgb(var(--v-theme-warning))',
           to: '/passport',
         },
-      ],
-)
+      ]
+})
 
 const upcomingAppointments = computed(() =>
   calendarStore.events
@@ -169,8 +207,42 @@ const topFaculties = [
       </v-col>
     </v-row>
 
+    <!-- ================= TYUTOR ================= -->
+    <template v-if="auth.isTutor">
+      <v-card class="surface-card pa-5" rounded="lg">
+        <div class="d-flex align-center justify-space-between mb-4">
+          <span class="text-subtitle-1 font-weight-bold">Guruhlarim bo‘yicha kuzatuv kartasi holati</span>
+          <v-btn size="small" variant="text" color="primary" to="/tutor/students" append-icon="mdi-arrow-right">
+            Mening guruhim
+          </v-btn>
+        </div>
+
+        <div v-if="tutorGroups.length">
+          <div v-for="g in tutorGroups" :key="g.id" class="mb-4">
+            <div class="d-flex align-center justify-space-between mb-2" style="gap: 12px">
+              <span class="text-body-2 font-weight-medium">{{ g.name }}</span>
+              <span class="text-body-2 font-weight-bold">{{ g.filled }}/{{ g.total }}</span>
+            </div>
+            <v-progress-linear
+              :model-value="g.total ? (g.filled / g.total) * 100 : 0"
+              height="8"
+              rounded
+              color="primary"
+              bg-color="surface-variant"
+            />
+          </div>
+        </div>
+        <v-empty-state
+          v-else
+          icon="mdi-account-group-outline"
+          title="Sizga hali guruh biriktirilmagan"
+          density="comfortable"
+        />
+      </v-card>
+    </template>
+
     <!-- ================= STAFF ================= -->
-    <template v-if="auth.isStaff">
+    <template v-else-if="auth.isStaff">
       <v-row>
         <v-col cols="12" lg="7">
           <v-card class="surface-card pa-5 h-100" rounded="lg">
