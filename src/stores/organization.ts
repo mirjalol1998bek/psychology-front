@@ -178,6 +178,10 @@ export const useOrganizationStore = defineStore('organization', {
     async queueHemisStudentsSync(): Promise<void> {
       await api.post('/admin/hemis/students', null)
     },
+    /** Re-pull tutors from HEMIS's employee-list (synchronous — auto-activates pending ones). */
+    async syncHemisTutors(): Promise<SyncCounts> {
+      return (await api.post('/admin/hemis/tutors', null)).data as SyncCounts
+    },
   },
 })
 

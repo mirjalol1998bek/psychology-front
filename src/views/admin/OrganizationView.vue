@@ -209,6 +209,20 @@ async function queueAllStudents() {
     queueing.value = false
   }
 }
+
+const syncingTutors = ref(false)
+async function syncTutors() {
+  if (syncingTutors.value) return
+  syncingTutors.value = true
+  try {
+    const c = await org.syncHemisTutors()
+    notify(`HEMIS: ${c.created} yangi, ${c.updated} yangilangan tyutor — pending bo‘lganlar faollashtirildi`)
+  } catch {
+    notify('Tyutorlarni sinxronlab bo‘lmadi')
+  } finally {
+    syncingTutors.value = false
+  }
+}
 </script>
 
 <template>
@@ -228,6 +242,14 @@ async function queueAllStudents() {
           @click="queueAllStudents"
         >
           Barcha talabalarni yangilash
+        </v-btn>
+        <v-btn
+          variant="text"
+          prepend-icon="mdi-account-tie-outline"
+          :loading="syncingTutors"
+          @click="syncTutors"
+        >
+          Tyutorlarni sinxronlash
         </v-btn>
         <v-btn
           color="primary"
