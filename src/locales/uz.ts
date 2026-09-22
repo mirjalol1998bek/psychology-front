@@ -57,7 +57,7 @@ export default {
     title: 'Tizimga kirish',
     subtitle: 'Universitet psixologik diagnostika platformasi',
     hemisLogin: 'Hemis orqali kirish',
-    hemisHint: 'Login va parol talab qilinmaydi — universitet Hemis akkauntingiz orqali avtomatik tanilasiz.',
+    hemisHint: 'Tizimga Hemis profilingiz orqali xavfsiz kiring.',
     signingIn: 'Kirilmoqda...',
     passwordLogin: 'Login va parol',
     welcome: 'Xush kelibsiz',

@@ -62,14 +62,18 @@ async function handlePasswordLogin() {
       </v-btn-toggle>
     </div>
 
+    <!-- Hero brand: big, centred university emblem above everything -->
+    <div class="login-brand">
+      <div class="login-logo-halo">
+        <img src="/logo-utjhu.png" alt="UzDJTU" class="login-logo" />
+      </div>
+      <h1 class="text-display text-h4 font-weight-bold mt-5 mb-1">{{ t('app.name') }}</h1>
+      <p class="text-body-1 mb-0" style="max-width: 38ch; opacity: 0.85">{{ t('app.tagline') }}</p>
+    </div>
+
     <div class="login-grid">
-      <!-- Brand / reassurance panel -->
+      <!-- Reassurance points -->
       <aside class="login-aside d-none d-md-flex">
-        <div class="gradient-accent icon-badge mb-6" style="width: 52px; height: 52px; border-radius: 16px">
-          <v-icon icon="mdi-head-heart-outline" size="26" />
-        </div>
-        <h2 class="text-display text-h4 font-weight-bold mb-3">{{ t('app.name') }}</h2>
-        <p class="text-body-1 mb-8" style="max-width: 34ch; opacity: 0.9">{{ t('app.tagline') }}</p>
         <ul class="login-points">
           <li><v-icon icon="mdi-lock-check-outline" size="18" class="mr-2" />{{ t('auth.points.confidential') }}</li>
           <li><v-icon icon="mdi-clipboard-text-outline" size="18" class="mr-2" />{{ t('auth.points.tests') }}</li>
@@ -80,10 +84,7 @@ async function handlePasswordLogin() {
       <!-- Auth card -->
       <v-card class="login-card surface-card" rounded="lg">
         <div class="mb-6">
-          <div class="gradient-accent icon-badge mb-4 d-md-none" style="width: 46px; height: 46px; border-radius: 14px">
-            <v-icon icon="mdi-head-heart-outline" size="23" />
-          </div>
-          <h1 class="text-display text-h5 font-weight-bold mb-1">{{ t('auth.title') }}</h1>
+          <h2 class="text-display text-h5 font-weight-bold mb-1">{{ t('auth.title') }}</h2>
           <p class="text-body-2 text-medium-emphasis mb-0">{{ t('auth.subtitle') }}</p>
         </div>
 
@@ -172,20 +173,82 @@ async function handlePasswordLogin() {
 .login-screen {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
   background: var(--gradient-page);
   padding: 24px;
+}
+
+/* Soft decorative brand glow, sitting behind the hero + card. */
+.login-screen::before,
+.login-screen::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.16;
+  pointer-events: none;
+  z-index: 0;
+}
+.login-screen::before {
+  width: 480px;
+  height: 480px;
+  top: -180px;
+  left: -140px;
+  background: rgb(var(--v-theme-primary));
+}
+.login-screen::after {
+  width: 420px;
+  height: 420px;
+  bottom: -160px;
+  right: -120px;
+  background: rgb(var(--v-theme-secondary));
 }
 
 .login-langswitch {
   position: absolute;
   top: 20px;
   right: 20px;
+  z-index: 2;
+}
+
+.login-brand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.login-logo-halo {
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, rgb(var(--v-theme-primary)) 14%, transparent) 0%,
+    transparent 72%
+  );
+}
+
+.login-logo {
+  width: 116px;
+  height: 116px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 20px rgba(var(--v-theme-primary), 0.28));
 }
 
 .login-grid {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 940px;
   display: grid;
