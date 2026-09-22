@@ -183,6 +183,14 @@ function encodeAnswers(
         out.push({ questionId: item.questionId, optionIds: [], text: JSON.stringify({ ob, dd }) })
       }
     })
+  } else if (quiz.format === 'peer_choice') {
+    // No options exist for this algo either — the ordered groupmate id
+    // list goes into `text` as JSON (see SociometryReporter on the backend).
+    quiz.items.forEach((_it, i) => {
+      const item = ref.items[`q${i}`]
+      const ids = [1, 2, 3].map((rank) => answers[`q${i}_${rank}`]).filter((v) => v !== undefined)
+      if (item && ids.length > 0) out.push({ questionId: item.questionId, optionIds: [], text: JSON.stringify(ids) })
+    })
   } else {
     push('selected', answers.selected)
   }
@@ -201,11 +209,21 @@ function decodeAnswers(
     const entry = byQuestion[a.questionId]
     if (!entry) continue
     if (entry.optionIds.length === 0 && a.textValue) {
-      // dual_slider — {"ob":n,"dd":n} JSON, no options exist for this algo.
+      // dual_slider — {"ob":n,"dd":n} JSON; peer_choice — [id, id, ...] JSON.
+      // No options exist for either algo, so shape (object vs array) tells
+      // them apart.
       try {
-        const parsed = JSON.parse(a.textValue) as { ob?: unknown; dd?: unknown }
-        if (typeof parsed.ob === 'number') map[`${entry.key}_ob`] = parsed.ob
-        if (typeof parsed.dd === 'number') map[`${entry.key}_dd`] = parsed.dd
+        const parsed = JSON.parse(a.textValue) as unknown
+        if (Array.isArray(parsed)) {
+          parsed.forEach((id, rank) => {
+            const n = Number(id)
+            if (!Number.isNaN(n)) map[`${entry.key}_${rank + 1}`] = n
+          })
+        } else {
+          const obj = parsed as { ob?: unknown; dd?: unknown }
+          if (typeof obj.ob === 'number') map[`${entry.key}_ob`] = obj.ob
+          if (typeof obj.dd === 'number') map[`${entry.key}_dd`] = obj.dd
+        }
       } catch {
         // ignore malformed draft data
       }

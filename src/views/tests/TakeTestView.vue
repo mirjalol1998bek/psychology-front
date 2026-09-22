@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { instrumentByRoute, INSTRUMENT_META, instrumentLabel } from '@/utils/instruments'
 import { startTest, saveTest, submitTest } from '@/services/attemptService'
+import { api } from '@/services/apiClient'
 import type { QuizRef } from '@/services/quizService'
 import { answeredCount, totalItems } from '@/utils/scoring'
 import type { AnswerMap, RunnableQuiz } from '@/types/assessment'
@@ -77,6 +78,7 @@ const figureQuiz = computed(() => (quiz.value?.format === 'figure_choice' ? quiz
 const scaleQuiz = computed(() => (quiz.value?.format === 'scale_choice' ? quiz.value : null))
 const rankingQuiz = computed(() => (quiz.value?.format === 'ranking_list' ? quiz.value : null))
 const dualSliderQuiz = computed(() => (quiz.value?.format === 'dual_slider' ? quiz.value : null))
+const peerChoiceQuiz = computed(() => (quiz.value?.format === 'peer_choice' ? quiz.value : null))
 
 // --- agree_statements ---------------------------------------------------
 const currentBlock = computed(() => agreeQuiz.value?.blocks[blockIndex.value] ?? null)
@@ -151,6 +153,46 @@ watch(
 )
 function setSlider(i: number, kind: 'ob' | 'dd', value: number) {
   answers.value[`q${i}_${kind}`] = value
+}
+
+// --- peer_choice (Sotsiometriya) ---------------------------------------
+// Up to 3 groupmates per criterion, in preference order — clicking a name
+// appends it (rank = next free slot) or removes it (later ranks shift down).
+interface Groupmate {
+  id: number
+  fullName: string
+}
+const groupmates = ref<Groupmate[]>([])
+watch(
+  peerChoiceQuiz,
+  async (q) => {
+    if (!q || groupmates.value.length) return
+    try {
+      groupmates.value = (await api.get<Groupmate[]>('/students/groupmates')).data
+    } catch {
+      groupmates.value = []
+    }
+  },
+  { immediate: true },
+)
+function peerSelections(qi: number): number[] {
+  const out: number[] = []
+  for (const rank of [1, 2, 3]) {
+    const v = answers.value[`q${qi}_${rank}`]
+    if (v !== undefined) out.push(v)
+  }
+  return out
+}
+function togglePeerChoice(qi: number, groupmateId: number) {
+  const current = peerSelections(qi)
+  const isSelected = current.includes(groupmateId)
+  const next = isSelected
+    ? current.filter((id) => id !== groupmateId)
+    : current.length < 3
+      ? [...current, groupmateId]
+      : current
+  ;[1, 2, 3].forEach((rank) => delete answers.value[`q${qi}_${rank}`])
+  next.forEach((id, i) => (answers.value[`q${qi}_${i + 1}`] = id))
 }
 
 // --- figure_choice --------------------------------------------------
@@ -463,6 +505,45 @@ async function submit() {
               hide-details
               @update:model-value="(v: number) => setSlider(i, 'dd', v)"
             />
+          </div>
+        </v-card>
+
+        <v-btn color="primary" size="large" block class="mt-2" :loading="submitting" :disabled="!canSubmit" @click="submit">
+          {{ t('takeTest.finish') }}
+        </v-btn>
+      </template>
+
+      <!-- ============ peer choice (Sotsiometriya) ============ -->
+      <template v-else-if="peerChoiceQuiz">
+        <p class="text-caption text-medium-emphasis mb-3">{{ t('takeTest.peerChoiceHint') }}</p>
+        <v-card
+          v-for="(it, i) in peerChoiceQuiz.items"
+          :key="i"
+          class="surface-card pa-4 pa-md-5 mb-3"
+          rounded="lg"
+        >
+          <div class="d-flex align-start mb-4" style="gap: 10px">
+            <span class="stmt-num">{{ i + 1 }}</span>
+            <span class="text-body-1 font-weight-medium">{{ it.text }}</span>
+          </div>
+
+          <div v-if="!groupmates.length" class="text-caption text-medium-emphasis">
+            {{ t('takeTest.peerChoiceEmpty') }}
+          </div>
+          <div v-else class="d-flex flex-wrap" style="gap: 8px">
+            <v-chip
+              v-for="gm in groupmates"
+              :key="gm.id"
+              :color="peerSelections(i).includes(gm.id) ? 'primary' : undefined"
+              :variant="peerSelections(i).includes(gm.id) ? 'flat' : 'tonal'"
+              filter
+              @click="togglePeerChoice(i, gm.id)"
+            >
+              <span v-if="peerSelections(i).includes(gm.id)" class="font-weight-bold mr-1">
+                {{ peerSelections(i).indexOf(gm.id) + 1 }}.
+              </span>
+              {{ gm.fullName }}
+            </v-chip>
           </div>
         </v-card>
 

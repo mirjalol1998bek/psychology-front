@@ -78,6 +78,13 @@ export const INSTRUMENT_META: Record<
     routeSegment: 'ozini-baholash',
     tint: '#D9738C',
   },
+  PEER_CHOICE_BASED: {
+    label: 'Sotsiometriya',
+    renderMode: 'freetext',
+    icon: 'mdi-account-group',
+    routeSegment: 'sotsiometriya',
+    tint: '#5B8DEF',
+  },
 }
 
 /** Metodika nomi joriy interfeys tiliga qarab (`instrument.*` locale kaliti). */

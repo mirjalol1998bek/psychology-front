@@ -35,6 +35,7 @@ export default {
     RISK_BASED: 'XO-20',
     VALUES_BASED: 'QY-16',
     SELF_ESTEEM_BASED: 'Dembo–Rubinshteyn',
+    PEER_CHOICE_BASED: 'Sotsiometriya',
   },
   months: {
     long: [
@@ -146,6 +147,8 @@ export default {
     sliderHint: 'Har chiziqda ikkita qiymatni belgilang: hozirgi holatingiz va xohlagan darajangiz.',
     currentLevel: 'Hozirgi holatingiz',
     desiredLevel: 'Xohlagan darajangiz',
+    peerChoiceHint: 'Har savolga guruhdoshlaringizdan uch nafargacha kishini tanlang (birinchi bosganingiz — eng afzal ko‘rilgan). Javoblaringiz sir saqlanadi.',
+    peerChoiceEmpty: 'Guruhingizda boshqa talaba topilmadi.',
     notAssigned: 'Bu metodika hozircha sizning guruhingizga biriktirilmagan.',
     notConfigured: 'Bu metodika hali platformaga ulanmagan.',
     back: 'Ortga',
@@ -163,6 +166,7 @@ export default {
       RISK_BASED: 'Ijtimoiy-psixologik xatar omillarini 5 yo‘nalish bo‘yicha skrining qiladi',
       VALUES_BASED: 'Hayotiy qadriyatlar ierarxiyasini 4 blok bo‘yicha aniqlaydi',
       SELF_ESTEEM_BASED: 'O‘zini baholash va da‘vogarlik darajasini 7 shkala bo‘yicha aniqlaydi',
+      PEER_CHOICE_BASED: 'Guruhdagi norasmiy munosabatlar tuzilmasini, jipslikni va izolyatsiyadagi talabalarni aniqlaydi',
     },
   },
   result: {

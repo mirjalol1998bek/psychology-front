@@ -2,6 +2,7 @@ import type { InstrumentType, StudyLanguage } from '@/types/domain'
 import type {
   DualSliderQuiz,
   FigureKey,
+  PeerChoiceQuiz,
   RankingListQuiz,
   RunnableQuiz,
   ScaleChoiceQuiz,
@@ -34,6 +35,7 @@ const ALGO_TO_INSTRUMENT: Record<string, InstrumentType> = {
   SCORE_SCALE_RISK: 'RISK_BASED',
   SCORE_SCALE_VALUES: 'VALUES_BASED',
   DEMBO_RUBINSTEIN: 'SELF_ESTEEM_BASED',
+  SOCIOMETRY: 'PEER_CHOICE_BASED',
 }
 export function instrumentForAlgo(algo: string | undefined): InstrumentType {
   return ALGO_TO_INSTRUMENT[algo ?? ''] ?? 'FREQUENCY_BASED'
@@ -284,6 +286,26 @@ export function toRunnableQuiz(bq: BackendQuiz, language: StudyLanguage): { quiz
       title: bq.title,
       description: bq.description ?? '',
       items: sliderItems,
+    }
+    return { quiz, ref }
+  }
+
+  if (algo === 'SOCIOMETRY') {
+    // No AnswerOption rows exist for this algo either — the chosen
+    // groupmate ids go straight into `text` as JSON (see
+    // attemptService.ts's `peer_choice` branch of encodeAnswers()).
+    const criteria = sortedQuestions.map((q, i) => {
+      items[`q${i}`] = { questionId: q.id, optionIds: [] }
+      return { text: q.text }
+    })
+    const quiz: PeerChoiceQuiz = {
+      id: `${bq.id}`,
+      instrumentType: 'PEER_CHOICE_BASED',
+      format: 'peer_choice',
+      language,
+      title: bq.title,
+      description: bq.description ?? '',
+      items: criteria,
     }
     return { quiz, ref }
   }

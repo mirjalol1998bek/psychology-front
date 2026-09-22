@@ -9,9 +9,9 @@
  *
  * `instrumentType` (a frontend-only classification layered on top of the
  * named categories the backend already has — Temperament, Psixogeometrik,
- * IPM-20, OKM-20, EHS-20, KSM-20, XO-20, QY-16, Dembo–Rubinshteyn) drives
- * which RESULT rendering mode a category uses, since the existing app
- * renders each one completely differently:
+ * IPM-20, OKM-20, EHS-20, KSM-20, XO-20, QY-16, Dembo–Rubinshteyn,
+ * Sotsiometriya) drives which RESULT rendering mode a category uses, since
+ * the existing app renders each one completely differently:
  *   - FREQUENCY_BASED  (Temperament)   → colored badge, click for a large
  *     gradient icon + full description
  *   - RANKING_BASED    (Psixogeometrik)→ small gradient shape icon inline,
@@ -27,6 +27,10 @@
  *                                         VALUES_BASED va SELF_ESTEEM_BASED
  *                                         umumiy ballga ega emas — see
  *                                         `AttemptResult.score` note below.
+ *   - PEER_CHOICE_BASED (Sotsiometriya) → talaba tomoni ham "javoblaringiz
+ *     qabul qilindi" xabari bilan bir xil (umumiy ball yo'q) — lekin
+ *     haqiqiy tahlil bu yerda emas, guruh darajasida
+ *     (`/results/sotsiometriya`, faqat staff, `SociometryGroupReport`).
  * See src/utils/instruments.ts for the color/icon/render-mode tables.
  */
 export type InstrumentType =
@@ -39,6 +43,7 @@ export type InstrumentType =
   | 'RISK_BASED'
   | 'VALUES_BASED'
   | 'SELF_ESTEEM_BASED'
+  | 'PEER_CHOICE_BASED'
 
 export type StudyLanguage = 'uz' | 'ru'
 

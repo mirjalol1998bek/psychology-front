@@ -50,6 +50,10 @@ const router = createRouter({
         // Natijalar: staff = kategoriya hub -> instrument picker -> guruh jadvali; student = o'z natijalari.
         { path: 'results', name: 'results', component: () => import('@/views/results/ResultsView.vue') },
         { path: 'results/:instrument', name: 'results-instrument', component: () => import('@/views/results/InstrumentPickerView.vue'), meta: { roles: STAFF } },
+        // Sotsiometriya — juftlik asosidagi guruh tahlili, boshqa natijalardan
+        // shaklan boshqacha (individual resultKey emas) — o'ziga xos komponent.
+        // Static "sotsiometriya" segmenti generic ":instrument"dan oldin turadi.
+        { path: 'results/sotsiometriya/:facultyId/:groupId', name: 'results-sociometry-group', component: () => import('@/views/results/SociometryGroupResultsView.vue'), meta: { roles: STAFF } },
         { path: 'results/:instrument/:facultyId/:groupId', name: 'results-instrument-group', component: () => import('@/views/results/InstrumentGroupResultsView.vue'), meta: { roles: STAFF } },
 
         // Qabul kalendari: xodim (psixolog/admin) boshqaradi; talaba faqat

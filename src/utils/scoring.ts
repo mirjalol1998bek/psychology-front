@@ -17,6 +17,11 @@ export function answeredCount(quiz: RunnableQuiz, answers: AnswerMap): number {
   if (quiz.format === 'dual_slider') {
     return quiz.items.filter((_it, i) => answers[`q${i}_ob`] !== undefined && answers[`q${i}_dd`] !== undefined).length
   }
+  if (quiz.format === 'peer_choice') {
+    // Up to 3 picks per criterion ("uch nafargacha") — only the top (rank 1)
+    // pick is required for that criterion to count as answered.
+    return quiz.items.filter((_it, i) => answers[`q${i}_1`] !== undefined).length
+  }
   // figure_choice — one pick
   return answers.selected !== undefined ? 1 : 0
 }
@@ -24,6 +29,6 @@ export function answeredCount(quiz: RunnableQuiz, answers: AnswerMap): number {
 export function totalItems(quiz: RunnableQuiz): number {
   if (quiz.format === 'agree_statements') return quiz.blocks.reduce((n, b) => n + b.statements.length, 0)
   if (quiz.format === 'single_choice' || quiz.format === 'scale_choice') return quiz.questions.length
-  if (quiz.format === 'ranking_list' || quiz.format === 'dual_slider') return quiz.items.length
+  if (quiz.format === 'ranking_list' || quiz.format === 'dual_slider' || quiz.format === 'peer_choice') return quiz.items.length
   return 1
 }

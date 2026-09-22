@@ -93,6 +93,22 @@ export interface DualSliderQuiz {
   items: { text: string }[]
 }
 
+/** Sociometry (7-metodika) — 3 criteria questions; for each, the student
+ *  picks up to 3 groupmates in preference order. No AnswerOption rows exist
+ *  (same reasoning as Dembo-Rubinshteyn/QY-16) — the answer is the chosen
+ *  groupmate user ids, ordered, as JSON text. The picker list (groupmates)
+ *  isn't part of this shape — TakeTestView fetches it separately since it's
+ *  per-student data, not part of the quiz definition. */
+export interface PeerChoiceQuiz {
+  id: string
+  instrumentType: 'PEER_CHOICE_BASED'
+  format: 'peer_choice'
+  language: StudyLanguage
+  title: string
+  description: string
+  items: { text: string }[]
+}
+
 export type RunnableQuiz =
   | AgreeStatementsQuiz
   | SingleChoiceQuiz
@@ -100,6 +116,7 @@ export type RunnableQuiz =
   | ScaleChoiceQuiz
   | RankingListQuiz
   | DualSliderQuiz
+  | PeerChoiceQuiz
 
 // ---------------------------------------------------------------------------
 // Attempts
