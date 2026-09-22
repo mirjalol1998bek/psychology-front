@@ -12,6 +12,7 @@ import { listInstruments } from '@/services/quizService'
 import { getAttempts } from '@/services/attemptService'
 import { useAppealsStore } from '@/stores/appeals'
 import { usePassportStore, completeness } from '@/stores/passport'
+import { useOrganizationStore } from '@/stores/organization'
 import { api } from '@/services/apiClient'
 import { members } from '@/services/quizService'
 import type { InstrumentType, StudyLanguage } from '@/types/domain'
@@ -34,9 +35,37 @@ if (auth.isTutor) {
 }
 
 const assignmentCount = ref(0)
+const orgStore = useOrganizationStore()
+interface FacultyStat {
+  id: number
+  name: string
+  students: number
+  withResults: number
+}
+const facultyStats = ref<FacultyStat[]>([])
 if (auth.isStaff) {
   api.get('/assignments').then((r) => (assignmentCount.value = members(r.data).length)).catch(() => {})
+  orgStore.load()
+  api
+    .get('/admin/statistics')
+    .then((r) => (facultyStats.value = (r.data as { faculties: FacultyStat[] }).faculties ?? []))
+    .catch(() => {})
 }
+/** Har fakultet uchun: guruhlar soni (`organization` do'konidan) + talaba/qamrov
+ *  ('/admin/statistics'dan) — eng ko'p talabali 3 tasi, xuddi Statistika
+ *  sahifasidagi kabi haqiqiy ma'lumot (avval bu yerda namunaviy raqamlar
+ *  qattiq yozilgan edi). */
+const topFaculties = computed(() =>
+  [...facultyStats.value]
+    .sort((a, b) => b.students - a.students)
+    .slice(0, 3)
+    .map((f) => ({
+      name: f.name,
+      students: f.students,
+      groups: orgStore.faculties.find((of) => of.id === String(f.id))?.groupCount ?? 0,
+      pct: f.students ? Math.round((f.withResults / f.students) * 100) : 0,
+    })),
+)
 
 // --- Tyutor: o'z guruhi talabalari + kuzatuv kartasi holati -------------
 interface TutorStudentRow {
@@ -172,11 +201,6 @@ const quickActions = [
   { label: 'Qabul qo‘shish', icon: 'mdi-calendar-plus', to: '/calendar' },
 ]
 
-const topFaculties = [
-  { name: 'Xorijiy filologiya fakulteti', groups: 3, students: 412, pct: 86 },
-  { name: 'Tarix fakulteti', groups: 2, students: 268, pct: 71 },
-  { name: 'Jurnalistika fakulteti', groups: 2, students: 190, pct: 69 },
-]
 
 </script>
 
