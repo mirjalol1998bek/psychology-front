@@ -150,6 +150,14 @@ export interface AttemptResult {
   score?: number | null
   /** Per-category counts (temperament); empty for a single figure choice. */
   breakdown: BreakdownItem[]
+  /** Backend's `ScoreScaleScorer::NO_OVERALL_RESULT_KEY` ('subscale_only')
+   *  marks "no single overall score" instruments (COMMUNICATION_BASED,
+   *  VALUES_BASED, SELF_ESTEEM_BASED, PEER_CHOICE_BASED) — distinct from a
+   *  genuinely empty breakdown that still has a real categorical result
+   *  (FREQUENCY_BASED, RANKING_BASED). Used to detect the "no individual
+   *  result at all" case (empty breakdown + this key) for
+   *  TestResultView's plain acknowledgement card. */
+  resultKey: string
 }
 
 export interface StoredAttempt {

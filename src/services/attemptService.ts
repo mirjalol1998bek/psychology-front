@@ -27,6 +27,7 @@ interface BackendResult {
   description: string
   score: number | null
   breakdown: BreakdownItem[]
+  resultKey: string
 }
 interface BackendAttempt {
   id: number
@@ -41,7 +42,7 @@ interface BackendAttempt {
 
 function toResult(r: BackendResult | null | undefined): AttemptResult | undefined {
   if (!r) return undefined
-  return { label: r.label, description: r.description, score: r.score, breakdown: r.breakdown ?? [] }
+  return { label: r.label, description: r.description, score: r.score, breakdown: r.breakdown ?? [], resultKey: r.resultKey ?? '' }
 }
 
 function toStoredAttempt(a: BackendAttempt): StoredAttempt {
