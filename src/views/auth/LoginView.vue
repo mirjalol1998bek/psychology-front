@@ -62,27 +62,36 @@ async function handlePasswordLogin() {
       </v-btn-toggle>
     </div>
 
-    <!-- Hero brand: big, centred university emblem above everything -->
-    <div class="login-brand">
-      <div class="login-logo-halo">
-        <img src="/logo-utjhu.png" alt="UzDJTU" class="login-logo" />
+    <v-card class="login-shell" rounded="lg">
+      <!-- Brand panel: gradient + texture, logo, reassurance points — all in one place -->
+      <div class="login-panel-brand">
+        <div class="login-panel-pattern" aria-hidden="true" />
+        <div class="login-panel-content">
+          <div class="login-logo-badge">
+            <img src="/logo-utjhu.png" alt="UzDJTU" class="login-logo" />
+          </div>
+          <h1 class="text-display text-h4 font-weight-bold mb-2">{{ t('app.name') }}</h1>
+          <p class="text-body-1 mb-8" style="max-width: 32ch; opacity: 0.88">{{ t('app.tagline') }}</p>
+
+          <ul class="login-points">
+            <li>
+              <span class="login-point-icon"><v-icon icon="mdi-lock-check-outline" size="16" /></span>
+              {{ t('auth.points.confidential') }}
+            </li>
+            <li>
+              <span class="login-point-icon"><v-icon icon="mdi-clipboard-text-outline" size="16" /></span>
+              {{ t('auth.points.tests') }}
+            </li>
+            <li>
+              <span class="login-point-icon"><v-icon icon="mdi-calendar-heart" size="16" /></span>
+              {{ t('auth.points.appointments') }}
+            </li>
+          </ul>
+        </div>
       </div>
-      <h1 class="text-display text-h4 font-weight-bold mt-5 mb-1">{{ t('app.name') }}</h1>
-      <p class="text-body-1 mb-0" style="max-width: 38ch; opacity: 0.85">{{ t('app.tagline') }}</p>
-    </div>
 
-    <div class="login-grid">
-      <!-- Reassurance points -->
-      <aside class="login-aside d-none d-md-flex">
-        <ul class="login-points">
-          <li><v-icon icon="mdi-lock-check-outline" size="18" class="mr-2" />{{ t('auth.points.confidential') }}</li>
-          <li><v-icon icon="mdi-clipboard-text-outline" size="18" class="mr-2" />{{ t('auth.points.tests') }}</li>
-          <li><v-icon icon="mdi-calendar-heart" size="18" class="mr-2" />{{ t('auth.points.appointments') }}</li>
-        </ul>
-      </aside>
-
-      <!-- Auth card -->
-      <v-card class="login-card surface-card" rounded="lg">
+      <!-- Form panel -->
+      <div class="login-panel-form">
         <div class="mb-6">
           <h2 class="text-display text-h5 font-weight-bold mb-1">{{ t('auth.title') }}</h2>
           <p class="text-body-2 text-medium-emphasis mb-0">{{ t('auth.subtitle') }}</p>
@@ -164,8 +173,8 @@ async function handlePasswordLogin() {
             {{ t('auth.signInBtn') }}
           </v-btn>
         </form>
-      </v-card>
-    </div>
+      </div>
+    </v-card>
   </div>
 </template>
 
@@ -173,7 +182,6 @@ async function handlePasswordLogin() {
 .login-screen {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   position: relative;
@@ -182,7 +190,7 @@ async function handlePasswordLogin() {
   padding: 24px;
 }
 
-/* Soft decorative brand glow, sitting behind the hero + card. */
+/* Soft decorative brand glow, sitting behind the card. */
 .login-screen::before,
 .login-screen::after {
   content: '';
@@ -215,59 +223,79 @@ async function handlePasswordLogin() {
   z-index: 2;
 }
 
-.login-brand {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-.login-logo-halo {
-  width: 148px;
-  height: 148px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, rgb(var(--v-theme-primary)) 14%, transparent) 0%,
-    transparent 72%
-  );
-}
-
-.login-logo {
-  width: 116px;
-  height: 116px;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 20px rgba(var(--v-theme-primary), 0.28));
-}
-
-.login-grid {
+/* One unified split card — brand story and the form share the same
+   surface, instead of the reassurance points floating loose on the page. */
+.login-shell {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 940px;
+  max-width: 920px;
   display: grid;
   grid-template-columns: 1fr;
-  gap: 32px;
-  align-items: center;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
 }
 
-@media (min-width: 960px) {
-  .login-grid {
-    grid-template-columns: 1fr 420px;
-    gap: 64px;
+@media (min-width: 900px) {
+  .login-shell {
+    grid-template-columns: 5fr 6fr;
   }
 }
 
-.login-aside {
-  flex-direction: column;
-  align-items: flex-start;
-  color: rgb(var(--v-theme-on-background));
+.login-panel-brand {
+  position: relative;
+  overflow: hidden;
+  padding: 44px 36px 36px;
+  background: var(--gradient-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+}
+
+/* Soft dot-grid texture over the gradient — the bit of "creative" life a
+   flat brand panel was missing. */
+.login-panel-pattern {
+  position: absolute;
+  inset: -20%;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.35) 1.5px, transparent 1.5px);
+  background-size: 22px 22px;
+  opacity: 0.25;
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+.login-panel-brand::after {
+  content: '';
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  bottom: -120px;
+  right: -80px;
+  pointer-events: none;
+}
+
+.login-panel-content {
+  position: relative;
+  z-index: 1;
+}
+
+.login-logo-badge {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 22px;
+}
+
+.login-logo {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
 }
 
 .login-points {
@@ -281,11 +309,35 @@ async function handlePasswordLogin() {
 .login-points li {
   display: flex;
   align-items: center;
-  font-size: 0.9rem;
-  color: rgb(var(--v-theme-on-surface-variant));
+  gap: 12px;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.92);
+}
+.login-point-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.login-card {
-  padding: 36px 32px;
+.login-panel-form {
+  background: rgb(var(--v-theme-surface));
+  padding: 44px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+@media (max-width: 899px) {
+  .login-panel-brand {
+    padding: 36px 28px 28px;
+  }
+  .login-panel-form {
+    padding: 36px 28px;
+  }
 }
 </style>
