@@ -16,7 +16,10 @@ import { createVuetify, type ThemeDefinition } from 'vuetify'
 const lightTheme: ThemeDefinition = {
   dark: false,
   colors: {
-    background: '#FBF7F1',
+    // Cool, near-white fallback (used wherever a flat colour is needed,
+    // e.g. Vuetify internals) — the actual page background is a subtle
+    // teal-tinted gradient, see --gradient-page in global.css.
+    background: '#F7FAF9',
     surface: '#FFFFFF',
     'surface-bright': '#FFFFFF',
     'surface-variant': '#F2E9DD',

@@ -96,6 +96,6 @@ onMounted(async () => {
   justify-content: center;
   padding: 24px;
   text-align: center;
-  background: rgb(var(--v-theme-background));
+  background: var(--gradient-page);
 }
 </style>

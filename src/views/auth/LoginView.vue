@@ -175,7 +175,7 @@ async function handlePasswordLogin() {
   align-items: center;
   justify-content: center;
   position: relative;
-  background: rgb(var(--v-theme-background));
+  background: var(--gradient-page);
   padding: 24px;
 }
 

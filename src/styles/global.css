@@ -23,6 +23,16 @@
      wherever a hero badge (logo mark, empty-state icon, 404) wants a bit of
      life instead of a flat fill. */
   --gradient-accent: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, rgb(var(--v-theme-secondary)) 100%);
+
+  /* Page backdrop: a very soft teal → coral wash over the theme background,
+     instead of a flat fill. Built from the theme's own primary/secondary/
+     background tokens, so it re-tints automatically in dark mode. */
+  --gradient-page: linear-gradient(
+    180deg,
+    color-mix(in srgb, rgb(var(--v-theme-primary)) 7%, rgb(var(--v-theme-background))) 0%,
+    rgb(var(--v-theme-background)) 45%,
+    color-mix(in srgb, rgb(var(--v-theme-secondary)) 5%, rgb(var(--v-theme-background))) 100%
+  );
 }
 
 * {
@@ -32,7 +42,7 @@
 html,
 body {
   margin: 0;
-  background: rgb(var(--v-theme-background));
+  background: var(--gradient-page);
 }
 
 .v-application {

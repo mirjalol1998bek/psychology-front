@@ -32,7 +32,7 @@ const router = useRouter()
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgb(var(--v-theme-background));
+  background: var(--gradient-page);
 }
 .nf-inner {
   display: flex;
