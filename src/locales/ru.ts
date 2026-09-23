@@ -56,7 +56,8 @@ export default {
   auth: {
     title: 'Вход в систему',
     subtitle: 'Платформа психологической диагностики университета',
-    hemisLogin: 'Войти через Hemis',
+    hemisStudent: 'Войти как студент',
+    hemisEmployee: 'Войти как сотрудник',
     hemisHint: 'Безопасный вход через ваш профиль Hemis.',
     signingIn: 'Вход...',
     passwordLogin: 'Логин и пароль',

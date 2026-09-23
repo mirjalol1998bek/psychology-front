@@ -118,8 +118,9 @@ export const useAuthStore = defineStore('auth', {
       resetUserScopedStores()
     },
     /** Real HEMIS OAuth2: hand off to the backend, which redirects to HEMIS. */
-    startHemisLogin() {
-      window.location.href = '/api/auth/hemis'
+    /** Talaba va xodim HEMIS'da alohida portaldan kiradi (bitta OAuth klient). */
+    startHemisLogin(portal: 'student' | 'employee') {
+      window.location.href = `/api/auth/hemis?portal=${portal}`
     },
     /**
      * Called by the HEMIS callback route once the backend has redirected back

@@ -56,7 +56,8 @@ export default {
   auth: {
     title: 'Tizimga kirish',
     subtitle: 'Universitet psixologik diagnostika platformasi',
-    hemisLogin: 'Hemis orqali kirish',
+    hemisStudent: 'Talaba sifatida kirish',
+    hemisEmployee: 'Xodim sifatida kirish',
     hemisHint: 'Tizimga Hemis profilingiz orqali xavfsiz kiring.',
     signingIn: 'Kirilmoqda...',
     passwordLogin: 'Login va parol',

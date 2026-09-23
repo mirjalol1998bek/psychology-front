@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -18,10 +18,16 @@ const idleNotice = computed(() => route.query.reason === 'idle')
 type Mode = 'hemis' | 'password'
 const mode = ref<Mode>('hemis')
 
-function handleHemisLogin() {
-  // Real OAuth2: leaves the SPA, backend redirects to HEMIS, returns to /auth/hemis.
-  auth.startHemisLogin()
+// Real OAuth2: leaves the SPA, backend redirects to HEMIS, returns to /auth/hemis.
+const hemisPortal = ref<'student' | 'employee' | null>(null)
+function handleHemisLogin(portal: 'student' | 'employee') {
+  hemisPortal.value = portal
+  auth.startHemisLogin(portal)
 }
+// HEMIS'dan "orqaga" qaytilsa sahifa bfcache'dan tiklanadi — tugmalar qotib qolmasin.
+const resetHemisPortal = () => (hemisPortal.value = null)
+onMounted(() => window.addEventListener('pageshow', resetHemisPortal))
+onBeforeUnmount(() => window.removeEventListener('pageshow', resetHemisPortal))
 
 const loginError = ref('')
 
@@ -131,11 +137,25 @@ async function handlePasswordLogin() {
             size="large"
             color="primary"
             class="font-weight-bold"
-            :loading="auth.isSigningIn"
-            @click="handleHemisLogin"
+            :loading="hemisPortal === 'student'"
+            :disabled="hemisPortal !== null"
+            @click="handleHemisLogin('student')"
           >
-            <v-icon icon="mdi-shield-account-outline" start />
-            {{ t('auth.hemisLogin') }}
+            <v-icon icon="mdi-school-outline" start />
+            {{ t('auth.hemisStudent') }}
+          </v-btn>
+          <v-btn
+            block
+            size="large"
+            variant="outlined"
+            color="primary"
+            class="font-weight-bold mt-3"
+            :loading="hemisPortal === 'employee'"
+            :disabled="hemisPortal !== null"
+            @click="handleHemisLogin('employee')"
+          >
+            <v-icon icon="mdi-briefcase-account-outline" start />
+            {{ t('auth.hemisEmployee') }}
           </v-btn>
           <p class="text-caption text-medium-emphasis mt-4 mb-0 d-flex" style="gap: 6px">
             <v-icon icon="mdi-information-outline" size="14" style="margin-top: 2px" />
