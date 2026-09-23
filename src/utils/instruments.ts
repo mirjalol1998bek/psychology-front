@@ -108,6 +108,12 @@ export const TEMPERAMENT_COLORS: Record<string, string> = {
   Melanxolik: '#3D85C6',
 }
 export const TEMPERAMENT_OPTIONS = Object.keys(TEMPERAMENT_COLORS)
+export const TEMPERAMENT_ICONS: Record<string, string> = {
+  Xolerik: 'mdi-fire',
+  Sangvinik: 'mdi-white-balance-sunny',
+  Flegmatik: 'mdi-water-outline',
+  Melanxolik: 'mdi-weather-night',
+}
 
 export const SHAPE_COLORS: Record<string, string> = {
   Kvadrat: '#3D85C6',
