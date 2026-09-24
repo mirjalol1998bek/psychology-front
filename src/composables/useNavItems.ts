@@ -52,6 +52,7 @@ export function useNavItems() {
     const items: NavItem[] = [
       { title: t('nav.appeals'), icon: 'mdi-message-text-outline', to: '/appeals', keywords: 'murojaat savol javob обращение' },
       { title: t('nav.review'), icon: 'mdi-account-search-outline', to: '/tekshirish', keywords: 'tekshirish guruh temperament проверка' },
+      { title: t('nav.passports'), icon: 'mdi-card-account-details-outline', to: '/passports', keywords: 'pasport anketa pdf ijtimoiy паспорт анкета' },
       { title: t('nav.calendar'), icon: 'mdi-calendar-heart', to: '/calendar', keywords: 'qabul slot bo\'sh band приём календарь' },
       { title: t('nav.assign'), icon: 'mdi-clipboard-plus-outline', to: '/assignments/create', keywords: 'biriktirish tayinlash yangi назначить' },
       { title: t('nav.assignments'), icon: 'mdi-clipboard-check-outline', to: '/assignments', keywords: 'biriktirilgan guruh назначения' },

@@ -17,6 +17,7 @@ export default {
     accessRequests: 'Kirish so‘rovlari',
     appeals: 'Murojaat',
     passport: 'Pasport',
+    passports: 'Pasportlar',
     section: 'Boshqaruv',
   },
   role: {

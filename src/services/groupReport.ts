@@ -94,29 +94,46 @@ function toPassport(p: ApiPassport): PassportData {
   }
 }
 
+export interface GroupPassport {
+  passport: PassportData
+  personalCode: string | null
+}
+
+/**
+ * Guruhning to'ldirilgan anketalari, talaba id bo'yicha. `itemsPerPage`siz API
+ * faqat 30 tasini qaytarardi — katta guruhda qolganlari tushib qolardi.
+ */
+export async function fetchGroupPassports(groupId: string): Promise<Map<number, GroupPassport>> {
+  const { data } = await api.get('/student_passports', {
+    params: { 'student.studyGroup': groupId, itemsPerPage: 500 },
+  })
+
+  return new Map(
+    members<ApiPassport>(data)
+      .filter((p) => p.studentId != null)
+      .map((p) => [p.studentId as number, { passport: toPassport(p), personalCode: p.personalCode ?? null }]),
+  )
+}
+
 export async function fetchGroupOverview(groupId: string, lang: StudyLanguage): Promise<GroupRow[]> {
   const [temperament, figure, passports] = await Promise.all([
     resultRows(groupId, 'FREQUENCY_BASED', lang),
     resultRows(groupId, 'RANKING_BASED', lang),
-    api
-      .get('/student_passports', { params: { 'student.studyGroup': groupId } })
-      .then((r) => members<ApiPassport>(r.data))
-      .catch(() => [] as ApiPassport[]),
+    fetchGroupPassports(groupId).catch(() => new Map<number, GroupPassport>()),
   ])
 
   const figureBy = new Map(figure.map((r) => [r.studentId, r]))
-  const passportBy = new Map(passports.filter((p) => p.studentId != null).map((p) => [p.studentId as number, p]))
 
   return temperament.map((t) => {
-    const rawPassport = passportBy.get(t.studentId)
+    const entry = passports.get(t.studentId)
     return {
       studentId: t.studentId,
       hemisId: t.hemisId,
       fullName: t.fullName,
       temperament: t.resultKey || null,
       figure: figureBy.get(t.studentId)?.resultKey || null,
-      passport: rawPassport ? toPassport(rawPassport) : null,
-      personalCode: rawPassport?.personalCode ?? null,
+      passport: entry?.passport ?? null,
+      personalCode: entry?.personalCode ?? null,
     }
   })
 }

@@ -67,6 +67,9 @@ const router = createRouter({
 
         // Ijtimoiy-psixologik pasport: talaba to'ldiradi.
         { path: 'passport', name: 'passport', component: () => import('@/views/passport/PassportView.vue'), meta: { roles: ['student'] } },
+        // Xodim: fakultet → guruh kesimida talabalar anketalari (ko'rish + PDF).
+        { path: 'passports', name: 'passports', component: () => import('@/views/passport/PassportsView.vue'), meta: { roles: STAFF } },
+        { path: 'passports/:facultyId/:groupId', name: 'passports-group', component: () => import('@/views/passport/PassportGroupView.vue'), meta: { roles: STAFF } },
 
         // Tayinlash: staff.
         { path: 'assignments', name: 'assignments', component: () => import('@/views/assignments/AssignmentsView.vue'), meta: { roles: STAFF } },

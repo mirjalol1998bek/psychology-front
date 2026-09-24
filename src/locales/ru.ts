@@ -17,6 +17,7 @@ export default {
     accessRequests: 'Запросы доступа',
     appeals: 'Обращения',
     passport: 'Паспорт',
+    passports: 'Паспорта',
     section: 'Управление',
   },
   role: {

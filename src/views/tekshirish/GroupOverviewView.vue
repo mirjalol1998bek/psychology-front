@@ -7,6 +7,17 @@ import type { PassportData } from '@/stores/passport'
 import { fetchGroupOverview, type GroupRow } from '@/services/groupReport'
 import { TEMPERAMENT_OPTIONS, SHAPE_OPTIONS } from '@/utils/instruments'
 import { downloadXlsx, fileSlug } from '@/utils/exportXlsx'
+import {
+  GENDER,
+  LIVING,
+  FAMILY,
+  FAMILY_TYPE,
+  FINANCIAL,
+  EDUCATION_FORM,
+  WORK_STATUS,
+  ageFrom,
+  yesNo,
+} from '@/utils/passportFields'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,34 +86,6 @@ function exportResults() {
 
 // "Ijtimoiy-psixologik anketa" — har bir maydon alohida ustunda, shundagina
 // Excelda saralash/filtrlash ishlaydi.
-const GENDER: Record<string, string> = { male: 'Erkak', female: 'Ayol' }
-const LIVING: Record<string, string> = {
-  with_family: 'Oila bilan',
-  dormitory: 'Talabalar turar joyida',
-  rented: 'Ijarada',
-  with_relatives: 'Qarindoshlarnikida',
-}
-const FAMILY: Record<string, string> = { married: 'Turmush qurgan', single: 'Turmush qurmagan' }
-const FAMILY_TYPE: Record<string, string> = {
-  full: 'To‘liq',
-  incomplete: 'To‘liqsiz',
-  under_guardianship: 'Vasiylikda',
-  lost_breadwinner: 'Boquvchisini yo‘qotgan',
-}
-const FINANCIAL: Record<string, string> = { good: 'Yaxshi', average: 'O‘rtacha', difficult: 'Qiyin' }
-const EDUCATION_FORM: Record<string, string> = { budget: 'Byudjet', contract: 'To‘lov-kontrakt', grant: 'Grant' }
-const WORK_STATUS: Record<string, string> = { no: 'Yo‘q', partial: 'Qisman', full_time: 'Doimiy' }
-
-function ageFrom(birthDate: string): string {
-  if (!birthDate) return ''
-  const b = new Date(birthDate)
-  if (Number.isNaN(b.getTime())) return ''
-  const now = new Date()
-  let years = now.getFullYear() - b.getFullYear()
-  if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) years--
-  return years >= 0 ? String(years) : ''
-}
-
 function exportPassport() {
   const headers = [
     'T/R',
@@ -165,7 +148,7 @@ function exportPassport() {
       p?.extracurricular ?? '',
       p?.leisureActivity ?? '',
       p?.healthLimitations ?? '',
-      p?.priorPsychologistVisit === true ? 'Ha' : p?.priorPsychologistVisit === false ? 'Yo‘q' : '',
+      p ? yesNo(p.priorPsychologistVisit) : '',
       p?.currentConcern ?? '',
       r.temperament ?? '',
       r.figure ?? '',
