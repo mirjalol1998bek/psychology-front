@@ -215,11 +215,24 @@ const studentKey = computed(() => auth.user?.hemis.hemisId ?? 'anon')
 const instruments = ref<Awaited<ReturnType<typeof listInstruments>>>([])
 const attempts = ref<StoredAttempt[]>([])
 
+// Yuklanguncha "test biriktirilmagan" ko'rsatilmasin — server sekin bo'lsa
+// talaba testi yo'q deb o'ylab qolardi.
+const loadingStudent = ref(true)
+const studentLoadFailed = ref(false)
+
 async function loadStudent() {
-  ;[instruments.value, attempts.value] = await Promise.all([
-    listInstruments(language.value),
-    getAttempts(studentKey.value),
-  ])
+  loadingStudent.value = true
+  studentLoadFailed.value = false
+  try {
+    ;[instruments.value, attempts.value] = await Promise.all([
+      listInstruments(language.value),
+      getAttempts(studentKey.value),
+    ])
+  } catch {
+    studentLoadFailed.value = true
+  } finally {
+    loadingStudent.value = false
+  }
 }
 if (!auth.isStaff) loadStudent()
 
@@ -468,8 +481,22 @@ const visibleInstruments = computed(() =>
       </v-col>
     </v-row>
 
+    <div v-if="loadingStudent" class="d-flex justify-center py-10">
+      <v-progress-circular indeterminate color="primary" />
+    </div>
     <v-empty-state
-      v-if="!visibleInstruments.length"
+      v-else-if="studentLoadFailed"
+      icon="mdi-wifi-alert"
+      :title="t('tests.loadErrorTitle')"
+      :text="t('tests.loadErrorText')"
+      density="comfortable"
+    >
+      <template #actions>
+        <v-btn color="primary" variant="tonal" prepend-icon="mdi-refresh" @click="loadStudent">{{ t('tests.retry') }}</v-btn>
+      </template>
+    </v-empty-state>
+    <v-empty-state
+      v-else-if="!visibleInstruments.length"
       icon="mdi-clipboard-text-off-outline"
       :title="t('tests.emptyTitle')"
       :text="t('tests.emptyText')"

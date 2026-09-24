@@ -163,18 +163,20 @@ interface Groupmate {
   fullName: string
 }
 const groupmates = ref<Groupmate[]>([])
-watch(
-  peerChoiceQuiz,
-  async (q) => {
-    if (!q || groupmates.value.length) return
-    try {
-      groupmates.value = (await api.get<Groupmate[]>('/students/groupmates')).data
-    } catch {
-      groupmates.value = []
-    }
-  },
-  { immediate: true },
-)
+// Yuklanguncha yoki xato bo'lsa "guruhda talaba yo'q" demaymiz — aks holda
+// talaba testni yakunlay olmay qolardi (qayta urinish imkoni bilan).
+const groupmatesState = ref<'loading' | 'ready' | 'error'>('loading')
+async function loadGroupmates() {
+  groupmatesState.value = 'loading'
+  try {
+    groupmates.value = (await api.get<Groupmate[]>('/students/groupmates')).data
+    groupmatesState.value = 'ready'
+  } catch {
+    groupmatesState.value = 'error'
+  }
+}
+// Test yuklanishini kutmasdan, parallel — metodika marshrutdan ma'lum.
+if (instrument === 'PEER_CHOICE_BASED') loadGroupmates()
 function peerSelections(qi: number): number[] {
   const out: number[] = []
   for (const rank of [1, 2, 3]) {
@@ -527,7 +529,17 @@ async function submit() {
             <span class="text-body-1 font-weight-medium">{{ it.text }}</span>
           </div>
 
-          <div v-if="!groupmates.length" class="text-caption text-medium-emphasis">
+          <div v-if="groupmatesState === 'loading'" class="d-flex align-center text-caption text-medium-emphasis" style="gap: 8px">
+            <v-progress-circular indeterminate size="16" width="2" color="primary" />
+            {{ t('takeTest.peerChoiceLoading') }}
+          </div>
+          <div v-else-if="groupmatesState === 'error'" class="d-flex align-center flex-wrap text-caption" style="gap: 8px">
+            <span class="text-error">{{ t('takeTest.peerChoiceError') }}</span>
+            <v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-refresh" @click="loadGroupmates">
+              {{ t('takeTest.retry') }}
+            </v-btn>
+          </div>
+          <div v-else-if="!groupmates.length" class="text-caption text-medium-emphasis">
             {{ t('takeTest.peerChoiceEmpty') }}
           </div>
           <div v-else class="d-flex flex-wrap" style="gap: 8px">
