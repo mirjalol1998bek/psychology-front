@@ -9,4 +9,6 @@ services:
     volumes:
       - ./:/var/www/html
     working_dir: /var/www/html
-    command: /bin/sh -c "npm install && npm run build"
+    # `npm ci` — package-lock.json bo'yicha aynan o'rnatadi va uni qayta
+    # yozmaydi; `npm install` uni o'zgartirib, keyingi `git pull`ni to'sardi.
+    command: /bin/sh -c "npm ci && npm run build"
