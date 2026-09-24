@@ -3,6 +3,7 @@ import type { PassportData } from '@/stores/passport'
 import { formatDay } from '@/utils/datetime'
 import { fileSlug } from '@/utils/exportXlsx'
 import { passportSections } from '@/utils/passportFields'
+import { saveBlob, zipStore, type ZipEntry } from '@/utils/zip'
 
 export interface PassportPdfInput {
   fullName: string
@@ -15,42 +16,106 @@ export interface PassportPdfInput {
 
 type PdfMake = typeof import('pdfmake/build/pdfmake')
 
+interface Kit {
+  pdfMake: PdfMake
+  vfs: Record<string, string>
+  logo: string | null
+}
+
 const TEAL = '#0B7D6A'
 const MUTED = '#8C8678'
 const RULE = '#E3E8E6'
+const LOGO_PX = 160
+
+let kitPromise: Promise<Kit> | null = null
 
 /**
  * pdfmake (~1 MB, Roboto shrifti bilan — lotin `o‘/g‘` va kirillni qo'llaydi)
- * faqat tugma bosilganda yuklanadi, asosiy bundle'ga tushmaydi.
+ * faqat birinchi PDF so'ralganda yuklanadi va keyingilari uchun qayta ishlatiladi.
  */
-export async function downloadPassportPdf(input: PassportPdfInput): Promise<void> {
-  const [pdfModule, vfsModule, logo] = await Promise.all([
-    import('pdfmake/build/pdfmake'),
-    import('pdfmake/build/vfs_fonts'),
-    loadLogo(),
-  ])
-  // UMD/CommonJS paketlar — Vite ularni `default` ostida beradi.
-  const pdfMake = ((pdfModule as unknown as { default?: PdfMake }).default ?? pdfModule) as PdfMake
-  const vfs = ((vfsModule as unknown as { default?: Record<string, string> }).default ?? vfsModule) as Record<string, string>
+function loadKit(): Promise<Kit> {
+  kitPromise ??= Promise.all([import('pdfmake/build/pdfmake'), import('pdfmake/build/vfs_fonts'), loadLogo()]).then(
+    ([pdfModule, vfsModule, logo]) => ({
+      // UMD/CommonJS paketlar — Vite ularni `default` ostida beradi.
+      pdfMake: ((pdfModule as unknown as { default?: PdfMake }).default ?? pdfModule) as PdfMake,
+      vfs: ((vfsModule as unknown as { default?: Record<string, string> }).default ?? vfsModule) as Record<string, string>,
+      logo,
+    }),
+  )
+  kitPromise.catch(() => (kitPromise = null))
 
-  pdfMake
-    .createPdf(buildDocument(input, logo), undefined, undefined, vfs)
-    .download(`pasport_${fileSlug(input.fullName) || 'talaba'}.pdf`)
+  return kitPromise
 }
 
-async function loadLogo(): Promise<string | null> {
-  try {
-    const blob = await (await fetch('/logo-utjhu.png')).blob()
+/** Logotip asl o'lchamda ~67 KB — PDF'da 42pt ko'rinadi, kichraytirib joylaymiz. */
+function loadLogo(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = LOGO_PX
+      canvas.height = Math.round((img.height / img.width) * LOGO_PX)
+      canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => resolve(null)
+    img.src = '/logo-utjhu.png'
+  })
+}
 
-    return await new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = () => resolve(null)
-      reader.readAsDataURL(blob)
-    })
-  } catch {
-    return null
+function renderPdf(kit: Kit, input: PassportPdfInput): Promise<Uint8Array<ArrayBuffer>> {
+  return new Promise((resolve) => {
+    kit.pdfMake
+      .createPdf(buildDocument(input, kit.logo), undefined, undefined, kit.vfs)
+      .getBuffer((buffer) => resolve(new Uint8Array(buffer)))
+  })
+}
+
+export async function downloadPassportPdf(input: PassportPdfInput): Promise<void> {
+  const bytes = await renderPdf(await loadKit(), input)
+
+  saveBlob(new Blob([bytes], { type: 'application/pdf' }), `pasport_${fileSlug(input.fullName) || 'talaba'}.pdf`)
+}
+
+export interface ZipItem {
+  /** Arxiv ichidagi papka (fakultet arxivida — guruh nomi). */
+  folder?: string
+  input: PassportPdfInput
+}
+
+/**
+ * Har bir talaba — alohida PDF, hammasi bitta zip'da. PDF'lar navbat bilan
+ * yaratiladi (brauzer qotib qolmasligi uchun); `signal` bilan to'xtatiladi.
+ */
+export async function downloadPassportsZip(
+  items: ZipItem[],
+  zipName: string,
+  onProgress?: (done: number, total: number) => void,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  const kit = await loadKit()
+  const entries: ZipEntry[] = []
+
+  for (const [index, item] of items.entries()) {
+    if (signal?.aborted) return false
+    entries.push({ name: entryName(item), data: await renderPdf(kit, item.input) })
+    onProgress?.(index + 1, items.length)
   }
+
+  saveBlob(new Blob([zipStore(entries)], { type: 'application/zip' }), `${zipName}.zip`)
+
+  return true
+}
+
+/** Talaba ID qo'shiladi — bir xil ismli talabalar bir-birini yozib yubormasin. */
+function entryName(item: ZipItem): string {
+  const file = `${safeName(item.input.fullName) || 'talaba'}${item.input.hemisId ? ` (${item.input.hemisId})` : ''}.pdf`
+
+  return item.folder ? `${safeName(item.folder) || 'guruh'}/${file}` : file
+}
+
+function safeName(text: string): string {
+  return text.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100)
 }
 
 function buildDocument(input: PassportPdfInput, logo: string | null): TDocumentDefinitions {

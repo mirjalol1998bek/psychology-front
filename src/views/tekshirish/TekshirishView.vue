@@ -31,7 +31,7 @@ function handleSelect(faculty: FacultyDto, group: GroupDto) {
     <header class="page-head">
       <h1 class="text-h4">Tekshirish paneli</h1>
       <p class="text-body-2 text-medium-emphasis mb-0">
-        Fakultet va guruhni tanlang — talabalarning temperament va psixogeometrik natijalarini bir joyda ko‘ring.
+        Fakultet va guruhni tanlang — talabalarning barcha metodikalar bo‘yicha natijalarini bir joyda ko‘ring.
       </p>
     </header>
     <FacultyGroupPicker

@@ -4,8 +4,10 @@ import { useRoute, useRouter } from 'vue-router'
 import InstrumentResult from '@/components/psixologiya/InstrumentResult.vue'
 import { useOrganizationStore } from '@/stores/organization'
 import type { PassportData } from '@/stores/passport'
-import { fetchGroupOverview, type GroupRow } from '@/services/groupReport'
-import { TEMPERAMENT_OPTIONS, SHAPE_OPTIONS } from '@/utils/instruments'
+import { fetchGroupOverview, type GroupRow, type ResultCell } from '@/services/groupReport'
+import { TEMPERAMENT_OPTIONS, SHAPE_OPTIONS, INSTRUMENT_META, instrumentLabel } from '@/utils/instruments'
+import type { InstrumentType } from '@/types/domain'
+import { SUBSCALE_ONLY } from '@/types/assessment'
 import { downloadXlsx, fileSlug } from '@/utils/exportXlsx'
 import {
   GENDER,
@@ -36,18 +38,31 @@ const shapeFilter = ref<string | null>(null)
 const showFilters = ref(false)
 const loading = ref(true)
 const allRows = ref<GroupRow[]>([])
+const instruments = ref<InstrumentType[]>([])
 
 async function load() {
   loading.value = true
   try {
     await org.load()
     await org.loadGroups(facultyId)
-    allRows.value = await fetchGroupOverview(groupId, group.value?.studyLanguage ?? 'uz')
+    const overview = await fetchGroupOverview(groupId, group.value?.studyLanguage ?? 'uz')
+    allRows.value = overview.rows
+    instruments.value = overview.instruments
   } catch {
     allRows.value = []
   } finally {
     loading.value = false
   }
+}
+
+/** Temperament/psixogeometrik — tur chipi; qolganlari — xulosa nomi va ball. */
+const TYPE_INSTRUMENTS: InstrumentType[] = ['FREQUENCY_BASED', 'RANKING_BASED']
+
+function cellText(cell: ResultCell | undefined): string {
+  if (!cell) return ''
+  // KSM-20 kabi umumiy balli bo'lmagan metodika — natija faqat subshkalalarda.
+  if (cell.resultKey === SUBSCALE_ONLY) return 'Topshirgan'
+  return cell.score != null ? `${cell.label} · ${cell.score}` : cell.label
 }
 load()
 watch(group, (g, prev) => {
@@ -73,13 +88,12 @@ const fname = (suffix: string) =>
   `${fileSlug(faculty.value?.name ?? '')}_${fileSlug(group.value?.name ?? 'guruh')}_${suffix}`
 
 function exportResults() {
-  const headers = ['T/R', 'Talaba ID', 'F.I.SH', 'Temperament', 'Psixogeometrik']
+  const headers = ['T/R', 'Talaba ID', 'F.I.SH', ...instruments.value.map((ins) => instrumentLabel(ins))]
   const data = rows.value.map((r, i) => [
     i + 1,
     r.hemisId ?? '',
     r.fullName,
-    r.temperament ?? 'Aniqlanmagan',
-    r.figure ?? 'Aniqlanmagan',
+    ...instruments.value.map((ins) => cellText(r.results[ins]) || 'Topshirmagan'),
   ])
   downloadXlsx(fname('natijalar'), 'Natijalar', headers, data)
 }
@@ -211,21 +225,25 @@ function exportPassport() {
         </v-row>
       </v-expand-transition>
 
-      <v-table class="mt-2">
+      <v-table class="mt-2 overview-table">
         <thead>
           <tr>
             <th>T/R</th>
             <th>Talaba ID</th>
-            <th>F.I.O</th>
-            <th>Temperament</th>
-            <th>Psixogeometrik</th>
+            <th class="name-col">F.I.O</th>
+            <th v-for="ins in instruments" :key="ins" class="text-no-wrap">
+              <span class="d-inline-flex align-center" style="gap: 6px">
+                <v-icon :icon="INSTRUMENT_META[ins].icon" size="15" :style="{ color: INSTRUMENT_META[ins].tint }" />
+                {{ instrumentLabel(ins) }}
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(r, i) in rows" :key="r.studentId">
             <td>{{ i + 1 }}</td>
             <td class="text-medium-emphasis">{{ r.hemisId }}</td>
-            <td>
+            <td class="name-col">
               <div class="d-flex align-center py-2" style="gap: 10px">
                 <v-avatar size="30" color="primary" variant="tonal">
                   <span class="text-caption font-weight-bold">{{ r.fullName[0] }}</span>
@@ -233,8 +251,13 @@ function exportPassport() {
                 {{ r.fullName }}
               </div>
             </td>
-            <td><InstrumentResult instrument="FREQUENCY_BASED" :value="r.temperament" /></td>
-            <td><InstrumentResult instrument="RANKING_BASED" :value="r.figure" /></td>
+            <td v-for="ins in instruments" :key="ins">
+              <InstrumentResult v-if="TYPE_INSTRUMENTS.includes(ins)" :instrument="ins" :value="r.results[ins]?.resultKey ?? null" />
+              <span v-else-if="!r.results[ins]" class="text-medium-emphasis">—</span>
+              <span v-else class="result-chip" :style="{ '--tint': INSTRUMENT_META[ins].tint }" :title="cellText(r.results[ins])">
+                {{ cellText(r.results[ins]) }}
+              </span>
+            </td>
           </tr>
         </tbody>
       </v-table>
@@ -243,3 +266,32 @@ function exportPassport() {
     </v-card>
   </div>
 </template>
+
+<style scoped>
+.overview-table :deep(th),
+.overview-table :deep(td) {
+  white-space: nowrap;
+}
+
+/* F.I.O ustuni gorizontal aylantirishda ko'rinib tursin. */
+.overview-table :deep(.name-col) {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: rgb(var(--v-theme-surface));
+}
+
+.result-chip {
+  display: inline-block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--tint) 14%, transparent);
+  color: var(--tint);
+}
+</style>

@@ -160,6 +160,9 @@ export interface AttemptResult {
   resultKey: string
 }
 
+/** Backend `ScoreScaleScorer::NO_OVERALL_RESULT_KEY` — umumiy balli yo'q natija. */
+export const SUBSCALE_ONLY = 'subscale_only'
+
 export interface StoredAttempt {
   /** Backend Attempt id (present when loaded from the API). */
   id?: number

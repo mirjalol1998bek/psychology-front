@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { instrumentByRoute, INSTRUMENT_META, instrumentLabel, colorFor, SHAPE_ICONS } from '@/utils/instruments'
 import { getAttempt } from '@/services/attemptService'
 import { formatDay } from '@/utils/datetime'
-import type { StoredAttempt } from '@/types/assessment'
+import { SUBSCALE_ONLY, type StoredAttempt } from '@/types/assessment'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -56,7 +56,7 @@ const maxBreakdown = computed(() => Math.max(1, ...chartBreakdown.value.map((b) 
 // "NATIJA TAHLILI" analysis layout, which would otherwise imply an
 // analysis that doesn't exist.
 const isAcknowledgementOnly = computed(
-  () => result.value?.resultKey === 'subscale_only' && chartBreakdown.value.length === 0 && scaleScore.value === null,
+  () => result.value?.resultKey === SUBSCALE_ONLY && chartBreakdown.value.length === 0 && scaleScore.value === null,
 )
 
 const submittedAt = computed(() => formatDay(attempt.value?.submittedAt, { year: true }))

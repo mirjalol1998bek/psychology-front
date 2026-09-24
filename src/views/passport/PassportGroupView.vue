@@ -5,8 +5,11 @@ import { useOrganizationStore } from '@/stores/organization'
 import { completeness } from '@/stores/passport'
 import { fetchGroupPassports, type GroupPassport } from '@/services/groupReport'
 import { passportSections } from '@/utils/passportFields'
-import { downloadPassportPdf } from '@/utils/passportPdf'
+import { downloadPassportPdf, type PassportPdfInput } from '@/utils/passportPdf'
 import { formatDay } from '@/utils/datetime'
+import { fileSlug } from '@/utils/exportXlsx'
+import { usePassportZip } from '@/composables/usePassportZip'
+import PassportZipDialog from '@/components/psixologiya/PassportZipDialog.vue'
 import type { StudentDto } from '@/types/domain'
 
 const route = useRoute()
@@ -71,24 +74,35 @@ const rows = computed(() => {
 const viewing = ref<Row | null>(null)
 const sections = computed(() => (viewing.value?.entry ? passportSections(viewing.value.entry.passport) : []))
 
+function pdfInput(r: Row, entry: GroupPassport): PassportPdfInput {
+  return {
+    fullName: r.student.fullName,
+    hemisId: r.student.hemisId,
+    faculty: faculty.value?.name ?? '',
+    group: group.value?.name ?? '',
+    personalCode: entry.personalCode,
+    passport: entry.passport,
+  }
+}
+
 const downloadingId = ref<string | null>(null)
 async function downloadPdf(r: Row) {
   if (!r.entry || downloadingId.value) return
   downloadingId.value = r.student.id
   try {
-    await downloadPassportPdf({
-      fullName: r.student.fullName,
-      hemisId: r.student.hemisId,
-      faculty: faculty.value?.name ?? '',
-      group: group.value?.name ?? '',
-      personalCode: r.entry.personalCode,
-      passport: r.entry.passport,
-    })
+    await downloadPassportPdf(pdfInput(r, r.entry))
   } catch {
     toast.value = 'PDF yaratib bo‘lmadi'
   } finally {
     downloadingId.value = null
   }
+}
+
+const zip = usePassportZip()
+async function downloadGroupZip() {
+  const items = allRows.value.flatMap((r) => (r.entry ? [{ input: pdfInput(r, r.entry) }] : []))
+  await zip.run(async () => items, `pasportlar_${fileSlug(faculty.value?.name ?? '')}_${fileSlug(group.value?.name ?? 'guruh')}`)
+  if (zip.message.value) toast.value = zip.message.value
 }
 
 function updatedLabel(r: Row): string {
@@ -105,6 +119,15 @@ function updatedLabel(r: Row): string {
         <h1 class="text-h4">{{ group?.name }} — pasportlar</h1>
         <p class="text-body-2 text-medium-emphasis mb-0">{{ faculty?.name }} · {{ allRows.length }} talaba</p>
       </div>
+      <v-btn
+        variant="tonal"
+        color="secondary"
+        prepend-icon="mdi-folder-zip-outline"
+        :disabled="!filledCount || zip.active.value"
+        @click="downloadGroupZip"
+      >
+        Guruh arxivi (ZIP · {{ filledCount }} ta PDF)
+      </v-btn>
     </div>
 
     <v-row class="mb-1" dense>
@@ -241,6 +264,14 @@ function updatedLabel(r: Row): string {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <PassportZipDialog
+      :active="zip.active.value"
+      :done="zip.done.value"
+      :total="zip.total.value"
+      :title="`${group?.name ?? 'Guruh'} — pasportlar arxivi`"
+      @cancel="zip.cancel"
+    />
 
     <v-snackbar :model-value="!!toast" color="error" timeout="3500" @update:model-value="toast = ''">{{ toast }}</v-snackbar>
   </div>
