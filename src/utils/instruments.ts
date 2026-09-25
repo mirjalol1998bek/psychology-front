@@ -131,9 +131,27 @@ export const SHAPE_ICONS: Record<string, string> = {
 }
 export const SHAPE_OPTIONS = Object.keys(SHAPE_COLORS)
 
+/**
+ * Teng ballli temperament aralash natija bo'lib keladi — kalit `Flegmatik+Xolerik`,
+ * nom `Flegmatik + Xolerik` (backend `CategoryTallyScorer::MIXED_SEPARATOR`).
+ * Hech bir tur ustun emas, shuning uchun hamma joyda har bir tur alohida ko'rsatiladi.
+ */
+export function splitTypes(value: string | null | undefined): string[] {
+  return (value ?? '')
+    .split('+')
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
+/** Aralash natijani o'qiladigan ko'rinishga keltiradi (Excel, matn). */
+export function formatTypes(value: string | null | undefined): string {
+  return splitTypes(value).join(' + ')
+}
+
 export function colorFor(instrument: InstrumentType, value: string | null | undefined): string {
-  if (!value) return '#8892A6'
-  if (instrument === 'FREQUENCY_BASED') return TEMPERAMENT_COLORS[value] ?? '#8892A6'
-  if (instrument === 'RANKING_BASED') return SHAPE_COLORS[value] ?? '#8892A6'
+  const type = splitTypes(value)[0]
+  if (!type) return '#8892A6'
+  if (instrument === 'FREQUENCY_BASED') return TEMPERAMENT_COLORS[type] ?? '#8892A6'
+  if (instrument === 'RANKING_BASED') return SHAPE_COLORS[type] ?? '#8892A6'
   return '#8892A6'
 }

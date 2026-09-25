@@ -179,6 +179,7 @@ export default {
   },
   result: {
     totalScore: 'Umumiy ball',
+    mixedTemperament: 'Aralash temperament — bu turlarning ballari teng',
     analysis: 'Natija tahlili',
     scoreDistribution: 'Ballar taqsimoti',
     allResults: 'Barcha natijalar',

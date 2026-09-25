@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import InstrumentResult from '@/components/psixologiya/InstrumentResult.vue'
 import { useOrganizationStore } from '@/stores/organization'
 import { useAuthStore } from '@/stores/auth'
-import { instrumentByRoute, INSTRUMENT_META, TEMPERAMENT_OPTIONS, SHAPE_OPTIONS } from '@/utils/instruments'
+import { instrumentByRoute, INSTRUMENT_META, TEMPERAMENT_OPTIONS, SHAPE_OPTIONS, splitTypes, formatTypes } from '@/utils/instruments'
 import { downloadXlsx, fileSlug } from '@/utils/exportXlsx'
 import { api } from '@/services/apiClient'
 import { loadCategoriesForInstrument } from '@/services/quizService'
@@ -80,14 +80,19 @@ const rows = computed(() =>
     if (isFreetext.value) {
       if (conclusionFilter.value === 'has' && !v) return false
       if (conclusionFilter.value === 'none' && v) return false
-    } else if (valueFilter.value && v !== valueFilter.value) return false
+    } else if (valueFilter.value && !splitTypes(v).includes(valueFilter.value)) return false
     return true
   }),
 )
 
 function exportSheet() {
   const headers = ['T/R', 'Talaba ID', 'F.I.SH', meta.value.label]
-  const data = rows.value.map((r, i) => [i + 1, r.hemisId ?? '', r.fullName, valueOf(r) ?? 'Aniqlanmagan'])
+  const data = rows.value.map((r, i) => [
+    i + 1,
+    r.hemisId ?? '',
+    r.fullName,
+    (isFreetext.value ? valueOf(r) : formatTypes(valueOf(r))) || 'Aniqlanmagan',
+  ])
   const name = `${fileSlug(faculty.value?.name ?? '')}_${fileSlug(group.value?.name ?? 'guruh')}_${meta.value.routeSegment}`
   downloadXlsx(name, meta.value.label, headers, data)
 }

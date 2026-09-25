@@ -29,6 +29,9 @@ interface FacultyStat {
   withResults: number
   figures: Pair[]
   temperaments: Pair[]
+  /** Temperament topshirganlar; aralash natija `temperaments`da har bir turga sanaladi. */
+  temperamentStudents?: number
+  temperamentMixed?: number
   scales: ScaleStat[]
 }
 interface Overview {
@@ -51,6 +54,7 @@ interface DistSection {
   unit: string
   total: number
   items: DistItem[]
+  note?: string
 }
 
 const FALLBACK_COLOR = '#8C8678'
@@ -102,6 +106,8 @@ const totals = computed(() => {
     pct: totalStudents ? Math.round((withTests / totalStudents) * 100) : 0,
     figures: sumPairs(data.value.faculties.map((f) => f.figures)),
     temperaments: sumPairs(data.value.faculties.map((f) => f.temperaments)),
+    temperamentStudents: data.value.faculties.reduce((sum, f) => sum + (f.temperamentStudents ?? 0), 0),
+    temperamentMixed: data.value.faculties.reduce((sum, f) => sum + (f.temperamentMixed ?? 0), 0),
     scales: Array.from(scaleMap, ([algo, withResult]) => ({ algo, withResult })),
   }
 })
@@ -112,10 +118,12 @@ function buildDist(
   options: string[],
   colors: Record<string, string>,
   icons: Record<string, string>,
+  /** Foiz shunga nisbatan; berilmasa — sanoqlar yig'indisi. */
+  totalOverride?: number,
 ): { total: number; items: DistItem[] } {
   const merged = new Map(counts)
   options.forEach((o) => merged.set(o, merged.get(o) ?? 0))
-  const total = [...merged.values()].reduce((a, b) => a + b, 0)
+  const total = totalOverride ?? [...merged.values()].reduce((a, b) => a + b, 0)
   const items = [...merged]
     .map(([key, count]) => ({
       key,
@@ -144,8 +152,17 @@ const distSections = computed<DistSection[]>(() => [
     title: 'Butun universitet bo‘yicha temperament test natijalari',
     icon: INSTRUMENT_META.FREQUENCY_BASED.icon,
     tint: INSTRUMENT_META.FREQUENCY_BASED.tint,
-    unit: 'natija',
-    ...buildDist(totals.value.temperaments, TEMPERAMENT_OPTIONS, TEMPERAMENT_COLORS, TEMPERAMENT_ICONS),
+    unit: 'talaba',
+    ...buildDist(
+      totals.value.temperaments,
+      TEMPERAMENT_OPTIONS,
+      TEMPERAMENT_COLORS,
+      TEMPERAMENT_ICONS,
+      totals.value.temperamentStudents,
+    ),
+    note: totals.value.temperamentMixed
+      ? `${totals.value.temperamentMixed} ta talabada bir nechta turning bali teng (aralash temperament) — ular har bir teng turga hisoblangan, shuning uchun foizlar yig‘indisi 100% dan oshishi mumkin.`
+      : undefined,
   },
 ])
 
@@ -219,6 +236,9 @@ function fmtPct(pct: number) {
         <span class="dist-head-title">{{ s.title }}</span>
         <span class="dist-badge">{{ s.total }} ta {{ s.unit }}</span>
       </header>
+      <p v-if="s.note" class="dist-note">
+        <v-icon icon="mdi-information-outline" size="15" class="mr-1" />{{ s.note }}
+      </p>
 
       <div class="dist-grid">
         <div v-for="it in s.items" :key="it.key" class="dist-card" :style="{ '--c': it.color }">
@@ -373,6 +393,12 @@ function fmtPct(pct: number) {
   background: rgb(var(--v-theme-surface));
   color: var(--tint);
   border: 1px solid color-mix(in srgb, var(--tint) 35%, transparent);
+}
+
+.dist-note {
+  margin: 12px 20px 0;
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
 }
 
 .dist-grid {

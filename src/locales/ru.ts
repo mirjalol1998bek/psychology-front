@@ -179,6 +179,7 @@ export default {
   },
   result: {
     totalScore: 'Итоговый балл',
+    mixedTemperament: 'Смешанный темперамент — баллы этих типов равны',
     analysis: 'Анализ результата',
     scoreDistribution: 'Распределение баллов',
     allResults: 'Все результаты',

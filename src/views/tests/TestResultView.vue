@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { instrumentByRoute, INSTRUMENT_META, instrumentLabel, colorFor, SHAPE_ICONS } from '@/utils/instruments'
+import { instrumentByRoute, INSTRUMENT_META, instrumentLabel, colorFor, splitTypes, SHAPE_ICONS } from '@/utils/instruments'
 import { getAttempt } from '@/services/attemptService'
 import { formatDay } from '@/utils/datetime'
 import { SUBSCALE_ONLY, type StoredAttempt } from '@/types/assessment'
@@ -29,6 +29,28 @@ getAttempt(studentKey, instrument).then((a) => {
 const result = computed(() => attempt.value?.result ?? null)
 const accent = computed(() => colorFor(instrument, result.value?.label))
 const isRanking = instrument === 'RANKING_BASED'
+
+// Teng ballli temperament (`Flegmatik+Xolerik`) — hech biri ustun emas:
+// fon hamma turlarning ranglaridan, izoh har bir tur uchun alohida blok.
+const types = computed(() => (instrument === 'FREQUENCY_BASED' ? splitTypes(result.value?.resultKey) : []))
+const isMixed = computed(() => types.value.length > 1)
+const heroBackground = computed(() =>
+  isMixed.value
+    ? `linear-gradient(135deg, ${types.value.map((type) => colorFor(instrument, type)).join(', ')})`
+    : undefined,
+)
+/** Backend aralash izohni `Tur\nmatn\n\nTur\nmatn` ko'rinishida beradi. */
+const mixedSections = computed(() =>
+  isMixed.value
+    ? (result.value?.description ?? '').split('\n\n').map((block) => {
+        const [title, ...rest] = block.split('\n')
+        return { title: title.trim(), text: rest.join('\n').trim() }
+      })
+    : [],
+)
+function isHighlighted(label: string): boolean {
+  return isMixed.value ? types.value.includes(label) : label === result.value?.label
+}
 
 // Score-scale (IPM-20 / OKM-20 / EHS-20) results carry the overall total in `result.score`.
 const scaleScore = computed(() => result.value?.score ?? null)
@@ -87,7 +109,7 @@ const submittedAt = computed(() => formatDay(attempt.value?.submittedAt, { year:
 
       <template v-else>
         <v-card class="surface-card overflow-hidden mb-4" rounded="lg">
-          <div class="result-hero" :style="{ '--accent': accent }">
+          <div class="result-hero" :style="{ '--accent': accent, background: heroBackground }">
             <div class="result-badge">
               <v-icon
                 :icon="isRanking ? SHAPE_ICONS[result.label] ?? meta.icon : meta.icon"
@@ -100,6 +122,7 @@ const submittedAt = computed(() => formatDay(attempt.value?.submittedAt, { year:
                 {{ instrumentLabel(instrument) }} · {{ submittedAt }}
               </div>
               <div class="text-h4 text-display font-weight-bold" style="color: #fff">{{ result.label }}</div>
+              <div v-if="isMixed" class="mixed-note">{{ t('result.mixedTemperament') }}</div>
               <div v-if="scaleScore !== null" class="text-body-2" style="color: #fff; opacity: 0.85">
                 {{ t('result.totalScore') }}: <strong>{{ scaleScore }}</strong>
               </div>
@@ -110,7 +133,18 @@ const submittedAt = computed(() => formatDay(attempt.value?.submittedAt, { year:
             <div class="text-subtitle-2 font-weight-bold text-uppercase text-medium-emphasis mb-2">
               {{ t('result.analysis') }}
             </div>
-            <p class="result-text">{{ result.description }}</p>
+            <template v-if="isMixed">
+              <div
+                v-for="s in mixedSections"
+                :key="s.title"
+                class="mixed-section"
+                :style="{ '--tint': colorFor(instrument, s.title) }"
+              >
+                <div class="mixed-section-title">{{ s.title }}</div>
+                <p class="result-text mb-0">{{ s.text }}</p>
+              </div>
+            </template>
+            <p v-else class="result-text">{{ result.description }}</p>
           </div>
         </v-card>
 
@@ -118,14 +152,14 @@ const submittedAt = computed(() => formatDay(attempt.value?.submittedAt, { year:
           <div class="text-subtitle-1 font-weight-bold mb-4">{{ t('result.scoreDistribution') }}</div>
           <div v-for="b in chartBreakdown" :key="b.label" class="mb-3">
             <div class="d-flex justify-space-between text-body-2 mb-1">
-              <span :class="{ 'font-weight-bold': b.label === result.label }">{{ b.label }}</span>
+              <span :class="{ 'font-weight-bold': isHighlighted(b.label) }">{{ b.label }}</span>
               <span class="text-medium-emphasis">{{ b.value }}{{ b.title ? ` · ${b.title}` : '' }}</span>
             </div>
             <v-progress-linear
               :model-value="(b.value / maxBreakdown) * 100"
               height="8"
               rounded
-              :color="b.label === result.label ? 'primary' : 'surface-variant'"
+              :color="isHighlighted(b.label) ? 'primary' : 'surface-variant'"
               bg-color="surface-variant"
             />
             <p v-if="b.description" class="text-caption text-medium-emphasis mt-1 mb-0">{{ b.description }}</p>
@@ -161,6 +195,29 @@ const submittedAt = computed(() => formatDay(attempt.value?.submittedAt, { year:
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+.mixed-note {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.mixed-section {
+  border-left: 3px solid var(--tint);
+  padding-left: 14px;
+  margin-bottom: 18px;
+}
+.mixed-section:last-child {
+  margin-bottom: 0;
+}
+.mixed-section-title {
+  font-weight: 700;
+  color: var(--tint);
+  margin-bottom: 4px;
 }
 .result-text {
   white-space: pre-wrap;

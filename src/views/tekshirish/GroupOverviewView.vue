@@ -5,7 +5,7 @@ import InstrumentResult from '@/components/psixologiya/InstrumentResult.vue'
 import { useOrganizationStore } from '@/stores/organization'
 import type { PassportData } from '@/stores/passport'
 import { fetchGroupOverview, type GroupRow, type ResultCell } from '@/services/groupReport'
-import { TEMPERAMENT_OPTIONS, SHAPE_OPTIONS, INSTRUMENT_META, instrumentLabel } from '@/utils/instruments'
+import { TEMPERAMENT_OPTIONS, SHAPE_OPTIONS, INSTRUMENT_META, instrumentLabel, splitTypes, formatTypes } from '@/utils/instruments'
 import type { InstrumentType } from '@/types/domain'
 import { SUBSCALE_ONLY } from '@/types/assessment'
 import { downloadXlsx, fileSlug } from '@/utils/exportXlsx'
@@ -72,7 +72,8 @@ watch(group, (g, prev) => {
 const rows = computed(() =>
   allRows.value.filter((r) => {
     if (search.value && !r.fullName.toLowerCase().includes(search.value.toLowerCase())) return false
-    if (temperamentFilter.value && r.temperament !== temperamentFilter.value) return false
+    // Aralash natija (Flegmatik+Xolerik) har bir turi bo'yicha filtrda chiqadi.
+    if (temperamentFilter.value && !splitTypes(r.temperament).includes(temperamentFilter.value)) return false
     if (shapeFilter.value && r.figure !== shapeFilter.value) return false
     return true
   }),
@@ -164,7 +165,7 @@ function exportPassport() {
       p?.healthLimitations ?? '',
       p ? yesNo(p.priorPsychologistVisit) : '',
       p?.currentConcern ?? '',
-      r.temperament ?? '',
+      formatTypes(r.temperament),
       r.figure ?? '',
     ]
   })
